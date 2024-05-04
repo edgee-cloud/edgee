@@ -1,7 +1,5 @@
-#![deny(warnings)]
-
-mod config;
 mod cli;
+mod config;
 
 use bytes::Bytes;
 use http_body_util::{combinators::BoxBody, BodyExt};
@@ -13,13 +11,11 @@ use hyper_util::rt::TokioIo;
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
 
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = cli::get_cli();
     match &cli.command {
         cli::Commands::Start { port, file } => {
-
             // configuration
             let conf = match config::configure(file) {
                 Ok(conf) => conf,
@@ -55,7 +51,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-async fn proxy(req: Request<hyper::body::Incoming>) -> Result<Response<BoxBody<Bytes, hyper::Error>>, hyper::Error> {
+async fn proxy(
+    req: Request<hyper::body::Incoming>,
+) -> Result<Response<BoxBody<Bytes, hyper::Error>>, hyper::Error> {
     println!("req: {:?} {:?}", req.method(), req.uri());
 
     let host = "localhost";
