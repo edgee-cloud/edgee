@@ -8,11 +8,12 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
+use miette::Result;
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     let cli = cli::get_cli();
     match &cli.command {
         cli::Commands::Start { port, file } => {
@@ -26,12 +27,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let addr = SocketAddr::from(([127, 0, 0, 1], *port));
 
-            let listener = TcpListener::bind(addr).await?;
+            let listener = TcpListener::bind(addr).await.unwrap();
             println!("Listening on http://{}", addr);
 
             // We start a loop to continuously accept incoming connections
             loop {
-                let (stream, _) = listener.accept().await?;
+                let (stream, _) = listener.accept().await.unwrap();
                 let io = TokioIo::new(stream);
 
                 tokio::task::spawn(async move {
