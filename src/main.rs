@@ -14,6 +14,8 @@ use tokio::net::{TcpListener, TcpStream};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+
     let cli = cli::get_cli();
     match &cli.command {
         cli::Commands::Start { port, file } => {
