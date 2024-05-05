@@ -1,5 +1,6 @@
-mod cli;
 mod config;
+mod logger;
+mod providers;
 
 use bytes::Bytes;
 use http_body_util::{combinators::BoxBody, BodyExt};
@@ -14,43 +15,34 @@ use tokio::net::{TcpListener, TcpStream};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
+    let cfg = config::parse();
+    logger::init(&cfg.log_severity);
+    providers::init(cfg.providers);
 
-    let cli = cli::get_cli();
-    match &cli.command {
-        cli::Commands::Start { port, file } => {
-            // configuration
-            let conf = match config::configure(file) {
-                Ok(conf) => conf,
-                Err(_) => unreachable!(),
-            };
+    let addr = SocketAddr::from(([127, 0, 0, 1], cfg.http_port));
+    let listener = TcpListener::bind(addr).await.unwrap();
+    tracing::info!(
+        http_port = cfg.http_port,
+        https_port = cfg.https_port,
+        log_severity = cfg.log_severity.as_str(),
+        "Server started"
+    );
+    // We start a loop to continuously accept incoming connections
+    loop {
+        let (stream, _) = listener.accept().await.unwrap();
+        let io = TokioIo::new(stream);
 
-            println!("File: {:?}", conf);
-
-            let addr = SocketAddr::from(([127, 0, 0, 1], *port));
-
-            let listener = TcpListener::bind(addr).await.unwrap();
-            println!("Listening on http://{}", addr);
-
-            // We start a loop to continuously accept incoming connections
-            loop {
-                let (stream, _) = listener.accept().await.unwrap();
-                let io = TokioIo::new(stream);
-
-                tokio::task::spawn(async move {
-                    if let Err(err) = http1::Builder::new()
-                        .preserve_header_case(true)
-                        .title_case_headers(true)
-                        .serve_connection(io, service_fn(proxy))
-                        .with_upgrades()
-                        .await
-                    {
-                        println!("Failed to serve connection: {:?}", err);
-                    }
-                });
+        tokio::task::spawn(async move {
+            if let Err(err) = http1::Builder::new()
+                .preserve_header_case(true)
+                .title_case_headers(true)
+                .serve_connection(io, service_fn(proxy))
+                .with_upgrades()
+                .await
+            {
+                println!("Failed to serve connection: {:?}", err);
             }
-        }
-        _ => unreachable!(),
+        });
     }
 }
 
