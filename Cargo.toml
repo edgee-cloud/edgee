@@ -9,14 +9,18 @@ categories = ["wasm"]
 license = "Apache-2.0"
 
 [dependencies]
-hyper = { version = "1", features = ["full"] }
-tokio = { version = "1", features = ["full"] }
-http-body-util = "0.1"
-hyper-util = { version = "0.1", features = ["full"] }
 bytes = "1.6.0"
-http = "1.1.0"
 clap = { version = "^4", features = ["derive"] }
-serde_json = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-simple_logger = "4.3"
+http = "1.1.0"
+http-body-util = "0.1"
+hyper = { version = "1", features = ["full"] }
+hyper-util = { version = "0.1", features = ["full"] }
 log = "0.4"
+miette = "7.2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+simple_logger = "4.3"
+tokio = { version = "1", features = ["full"] }
+toml = "0.8.12"
+tracing = { version = "0.1.40", features = ["release_max_level_warn"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
