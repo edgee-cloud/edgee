@@ -3,21 +3,38 @@ mod logger;
 mod providers;
 
 use bytes::Bytes;
-use http_body_util::{combinators::BoxBody, BodyExt};
-use hyper::client::conn::http1::Builder;
-use hyper::server::conn::http1;
+use http::header::HOST;
+use http::HeaderValue;
+use http_body_util::combinators::BoxBody;
+use http_body_util::BodyExt;
+use hyper::client::conn::http1 as client;
+use hyper::server::conn::http1 as server;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use miette::Result;
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::mpsc::Sender;
+use tracing::{debug, error};
+
+#[derive(Debug)]
+enum EventStream {
+    PageView(String),
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let cfg = config::parse();
     logger::init(&cfg.log_severity);
     providers::init(cfg.providers);
+
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<EventStream>(1024);
+    tokio::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            debug!(?event, "Received event");
+        }
+    });
 
     let addr = SocketAddr::from(([127, 0, 0, 1], cfg.http_port));
     let listener = TcpListener::bind(addr).await.unwrap();
@@ -27,47 +44,48 @@ async fn main() -> Result<()> {
         log_severity = cfg.log_severity.as_str(),
         "Server started"
     );
-    // We start a loop to continuously accept incoming connections
+
     loop {
         let (stream, _) = listener.accept().await.unwrap();
         let io = TokioIo::new(stream);
 
+        let sender = tx.clone();
         tokio::task::spawn(async move {
-            if let Err(err) = http1::Builder::new()
-                .preserve_header_case(true)
-                .title_case_headers(true)
-                .serve_connection(io, service_fn(proxy))
+            server::Builder::new()
+                .serve_connection(io, service_fn(|req| proxy(req, sender.to_owned())))
                 .with_upgrades()
                 .await
-            {
-                println!("Failed to serve connection: {:?}", err);
-            }
+                .map_err(|err| error!(%err, "Failed to serve connection"))
         });
     }
 }
 
 async fn proxy(
-    req: Request<hyper::body::Incoming>,
+    mut req: Request<hyper::body::Incoming>,
+    tx: Sender<EventStream>,
 ) -> Result<Response<BoxBody<Bytes, hyper::Error>>, hyper::Error> {
-    println!("req: {:?} {:?}", req.method(), req.uri());
+    debug!(method = %req.method(), uri = %req.uri(), "Request");
 
-    let host = "localhost";
-    let port = req.uri().port_u16().unwrap_or(3000);
+    let host = "recoeur.github.io";
+    let port = 80;
+
+    req.headers_mut()
+        .insert(HOST, HeaderValue::from_str(host).unwrap());
 
     let stream = TcpStream::connect((host, port)).await.unwrap();
     let io = TokioIo::new(stream);
 
-    let (mut sender, conn) = Builder::new()
-        .preserve_header_case(true)
-        .title_case_headers(true)
-        .handshake(io)
-        .await?;
-    tokio::task::spawn(async move {
-        if let Err(err) = conn.await {
-            println!("Connection failed: {:?}", err);
-        }
-    });
+    let (mut sender, conn) = client::Builder::new().handshake(io).await.unwrap();
 
-    let resp = sender.send_request(req).await?;
-    Ok(resp.map(|b| b.boxed()))
+    tokio::task::spawn(async move { conn.await.map_err(|err| error!(%err, "Connection failed")) });
+
+    let uri = req.uri().to_string();
+    let res = sender.send_request(req).await.unwrap().map(|r| r.boxed());
+
+    tx.send(EventStream::PageView(uri))
+        .await
+        .map_err(|err| error!(%err, "failed to send event"))
+        .unwrap();
+
+    Ok(res)
 }

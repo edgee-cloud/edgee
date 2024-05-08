@@ -32,6 +32,7 @@
     devShells = forEachSupportedSystem ({pkgs}: {
       default = pkgs.mkShell {
         packages = with pkgs; [
+          # Rust
           rustToolchain
           openssl
           pkg-config
@@ -40,6 +41,9 @@
           cargo-watch
           rust-analyzer
           rustfmt
+
+          # HTTP
+          httpie
         ];
       };
     });
