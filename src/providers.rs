@@ -36,7 +36,7 @@ pub struct Provider {
 }
 
 impl Provider {
-    pub fn get(&self, hostname: &str) -> Option<&Endpoint> {
+    pub fn get(&self, hostname: String) -> Option<&Endpoint> {
         for endpoint in &self.endpoints {
             if endpoint.hostname == hostname {
                 return Some(&endpoint);
@@ -52,7 +52,7 @@ pub fn load() -> Provider {
         hostname: String::from("recoeur.edgee.cloud"),
         backend: vec![Backend {
             name: String::from("home"),
-            location: String::from("recoeur.github.io"),
+            location: String::from("localhost:9000"),
             override_host: String::from("recoeur.github.io"),
             default: true,
         }],
