@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use clap::Parser;
 use serde::Deserialize;
 
@@ -15,7 +13,6 @@ pub(crate) struct Config {
     pub http_port: u16,
     pub https_port: u16,
     pub log_severity: String,
-    pub providers: HashMap<String, toml::Value>,
 }
 
 pub(crate) fn parse() -> Config {

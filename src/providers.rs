@@ -52,7 +52,7 @@ pub fn load() -> Provider {
         hostname: String::from("recoeur.edgee.cloud"),
         backend: vec![Backend {
             name: String::from("home"),
-            location: String::from("localhost:9000"),
+            location: String::from("recoeur.github.io"),
             override_host: String::from("recoeur.github.io"),
             default: true,
         }],
