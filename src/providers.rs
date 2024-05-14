@@ -48,12 +48,12 @@ impl Provider {
 
 pub fn load() -> Provider {
     let recoeur = Endpoint {
-        id: String::from("recoeur"),
-        hostname: String::from("recoeur.edgee.cloud"),
+        id: String::from("patterns"),
+        hostname: String::from("patterns.edgee.dev"),
         backend: vec![Backend {
             name: String::from("home"),
-            location: String::from("recoeur.github.io"),
-            override_host: String::from("recoeur.github.io"),
+            location: String::from("patternlanguage.cc"),
+            override_host: String::from("patternlanguage.cc"),
             default: true,
         }],
         routing: vec![],

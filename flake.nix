@@ -38,6 +38,7 @@
           pkg-config
           cargo-deny
           cargo-edit
+          cargo-expand
           cargo-watch
           rust-analyzer
           rustfmt

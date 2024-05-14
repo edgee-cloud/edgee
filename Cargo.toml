@@ -9,6 +9,7 @@ categories = ["wasm"]
 license = "Apache-2.0"
 
 [dependencies]
+anyhow = "1.0.83"
 bytes = "1.6.0"
 clap = { version = "^4", features = ["derive"] }
 http = "1.1.0"
@@ -16,7 +17,6 @@ http-body-util = "0.1"
 hyper = { version = "1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["full"] }
 log = "0.4"
-miette = "7.2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 simple_logger = "4.3"
