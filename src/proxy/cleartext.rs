@@ -36,17 +36,17 @@ pub async fn start(port: u16, platform: &Platform) -> Result<()> {
 
 type ProxyResult = Result<Response<BoxBody<Bytes, hyper::Error>>>;
 
-pub struct Proxy {
+struct Proxy {
     provider: Arc<Provider>,
     sender: Sender<EventStream>,
 }
 
 impl Proxy {
-    pub fn new(provider: Arc<Provider>, sender: Sender<EventStream>) -> Self {
+    fn new(provider: Arc<Provider>, sender: Sender<EventStream>) -> Self {
         Self { provider, sender }
     }
 
-    pub async fn handle(&self, req: Request<Incoming>) -> ProxyResult {
+    async fn handle(&self, req: Request<Incoming>) -> ProxyResult {
         debug!(method=%req.method(), uri=%req.uri(), "Request");
 
         let method = req.method().clone();

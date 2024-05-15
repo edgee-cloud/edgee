@@ -45,7 +45,12 @@
 
           # HTTP
           httpie
+          mkcert
         ];
+
+        shellHook = ''
+        export CAROOT=$PWD/local/ca
+        '';
       };
     });
   };

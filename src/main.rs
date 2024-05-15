@@ -41,5 +41,10 @@ async fn main() {
             error!(?err, "HTTP server failed");
             std::process::exit(1);
         }
+
+        Err(err) = proxy::secure::start(cfg.https_port, &platform) => {
+            error!(?err, "HTTPS server failed");
+            std::process::exit(1);
+        }
     }
 }
