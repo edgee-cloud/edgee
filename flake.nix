@@ -38,13 +38,19 @@
           pkg-config
           cargo-deny
           cargo-edit
+          cargo-expand
           cargo-watch
           rust-analyzer
           rustfmt
 
           # HTTP
           httpie
+          mkcert
         ];
+
+        shellHook = ''
+        export CAROOT=$PWD/local/ca
+        '';
       };
     });
   };
