@@ -3,19 +3,19 @@ use serde::Deserialize;
 
 #[derive(Parser, Debug)]
 #[command(about)]
-pub(crate) struct Args {
+pub struct Args {
     #[arg(short, long)]
     pub config_file: String, // path to the configuration file
 }
 
-#[derive(Deserialize)]
-pub(crate) struct Config {
+#[derive(Deserialize, Clone)]
+pub struct Config {
     pub http_port: u16,
     pub https_port: u16,
     pub log_severity: String,
 }
 
-pub(crate) fn parse() -> Config {
+pub fn parse() -> Config {
     let arg = Args::parse();
     let config_file = std::fs::read_to_string(&arg.config_file).unwrap();
     let config: Config = toml::from_str(&config_file).unwrap();

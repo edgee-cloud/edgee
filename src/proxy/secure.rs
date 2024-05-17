@@ -1,26 +1,22 @@
-use std::{fs, io, net::SocketAddr, sync::Arc};
-
 use anyhow::Result;
-use bytes::Bytes;
-use http::{Request, Response};
-use http_body_util::Full;
-use hyper::body::Incoming;
 use hyper::service::service_fn;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto::Builder;
 use rustls::ServerConfig;
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
+use std::{fs, io, net::SocketAddr, sync::Arc};
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
-use tracing::error;
+use tracing::{error, info};
 
 use crate::Platform;
 
-pub async fn start(port: u16, _platform: &Platform) -> Result<()> {
-    // set a process wide default crypto provider
-    let _ = rustls::crypto::ring::default_provider().install_default();
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+pub async fn start(platform: Arc<Platform>) -> Result<()> {
+    let addr = SocketAddr::from(([0, 0, 0, 0], platform.config.https_port));
     let listener = TcpListener::bind(addr).await?;
+    info!(port = addr.port(), "HTTPS");
+
+    let _ = rustls::crypto::ring::default_provider().install_default();
     let certs = load_certs("local/server.pem").unwrap();
     let key = load_private_key("local/server.key").unwrap();
     let mut server_config = ServerConfig::builder()
@@ -34,6 +30,7 @@ pub async fn start(port: u16, _platform: &Platform) -> Result<()> {
     loop {
         let (socket, _) = listener.accept().await?;
         let tls_acceptor = tls_acceptor.clone();
+        let p = platform.clone();
         tokio::spawn(async move {
             let tls_socket = match tls_acceptor.accept(socket).await {
                 Ok(tls_socket) => tls_socket,
@@ -42,18 +39,15 @@ pub async fn start(port: u16, _platform: &Platform) -> Result<()> {
                     return;
                 }
             };
+            let io = TokioIo::new(tls_socket);
             if let Err(err) = Builder::new(TokioExecutor::new())
-                .serve_connection(TokioIo::new(tls_socket), service_fn(hello))
+                .serve_connection(io, service_fn(|req| super::handle_request(p.clone(), req)))
                 .await
             {
                 error!(?err, "Failed to handle request");
             }
         });
     }
-}
-
-async fn hello(_req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::Error> {
-    Ok(Response::new(Full::from("Hello")))
 }
 
 fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer<'static>>> {

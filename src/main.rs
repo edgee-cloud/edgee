@@ -5,6 +5,7 @@ mod proxy;
 
 use std::sync::Arc;
 
+use config::Config;
 use providers::Provider;
 use tokio::sync::mpsc::Sender;
 use tracing::{debug, error};
@@ -15,8 +16,9 @@ pub enum EventStream {
 }
 
 pub struct Platform {
-    pub provider: Arc<Provider>,
-    pub tx: Sender<EventStream>,
+    pub provider: Provider,
+    pub sender: Sender<EventStream>,
+    pub config: Config,
 }
 
 #[tokio::main]
@@ -31,18 +33,19 @@ async fn main() {
         }
     });
 
-    let platform = Platform {
-        provider: Arc::new(providers::load()),
-        tx,
-    };
+    let platform = Arc::new(Platform {
+        provider: providers::load(),
+        sender: tx,
+        config: cfg.clone(),
+    });
 
     tokio::select! {
-        Err(err) = proxy::cleartext::start(cfg.http_port, &platform) => {
+        Err(err) = proxy::cleartext::start(platform.clone()) => {
             error!(?err, "HTTP server failed");
             std::process::exit(1);
         }
 
-        Err(err) = proxy::secure::start(cfg.https_port, &platform) => {
+        Err(err) = proxy::secure::start(platform.clone()) => {
             error!(?err, "HTTPS server failed");
             std::process::exit(1);
         }
