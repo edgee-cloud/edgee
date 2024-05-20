@@ -24,7 +24,7 @@ pub struct Platform {
 #[tokio::main]
 async fn main() {
     let cfg = config::parse();
-    logger::init(&cfg.log_severity);
+    logger::init(&cfg.log.level);
 
     let (tx, mut rx) = tokio::sync::mpsc::channel::<EventStream>(1024);
     tokio::spawn(async move {

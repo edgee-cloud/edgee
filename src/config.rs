@@ -12,7 +12,13 @@ pub struct Args {
 pub struct Config {
     pub http_port: u16,
     pub https_port: u16,
-    pub log_severity: String,
+    pub force_https: bool,
+    pub log: LogConfig,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct LogConfig {
+    pub level: String,
 }
 
 pub fn parse() -> Config {
