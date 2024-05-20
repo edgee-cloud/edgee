@@ -1,9 +1,10 @@
+use std::net::SocketAddr;
+use std::sync::Arc;
+
 use anyhow::Result;
 use hyper::service::service_fn;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto::Builder;
-use std::net::SocketAddr;
-use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::{error, info};
 
