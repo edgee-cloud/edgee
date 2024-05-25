@@ -5,38 +5,35 @@ mod proxy;
 
 use std::sync::Arc;
 
+use clap::Parser;
+
 use config::Config;
 use providers::Provider;
-use tokio::sync::mpsc::Sender;
-use tracing::{debug, error};
+use tracing::error;
 
-#[derive(Debug)]
-pub enum EventStream {
-    PageView(String),
+#[derive(Parser, Debug)]
+#[command(about)]
+pub struct Args {
+    #[arg(short, long)]
+    pub config_file: String, // path to the configuration file
 }
 
 pub struct Platform {
     pub provider: Provider,
-    pub sender: Sender<EventStream>,
     pub config: Config,
 }
 
 #[tokio::main]
 async fn main() {
-    let cfg = config::parse();
+    let arg = Args::parse();
+
+    let cfg = config::parse(arg.config_file);
+
     logger::init(&cfg.log.level);
 
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<EventStream>(1024);
-    tokio::spawn(async move {
-        while let Some(event) = rx.recv().await {
-            debug!(?event, "Received event");
-        }
-    });
-
     let platform = Arc::new(Platform {
-        provider: providers::load(),
-        sender: tx,
-        config: cfg.clone(),
+        provider: providers::load(&cfg.providers),
+        config: cfg,
     });
 
     tokio::select! {

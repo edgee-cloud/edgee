@@ -1,4 +1,8 @@
-#[derive(Clone)]
+use serde::Deserialize;
+
+use crate::config;
+
+#[derive(Deserialize)]
 pub struct Endpoint {
     pub id: String,
     pub hostname: String,
@@ -12,7 +16,7 @@ impl Endpoint {
     }
 }
 
-#[derive(Clone)]
+#[derive(Deserialize)]
 pub struct Routing {
     pub path: String,
     pub rank: i32,
@@ -22,7 +26,7 @@ pub struct Routing {
     pub rewritepath_replace: String,
 }
 
-#[derive(Clone)]
+#[derive(Deserialize)]
 pub struct Backend {
     pub name: String,
     pub location: String,
@@ -30,36 +34,22 @@ pub struct Backend {
     pub default: bool,
 }
 
-#[derive(Clone)]
+#[derive(Deserialize)]
 pub struct Provider {
     endpoints: Vec<Endpoint>,
 }
 
 impl Provider {
     pub fn get(&self, hostname: String) -> Option<&Endpoint> {
-        for endpoint in &self.endpoints {
-            if endpoint.hostname == hostname {
-                return Some(&endpoint);
-            }
-        }
-        return None;
+        self.endpoints
+            .iter()
+            .find(|&endpoint| endpoint.hostname == hostname)
     }
 }
 
-pub fn load() -> Provider {
-    let recoeur = Endpoint {
-        id: String::from("patterns"),
-        hostname: String::from("patterns.edgee.dev"),
-        backend: vec![Backend {
-            name: String::from("home"),
-            location: String::from("patternlanguage.cc"),
-            override_host: String::from("patternlanguage.cc"),
-            default: true,
-        }],
-        routing: vec![],
-    };
-
-    Provider {
-        endpoints: vec![recoeur],
-    }
+// TODO: Remove unwrap
+pub fn load(cfg: &config::ProviderConfig) -> Provider {
+    let file = std::fs::read_to_string(&cfg.file.filename).unwrap();
+    let provider: Provider = toml::from_str(&file).unwrap();
+    provider
 }

@@ -1,29 +1,32 @@
-use clap::Parser;
 use serde::Deserialize;
 
-#[derive(Parser, Debug)]
-#[command(about)]
-pub struct Args {
-    #[arg(short, long)]
-    pub config_file: String, // path to the configuration file
-}
-
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize)]
 pub struct Config {
     pub http_port: u16,
     pub https_port: u16,
     pub force_https: bool,
     pub log: LogConfig,
+    pub providers: ProviderConfig,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize)]
 pub struct LogConfig {
     pub level: String,
 }
 
-pub fn parse() -> Config {
-    let arg = Args::parse();
-    let config_file = std::fs::read_to_string(&arg.config_file).unwrap();
+#[derive(Deserialize)]
+pub struct ProviderConfig {
+    pub file: ProviderFileConfig,
+}
+
+#[derive(Deserialize)]
+pub struct ProviderFileConfig {
+    pub filename: String,
+}
+
+// TODO: Remove unwrap
+pub fn parse(config_file: String) -> Config {
+    let config_file = std::fs::read_to_string(config_file).unwrap();
     let config: Config = toml::from_str(&config_file).unwrap();
     config
 }
