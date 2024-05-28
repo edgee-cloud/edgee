@@ -1,2 +1,5 @@
 http_port = 8080
 https_port = 844
+
+[log]
+    level = "debug"
