@@ -32,5 +32,5 @@ target/
 /target
 
 #Specific
-config.json
 local
+edgee.toml

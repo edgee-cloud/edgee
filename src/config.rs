@@ -1,23 +1,39 @@
-use clap::Parser;
 use serde::Deserialize;
+use tokio::sync::OnceCell;
 
-#[derive(Parser, Debug)]
-#[command(about)]
-pub struct Args {
-    #[arg(short, long)]
-    pub config_file: String, // path to the configuration file
+static CONFIG: OnceCell<StaticConfiguration> = OnceCell::const_new();
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct StaticConfiguration {
+    pub log: LogConfiguration,
+    pub entrypoints: Vec<EntryPointConfiguration>,
 }
 
-#[derive(Deserialize, Clone)]
-pub struct Config {
-    pub http_port: u16,
-    pub https_port: u16,
-    pub log_severity: String,
+#[derive(Deserialize, Debug, Clone)]
+pub struct LogConfiguration {
+    pub level: String,
 }
 
-pub fn parse() -> Config {
-    let arg = Args::parse();
-    let config_file = std::fs::read_to_string(&arg.config_file).unwrap();
-    let config: Config = toml::from_str(&config_file).unwrap();
-    config
+#[derive(Deserialize, Debug, Default, Clone)]
+#[serde(default)]
+pub struct EntryPointConfiguration {
+    pub name: String,
+    pub bind: String,
+    pub tls: bool,
+    pub domains: Vec<DomainConfiguration>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct DomainConfiguration {
+    pub host: String,
+}
+
+pub fn init() {
+    let config_file = std::fs::read_to_string("edgee.toml").unwrap();
+    let config: StaticConfiguration = toml::from_str(&config_file).unwrap();
+    CONFIG.set(config).unwrap();
+}
+
+pub fn get() -> &'static StaticConfiguration {
+    CONFIG.get().unwrap()
 }
