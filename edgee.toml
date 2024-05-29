@@ -7,7 +7,8 @@ bind = "0.0.0.0:8080"
     [[entrypoints.domains]]
     host = "lemonde.edgee.dev"
 
-# [[entrypoints]]
-# name = "websecure"
-# bind = "0.0.0.0:8443"
+[[entrypoints]]
+name = "websecure"
+bind = "0.0.0.0:8443"
+tls = true
 

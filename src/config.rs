@@ -3,25 +3,27 @@ use tokio::sync::OnceCell;
 
 static CONFIG: OnceCell<StaticConfiguration> = OnceCell::const_new();
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct StaticConfiguration {
     pub log: LogConfiguration,
     pub entrypoints: Vec<EntryPointConfiguration>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct LogConfiguration {
     pub level: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default, Clone)]
+#[serde(default)]
 pub struct EntryPointConfiguration {
     pub name: String,
     pub bind: String,
+    pub tls: bool,
     pub domains: Vec<DomainConfiguration>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct DomainConfiguration {
     pub host: String,
 }

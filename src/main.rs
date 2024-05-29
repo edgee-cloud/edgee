@@ -1,4 +1,5 @@
 mod config;
+mod domains;
 mod entrypoints;
 mod logger;
 
