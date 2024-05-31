@@ -9,7 +9,7 @@ use hyper_util::{
     server::conn::auto::Builder,
 };
 use tokio::net::TcpListener;
-use tracing::error;
+use tracing::{debug, error};
 
 use crate::config;
 
@@ -23,6 +23,7 @@ pub async fn start() -> anyhow::Result<()> {
         .next()
         .expect("Should have at least one socket addr");
 
+    debug!(cfg.http, "Starting monitor");
     let listener = TcpListener::bind(addr)
         .await
         .expect("Should bind to socket addr");
