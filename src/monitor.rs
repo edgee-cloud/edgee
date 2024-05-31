@@ -1,4 +1,4 @@
-use std::{convert::Infallible, net::ToSocketAddrs};
+use std::{convert::Infallible, net::SocketAddr};
 
 use bytes::Bytes;
 use http::{Request, Response, StatusCode};
@@ -14,35 +14,32 @@ use tracing::{debug, error};
 use crate::config;
 
 pub async fn start() -> anyhow::Result<()> {
-    let cfg = &config::get().monitor;
+    match &config::get().monitor {
+        Some(cfg) => {
+            debug!(address = cfg.address, "Starting monitor");
+            let addr: SocketAddr = cfg.address.parse()?;
+            let listener = TcpListener::bind(addr)
+                .await
+                .expect("Should bind to socket addr");
 
-    let addr = cfg
-        .http
-        .to_socket_addrs()
-        .expect("Should convert string to socket addr")
-        .next()
-        .expect("Should have at least one socket addr");
+            loop {
+                let (stream, addr) = match listener.accept().await {
+                    Ok(a) => a,
+                    Err(err) => {
+                        error!(?err, "Failed to accepts connection");
+                        continue;
+                    }
+                };
 
-    debug!(cfg.http, "Starting monitor");
-    let listener = TcpListener::bind(addr)
-        .await
-        .expect("Should bind to socket addr");
-
-    loop {
-        let (stream, addr) = match listener.accept().await {
-            Ok(a) => a,
-            Err(err) => {
-                error!(?err, "Failed to accepts connection");
-                continue;
+                if let Err(err) = Builder::new(TokioExecutor::new())
+                    .serve_connection(TokioIo::new(stream), service_fn(handle_request))
+                    .await
+                {
+                    error!(?err, ?addr, "Failed to serve connections");
+                }
             }
-        };
-
-        if let Err(err) = Builder::new(TokioExecutor::new())
-            .serve_connection(TokioIo::new(stream), service_fn(handle_request))
-            .await
-        {
-            error!(?err, ?addr, "Failed to serve connections");
         }
+        None => Ok(()),
     }
 }
 

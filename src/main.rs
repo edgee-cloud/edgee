@@ -1,6 +1,7 @@
 use tracing::error;
 
 mod config;
+mod entrypoint;
 mod logger;
 mod monitor;
 
@@ -12,6 +13,9 @@ async fn main() {
     tokio::select! {
         Err(err) = monitor::start() => {
             error!(?err, "Monitor failed");
+        }
+        Err(err) = entrypoint::start() => {
+            error!(?err, "Entrypoint failed");
         }
     }
 }

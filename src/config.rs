@@ -5,16 +5,28 @@ static CONFIG: OnceCell<StaticConfiguration> = OnceCell::const_new();
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct StaticConfiguration {
-    pub http: String,
-    pub https: String,
-    pub monitor: MonitorConfiguration,
+    pub http: HttpConfiguration,
+    pub https: HttpsConfiguration,
+    pub monitor: Option<MonitorConfiguration>,
     pub log: LogConfiguration,
     pub routers: Vec<RouterConfiguration>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
+pub struct HttpConfiguration {
+    pub address: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct HttpsConfiguration {
+    pub address: String,
+    pub cert: String,
+    pub key: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 pub struct MonitorConfiguration {
-    pub http: String,
+    pub address: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
