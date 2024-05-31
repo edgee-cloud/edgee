@@ -1,4 +1,3 @@
-use anyhow::Context;
 use serde::Deserialize;
 use tokio::sync::OnceCell;
 
@@ -15,7 +14,7 @@ pub struct StaticConfiguration {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct MonitorConfiguration {
-    http: String,
+    pub http: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -26,7 +25,6 @@ pub struct LogConfiguration {
 #[derive(Deserialize, Debug, Clone)]
 pub struct RouterConfiguration {
     pub name: String,
-    pub entrypoints: Vec<String>,
     pub domain: String,
     pub routes: Vec<RouteConfiguration>,
 }
@@ -42,10 +40,10 @@ pub struct RouteConfiguration {
 // TODO: Support YAML
 // TODO: Support dynamic configuration via Redis
 pub fn init() {
-    let config_file = std::fs::read_to_string("edgee.toml").context("Failed to read edgee.toml");
+    let config_file = std::fs::read_to_string("edgee.toml").expect("Should read edgee.toml");
     let config: StaticConfiguration =
-        toml::from_str(&config_file).context("Failed to parse edgee.toml");
-    CONFIG.set(config).context("Failed to initialize config");
+        toml::from_str(&config_file).expect("Should parse config file");
+    CONFIG.set(config).expect("Should initialize config");
 }
 
 pub fn get() -> &'static StaticConfiguration {
