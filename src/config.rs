@@ -15,6 +15,12 @@ pub struct StaticConfiguration {
 #[derive(Deserialize, Debug, Clone)]
 pub struct HttpConfiguration {
     pub address: String,
+    #[serde(default = "default_force_https")]
+    pub force_https: bool,
+}
+
+fn default_force_https() -> bool {
+    true
 }
 
 #[derive(Deserialize, Debug, Clone)]
