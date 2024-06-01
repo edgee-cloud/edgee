@@ -44,11 +44,17 @@ pub struct LogConfiguration {
 pub struct RouterConfiguration {
     pub name: String,
     pub domain: String,
-    pub routes: Vec<RouteConfiguration>,
+    pub default_backend: String,
+    #[serde(default = "default_routes")]
+    pub rules: Vec<RoutingRulesConfiguration>,
+}
+
+fn default_routes() -> Vec<RoutingRulesConfiguration> {
+    vec![]
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct RouteConfiguration {
+pub struct RoutingRulesConfiguration {
     #[serde(rename = "match")]
     pub pattern: String,
     pub service: String,
@@ -57,6 +63,7 @@ pub struct RouteConfiguration {
 // TODO: Read config from CLI arguments
 // TODO: Support YAML
 // TODO: Support dynamic configuration via Redis
+// TODO: Validate configuration (e.g. no two routers should point for the same domain)
 pub fn init() {
     let config_file = std::fs::read_to_string("edgee.toml").expect("Should read edgee.toml");
     let config: StaticConfiguration =

@@ -1,7 +1,7 @@
 use std::{fs, io, net::SocketAddr, sync::Arc};
 
 use bytes::Bytes;
-use http::{header::HOST, Request, Response, StatusCode, Uri};
+use http::{header::HOST, HeaderValue, Request, Response, StatusCode, Uri};
 use http_body_util::{combinators::BoxBody, BodyExt, Empty};
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::{
@@ -37,13 +37,14 @@ async fn start_http(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
         force_https = cfg.http.force_https,
         "Starting HTTP entrypoint"
     );
+
     let addr: SocketAddr = cfg.http.address.parse()?;
     let listener = TcpListener::bind(addr).await?;
     loop {
-        let (stream, addr) = match listener.accept().await {
+        let (stream, remote_addr) = match listener.accept().await {
             Ok(a) => a,
             Err(err) => {
-                error!(?err, ?addr, "Failed to listen for connections");
+                error!(?err, "Failed to listen for connections");
                 continue;
             }
         };
@@ -57,13 +58,13 @@ async fn start_http(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
                         if cfg.http.force_https {
                             force_https(req).await
                         } else {
-                            handle_request(req).await
+                            handle_request(req, remote_addr, "http").await
                         }
                     }),
                 )
                 .await
             {
-                error!(?err, ?addr, "Failed to serve connections");
+                error!(?err, ?remote_addr, "Failed to serve connections");
             }
         });
     }
@@ -97,7 +98,7 @@ async fn start_https(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
     let tls_acceptor = TlsAcceptor::from(Arc::new(server_config));
 
     loop {
-        let (stream, addr) = listener.accept().await?;
+        let (stream, remote_addr) = listener.accept().await?;
         let tls_acceptor = tls_acceptor.clone();
         tokio::spawn(async move {
             let tls_stream = match tls_acceptor.accept(stream).await {
@@ -109,10 +110,13 @@ async fn start_https(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
             };
             let io = TokioIo::new(tls_stream);
             if let Err(err) = Builder::new(TokioExecutor::new())
-                .serve_connection_with_upgrades(io, service_fn(handle_request))
+                .serve_connection_with_upgrades(
+                    io,
+                    service_fn(|req| handle_request(req, remote_addr, "https")),
+                )
                 .await
             {
-                error!(?err, ?addr, "Failed to serve connections");
+                error!(?err, "Failed to serve connections");
             }
         });
     }
@@ -151,30 +155,61 @@ fn empty() -> BoxBody<Bytes, hyper::Error> {
         .boxed()
 }
 
-async fn handle_request(req: Request<Incoming>) -> Resp {
-    let cfg = &config::get().routers;
-    match req.uri().path() {
-        "/healthz" => {
-            let res = Response::builder()
-                .status(StatusCode::NO_CONTENT)
-                .body(
-                    Empty::<Bytes>::new()
-                        .map_err(|never| match never {})
-                        .boxed(),
-                )
-                .expect("Should build body");
-            Ok(res)
-        }
-        _ => {
-            let res = Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(
-                    Empty::<Bytes>::new()
-                        .map_err(|never| match never {})
-                        .boxed(),
-                )
-                .expect("Should build body");
-            Ok(res)
-        }
+async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, proto: &str) -> Resp {
+    let host = match (req.headers().get(HOST), req.uri().host()) {
+        (None, Some(value)) => Some(String::from(value)),
+        (Some(value), _) => Some(value.to_str().unwrap().to_string()),
+        (None, None) => None,
     }
+    .and_then(|host| host.split(':').next().map(|s| s.to_string()))
+    .expect("host should be available");
+
+    let cfg = &config::get().routers;
+    let router = cfg.iter().find(|r| r.domain == host);
+
+    if router.is_none() {
+        return Ok(Response::builder()
+            .status(StatusCode::BAD_GATEWAY)
+            .body(empty())
+            .expect("response should never fail"));
+    };
+
+    const FORWARDED_FOR: &str = "x-forwarded-for";
+    let client_ip = remote_addr.ip().to_string();
+    if let Some(forwarded_for) = req.headers_mut().get_mut(FORWARDED_FOR) {
+        let existing_value = forwarded_for.to_str().unwrap();
+        let new_value = format!("{}, {}", existing_value, client_ip);
+        *forwarded_for = HeaderValue::from_str(&new_value).expect("header value should be valid");
+    } else {
+        req.headers_mut().insert(
+            FORWARDED_FOR,
+            HeaderValue::from_str(&client_ip).expect("header value should be valid"),
+        );
+    }
+
+    const FORWARDED_PROTO: &str = "x-forwarded-proto";
+    if req.headers().get(FORWARDED_PROTO).is_none() {
+        req.headers_mut().insert(
+            FORWARDED_PROTO,
+            HeaderValue::from_str(proto).expect("header value should be valid"),
+        );
+    }
+
+    const FORWARDED_HOST: &str = "x-forwarded-host";
+    if req.headers().get(FORWARDED_HOST).is_none() {
+        req.headers_mut().insert(
+            FORWARDED_HOST,
+            HeaderValue::from_str(&host).expect("header value should be valid"),
+        );
+    }
+
+    debug!(headers = ?req.headers(), "headers");
+
+    let router = router.expect("router should have some value");
+    let _default_backend = &router.default_backend;
+
+    Ok(Response::builder()
+        .status(StatusCode::BAD_GATEWAY)
+        .body(empty())
+        .expect("response should never fail"))
 }
