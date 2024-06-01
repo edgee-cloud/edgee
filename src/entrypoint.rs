@@ -152,6 +152,7 @@ fn empty() -> BoxBody<Bytes, hyper::Error> {
 }
 
 async fn handle_request(req: Request<Incoming>) -> Resp {
+    let cfg = &config::get().routers;
     match req.uri().path() {
         "/healthz" => {
             let res = Response::builder()
