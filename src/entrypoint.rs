@@ -1,10 +1,12 @@
-use std::{fs, io, net::SocketAddr, sync::Arc};
+use std::{fs, io, net::SocketAddr, str::FromStr, sync::Arc};
 
 use bytes::Bytes;
-use http::{header::HOST, HeaderValue, Request, Response, StatusCode, Uri};
+use http::{header::HOST, uri::PathAndQuery, HeaderValue, Request, Response, StatusCode, Uri};
 use http_body_util::{combinators::BoxBody, BodyExt, Empty};
 use hyper::{body::Incoming, service::service_fn};
+use hyper_tls::HttpsConnector;
 use hyper_util::{
+    client::legacy::{connect::HttpConnector, Client},
     rt::{TokioExecutor, TokioIo},
     server::conn::auto::Builder,
 };
@@ -203,13 +205,90 @@ async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, pro
         );
     }
 
-    debug!(headers = ?req.headers(), "headers");
-
     let router = router.expect("router should have some value");
-    let _default_backend = &router.default_backend;
+    let default_backend = &router.default_backend;
 
-    Ok(Response::builder()
-        .status(StatusCode::BAD_GATEWAY)
-        .body(empty())
-        .expect("response should never fail"))
+    let backends = &config::get().backends;
+    let backend = backends.iter().find(|b| b.name == *default_backend);
+
+    if backend.is_none() {
+        return Ok(Response::builder()
+            .status(StatusCode::BAD_GATEWAY)
+            .body(empty())
+            .expect("response should never fail"));
+    }
+
+    let backend = backend.expect("backend has some value");
+
+    if proto == "http" {
+        forward_http_request(req, backend).await
+    } else {
+        forward_https_request(req, backend).await
+    }
+}
+
+async fn forward_http_request(
+    orig: Request<Incoming>,
+    backend: &config::BackendConfiguration,
+) -> Resp {
+    let root_path = PathAndQuery::from_str("/").expect("path should be valid");
+    let path = orig.uri().path_and_query().unwrap_or(&root_path);
+    let uri: Uri = format!("http://{}{}", &backend.address, path)
+        .parse()
+        .expect("uri should be valid");
+
+    let mut req = Request::builder().uri(uri).method(orig.method());
+    let headers = req.headers_mut().expect("request should have headers");
+    for (name, value) in orig.headers().iter() {
+        headers.insert(name, value.to_owned());
+    }
+
+    headers.insert(
+        "host",
+        HeaderValue::from_str(&backend.address).expect("host should be valid"),
+    );
+
+    let (_parts, body) = orig.into_parts();
+    let req = req.body(body).expect("request to be built");
+    let client = Client::builder(TokioExecutor::new()).build(HttpConnector::new());
+    match client.request(req).await {
+        Ok(res) => Ok(res.map(|r| r.boxed())),
+        Err(err) => {
+            error!(?err, "failed to send request to backend");
+            Ok(Response::builder()
+                .status(StatusCode::BAD_GATEWAY)
+                .body(empty())
+                .expect("response should never fail"))
+        }
+    }
+}
+
+async fn forward_https_request(
+    mut req: Request<Incoming>,
+    backend: &config::BackendConfiguration,
+) -> Resp {
+    let root_path = PathAndQuery::from_str("/").expect("path should be valid");
+    let path = req.uri().path_and_query().unwrap_or(&root_path);
+    let uri: Uri = format!("https://{}{}", &backend.address, path)
+        .parse()
+        .expect("uri should be valid");
+
+    *req.uri_mut() = uri;
+
+    req.headers_mut().insert(
+        "host",
+        HeaderValue::from_str(&backend.address).expect("host should be valid"),
+    );
+
+    let client = Client::builder(TokioExecutor::new()).build(HttpsConnector::new());
+    match client.request(req).await {
+        Ok(res) => Ok(res.map(|r| r.boxed())),
+        Err(err) => {
+            error!(?err, "failed to send request to backend");
+            Ok(Response::builder()
+                .status(StatusCode::BAD_GATEWAY)
+                .body(empty())
+                .expect("response should never fail"))
+        }
+    }
 }

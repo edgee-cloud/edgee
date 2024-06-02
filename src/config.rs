@@ -10,17 +10,14 @@ pub struct StaticConfiguration {
     pub monitor: Option<MonitorConfiguration>,
     pub log: LogConfiguration,
     pub routers: Vec<RouterConfiguration>,
+    pub backends: Vec<BackendConfiguration>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct HttpConfiguration {
     pub address: String,
-    #[serde(default = "default_force_https")]
+    #[serde(default)]
     pub force_https: bool,
-}
-
-fn default_force_https() -> bool {
-    true
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -40,24 +37,26 @@ pub struct LogConfiguration {
     pub level: String,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct RouterConfiguration {
     pub name: String,
     pub domain: String,
     pub default_backend: String,
-    #[serde(default = "default_routes")]
+    #[serde(default)]
     pub rules: Vec<RoutingRulesConfiguration>,
-}
-
-fn default_routes() -> Vec<RoutingRulesConfiguration> {
-    vec![]
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct RoutingRulesConfiguration {
     #[serde(rename = "match")]
     pub pattern: String,
-    pub service: String,
+    pub backend: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct BackendConfiguration {
+    pub name: String,
+    pub address: String,
 }
 
 // TODO: Read config from CLI arguments
