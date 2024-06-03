@@ -4,7 +4,7 @@ use bytes::Bytes;
 use http::{header::HOST, uri::PathAndQuery, HeaderValue, Request, Response, StatusCode, Uri};
 use http_body_util::{combinators::BoxBody, BodyExt, Empty};
 use hyper::{body::Incoming, service::service_fn};
-use hyper_tls::HttpsConnector;
+use hyper_rustls::ConfigBuilderExt;
 use hyper_util::{
     client::legacy::{connect::HttpConnector, Client},
     rt::{TokioExecutor, TokioIo},
@@ -280,7 +280,16 @@ async fn forward_https_request(
         HeaderValue::from_str(&backend.address).expect("host should be valid"),
     );
 
-    let client = Client::builder(TokioExecutor::new()).build(HttpsConnector::new());
+    let client_config = rustls::ClientConfig::builder()
+        .with_native_roots()?
+        .with_no_client_auth();
+    let connector = hyper_rustls::HttpsConnectorBuilder::new()
+        .with_tls_config(client_config)
+        .https_or_http()
+        .enable_http1()
+        .enable_http2()
+        .build();
+    let client = Client::builder(TokioExecutor::new()).build(connector);
     match client.request(req).await {
         Ok(res) => Ok(res.map(|r| r.boxed())),
         Err(err) => {
