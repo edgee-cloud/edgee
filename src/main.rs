@@ -10,6 +10,7 @@ async fn main() {
     config::init();
     logger::init();
 
+    // FIXME: Add gracefull shutdown
     tokio::select! {
         Err(err) = monitor::start() => {
             error!(?err, "Monitor failed");
