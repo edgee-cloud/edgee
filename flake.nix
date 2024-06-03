@@ -44,7 +44,6 @@
           rustfmt
 
           # HTTP
-          httpie
           mkcert
         ];
 
