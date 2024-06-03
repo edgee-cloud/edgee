@@ -106,7 +106,7 @@ async fn start_https(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
             let tls_stream = match tls_acceptor.accept(stream).await {
                 Ok(tls_stream) => tls_stream,
                 Err(err) => {
-                    error!(?err, "kfailed to perform tls handshake");
+                    error!(?err, "failed to perform tls handshake");
                     return;
                 }
             };
@@ -118,7 +118,7 @@ async fn start_https(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
                 )
                 .await
             {
-                error!(?err, "Failed to serve connections");
+                error!(?err, "failed to serve connections");
             }
         });
     }
