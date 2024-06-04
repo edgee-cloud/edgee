@@ -19,28 +19,28 @@ use tracing::{debug, error};
 use crate::config;
 
 pub async fn start() -> anyhow::Result<()> {
-    let cfg = config::get();
-
     tokio::select! {
-        Err(err) = start_http(cfg) => {
+        Err(err) = start_http() => {
             error!(?err, "Failed to start HTTPS entrypoint");
             Err(err)
         }
-        Err(err) = start_https(cfg) => {
+        Err(err) = start_https() => {
             error!(?err, "Failed to start HTTPS entrypoint");
             Err(err)
         }
     }
 }
 
-async fn start_http(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
+async fn start_http() -> anyhow::Result<()> {
+    let cfg = &config::get().http;
+
     debug!(
-        address = cfg.http.address,
-        force_https = cfg.http.force_https,
+        address = cfg.address,
+        force_https = cfg.force_https,
         "Starting HTTP entrypoint"
     );
 
-    let addr: SocketAddr = cfg.http.address.parse()?;
+    let addr: SocketAddr = cfg.address.parse()?;
     let listener = TcpListener::bind(addr).await?;
     loop {
         let (stream, remote_addr) = match listener.accept().await {
@@ -57,7 +57,7 @@ async fn start_http(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
                 .serve_connection_with_upgrades(
                     TokioIo::new(stream),
                     service_fn(|req: Request<Incoming>| async move {
-                        if cfg.http.force_https {
+                        if cfg.force_https {
                             force_https(req).await
                         } else {
                             handle_request(req, remote_addr, "http").await
@@ -72,9 +72,11 @@ async fn start_http(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
     }
 }
 
-async fn start_https(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
-    debug!(address = cfg.https.address, "Starting HTTPS entrypoint");
-    let addr: SocketAddr = cfg.https.address.parse()?;
+async fn start_https() -> anyhow::Result<()> {
+    let cfg = &config::get().https;
+
+    debug!(address = cfg.address, "Starting HTTPS entrypoint");
+    let addr: SocketAddr = cfg.address.parse()?;
     let listener = TcpListener::bind(addr).await?;
 
     fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer<'static>>> {
@@ -90,8 +92,8 @@ async fn start_https(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
     }
 
     let _ = rustls::crypto::ring::default_provider().install_default();
-    let certs = load_certs(&cfg.https.cert).unwrap();
-    let key = load_key(&cfg.https.key).unwrap();
+    let certs = load_certs(&cfg.cert).unwrap();
+    let key = load_key(&cfg.key).unwrap();
     let mut server_config = ServerConfig::builder()
         .with_no_client_auth()
         .with_single_cert(certs, key)
@@ -166,7 +168,7 @@ async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, pro
     .and_then(|host| host.split(':').next().map(|s| s.to_string()))
     .expect("host should be available");
 
-    let cfg = &config::get().routers;
+    let cfg = &config::get().routing;
     let router = cfg.iter().find(|r| r.domain == host);
 
     if router.is_none() {

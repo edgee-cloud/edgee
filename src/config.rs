@@ -5,12 +5,17 @@ static CONFIG: OnceCell<StaticConfiguration> = OnceCell::const_new();
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct StaticConfiguration {
+    pub log: LogConfiguration,
     pub http: HttpConfiguration,
     pub https: HttpsConfiguration,
     pub monitor: Option<MonitorConfiguration>,
-    pub log: LogConfiguration,
-    pub routers: Vec<RouterConfiguration>,
+    pub routing: Vec<RoutingConfiguration>,
     pub backends: Vec<BackendConfiguration>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct LogConfiguration {
+    pub level: String,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -32,14 +37,8 @@ pub struct MonitorConfiguration {
     pub address: String,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct LogConfiguration {
-    pub level: String,
-}
-
 #[derive(Deserialize, Debug, Clone, Default)]
-pub struct RouterConfiguration {
-    pub name: String,
+pub struct RoutingConfiguration {
     pub domain: String,
     pub default_backend: String,
     #[serde(default)]
@@ -71,5 +70,7 @@ pub fn init() {
 }
 
 pub fn get() -> &'static StaticConfiguration {
-    CONFIG.get().unwrap()
+    CONFIG
+        .get()
+        .expect("config module should have been initialized")
 }
