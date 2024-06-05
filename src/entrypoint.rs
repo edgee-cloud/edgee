@@ -1,5 +1,6 @@
 use std::{fs, io, net::SocketAddr, str::FromStr, sync::Arc};
 
+use anyhow::bail;
 use bytes::Bytes;
 use http::{header::HOST, uri::PathAndQuery, HeaderValue, Request, Response, StatusCode, Uri};
 use http_body_util::{combinators::BoxBody, BodyExt, Empty};
@@ -10,6 +11,7 @@ use hyper_util::{
     rt::{TokioExecutor, TokioIo},
     server::conn::auto::Builder,
 };
+use regex::Regex;
 use rustls::ServerConfig;
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use tokio::net::TcpListener;
@@ -19,28 +21,28 @@ use tracing::{debug, error};
 use crate::config;
 
 pub async fn start() -> anyhow::Result<()> {
-    let cfg = config::get();
-
     tokio::select! {
-        Err(err) = start_http(cfg) => {
+        Err(err) = start_http() => {
             error!(?err, "Failed to start HTTPS entrypoint");
             Err(err)
         }
-        Err(err) = start_https(cfg) => {
+        Err(err) = start_https() => {
             error!(?err, "Failed to start HTTPS entrypoint");
             Err(err)
         }
     }
 }
 
-async fn start_http(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
+async fn start_http() -> anyhow::Result<()> {
+    let cfg = &config::get().http;
+
     debug!(
-        address = cfg.http.address,
-        force_https = cfg.http.force_https,
+        address = cfg.address,
+        force_https = cfg.force_https,
         "Starting HTTP entrypoint"
     );
 
-    let addr: SocketAddr = cfg.http.address.parse()?;
+    let addr: SocketAddr = cfg.address.parse()?;
     let listener = TcpListener::bind(addr).await?;
     loop {
         let (stream, remote_addr) = match listener.accept().await {
@@ -57,7 +59,7 @@ async fn start_http(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
                 .serve_connection_with_upgrades(
                     TokioIo::new(stream),
                     service_fn(|req: Request<Incoming>| async move {
-                        if cfg.http.force_https {
+                        if cfg.force_https {
                             force_https(req).await
                         } else {
                             handle_request(req, remote_addr, "http").await
@@ -72,9 +74,11 @@ async fn start_http(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
     }
 }
 
-async fn start_https(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
-    debug!(address = cfg.https.address, "Starting HTTPS entrypoint");
-    let addr: SocketAddr = cfg.https.address.parse()?;
+async fn start_https() -> anyhow::Result<()> {
+    let cfg = &config::get().https;
+
+    debug!(address = cfg.address, "Starting HTTPS entrypoint");
+    let addr: SocketAddr = cfg.address.parse()?;
     let listener = TcpListener::bind(addr).await?;
 
     fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer<'static>>> {
@@ -90,8 +94,8 @@ async fn start_https(cfg: &config::StaticConfiguration) -> anyhow::Result<()> {
     }
 
     let _ = rustls::crypto::ring::default_provider().install_default();
-    let certs = load_certs(&cfg.https.cert).unwrap();
-    let key = load_key(&cfg.https.key).unwrap();
+    let certs = load_certs(&cfg.cert).unwrap();
+    let key = load_key(&cfg.key).unwrap();
     let mut server_config = ServerConfig::builder()
         .with_no_client_auth()
         .with_single_cert(certs, key)
@@ -166,10 +170,10 @@ async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, pro
     .and_then(|host| host.split(':').next().map(|s| s.to_string()))
     .expect("host should be available");
 
-    let cfg = &config::get().routers;
-    let router = cfg.iter().find(|r| r.domain == host);
+    let cfg = &config::get().routing;
+    let routing = cfg.iter().find(|r| r.domain == host);
 
-    if router.is_none() {
+    if routing.is_none() {
         return Ok(Response::builder()
             .status(StatusCode::BAD_GATEWAY)
             .body(empty())
@@ -205,34 +209,93 @@ async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, pro
         );
     }
 
-    let router = router.expect("router should have some value");
-    let default_backend = &router.default_backend;
+    let routing = routing.expect("router should have some value");
 
-    let backends = &config::get().backends;
-    let backend = backends.iter().find(|b| b.name == *default_backend);
+    let default_backend = match routing.backends.iter().find(|b| b.default) {
+        Some(a) => a,
+        None => {
+            return Ok(Response::builder()
+                .status(StatusCode::BAD_GATEWAY)
+                .body(empty())
+                .expect("response should never fail"));
+        }
+    };
 
-    if backend.is_none() {
-        return Ok(Response::builder()
-            .status(StatusCode::BAD_GATEWAY)
-            .body(empty())
-            .expect("response should never fail"));
+    let uri = req.uri_mut();
+    let root_path = PathAndQuery::from_str("/").expect("'/' should be a valid path");
+    let requested_path = uri.path_and_query().unwrap_or(&root_path);
+
+    let mut upstream_backend: Option<&config::BackendConfiguration> = None;
+    let mut upstream_path: Option<PathAndQuery> = None;
+    for rule in routing.rules.clone() {
+        match (rule.path, rule.path_prefix, rule.path_regexp) {
+            (Some(path), _) => {
+                if *requested_path == *path {
+                    upstream_backend = match rule.backend {
+                        Some(name) => routing.backends.iter().find(|b| b.name == name),
+                        None => Some(default_backend),
+                    };
+                    upstream_path = match rule.rewrite {
+                        Some(replacement) => PathAndQuery::from_str(&replacement).ok(),
+                        None => PathAndQuery::from_str(&path).ok(),
+                    };
+                    break;
+                }
+            }
+            (None, Some(prefix)) => {
+                if requested_path.to_string().starts_with(&prefix) {
+                    upstream_backend = match rule.backend {
+                        Some(name) => routing.backends.iter().find(|b| b.name == name),
+                        None => Some(default_backend),
+                    };
+                    upstream_path = match rule.rewrite {
+                        Some(replacement) => {
+                            let new_path =
+                                requested_path
+                                    .to_string()
+                                    .replacen(&prefix, &replacement, 1);
+                            PathAndQuery::from_str(&new_path).ok()
+                        }
+                        None => Some(requested_path.clone()),
+                    };
+                    break;
+                }
+            }
+            (None, None, Some(pattern)) => {
+                let regexp = Regex::new(pattern).expect("regex pattern should be valid");
+                let path = requested_path.to_string();
+                if regexp.is_match(&path) {
+                    upstream_backend = match rule.backend {
+                        Some(name) => routing.backends.iter().find(|b| b.name == name),
+                        None => Some(default_backend),
+                    };
+                    upstream_path = match rule.rewrite {
+                        Some(replacement) => {
+                            PathAndQuery::from_str(&regexp.replacen(&path, 1, &replacement)).ok()
+                        }
+                        None => PathAndQuery::from_str(&path).ok(),
+                    };
+                }
+            }
+            _ => bail!("Invalid routing"),
+        }
     }
 
-    let backend = backend.expect("backend has some value");
+    let backend = upstream_backend.unwrap_or(default_backend);
+    let path = upstream_path.unwrap_or(root_path);
 
     if proto == "http" {
-        forward_http_request(req, backend).await
+        forward_http_request(req, backend, path).await
     } else {
-        forward_https_request(req, backend).await
+        forward_https_request(req, backend, path).await
     }
 }
 
 async fn forward_http_request(
     orig: Request<Incoming>,
     backend: &config::BackendConfiguration,
+    path: PathAndQuery,
 ) -> Resp {
-    let root_path = PathAndQuery::from_str("/").expect("path should be valid");
-    let path = orig.uri().path_and_query().unwrap_or(&root_path);
     let uri: Uri = format!("http://{}{}", &backend.address, path)
         .parse()
         .expect("uri should be valid");
@@ -266,9 +329,8 @@ async fn forward_http_request(
 async fn forward_https_request(
     mut req: Request<Incoming>,
     backend: &config::BackendConfiguration,
+    path: PathAndQuery,
 ) -> Resp {
-    let root_path = PathAndQuery::from_str("/").expect("path should be valid");
-    let path = req.uri().path_and_query().unwrap_or(&root_path);
     let uri: Uri = format!("https://{}{}", &backend.address, path)
         .parse()
         .expect("uri should be valid");

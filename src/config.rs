@@ -5,12 +5,16 @@ static CONFIG: OnceCell<StaticConfiguration> = OnceCell::const_new();
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct StaticConfiguration {
+    pub log: LogConfiguration,
     pub http: HttpConfiguration,
     pub https: HttpsConfiguration,
     pub monitor: Option<MonitorConfiguration>,
-    pub log: LogConfiguration,
-    pub routers: Vec<RouterConfiguration>,
-    pub backends: Vec<BackendConfiguration>,
+    pub routing: Vec<RoutingConfiguration>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct LogConfiguration {
+    pub level: String,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -32,30 +36,27 @@ pub struct MonitorConfiguration {
     pub address: String,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct LogConfiguration {
-    pub level: String,
-}
-
 #[derive(Deserialize, Debug, Clone, Default)]
-pub struct RouterConfiguration {
-    pub name: String,
+pub struct RoutingConfiguration {
     pub domain: String,
-    pub default_backend: String,
     #[serde(default)]
     pub rules: Vec<RoutingRulesConfiguration>,
+    pub backends: Vec<BackendConfiguration>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct RoutingRulesConfiguration {
-    #[serde(rename = "match")]
-    pub pattern: String,
-    pub backend: String,
+    pub path: Option<String>,
+    pub path_prefix: Option<String>,
+    pub rewrite: Option<String>,
+    pub backend: Option<String>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct BackendConfiguration {
     pub name: String,
+    #[serde(default)]
+    pub default: bool,
     pub address: String,
 }
 
@@ -71,5 +72,7 @@ pub fn init() {
 }
 
 pub fn get() -> &'static StaticConfiguration {
-    CONFIG.get().unwrap()
+    CONFIG
+        .get()
+        .expect("config module should have been initialized")
 }

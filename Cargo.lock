@@ -322,6 +322,7 @@ dependencies = [
  "hyper-rustls",
  "hyper-util",
  "log",
+ "regex",
  "rustls",
  "rustls-pemfile",
  "rustls-pki-types",
