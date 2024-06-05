@@ -48,6 +48,7 @@ pub struct RoutingConfiguration {
 pub struct RoutingRulesConfiguration {
     pub path: Option<String>,
     pub path_prefix: Option<String>,
+    pub path_regexp: Option<String>,
     pub rewrite: Option<String>,
     pub backend: Option<String>,
 }

@@ -229,7 +229,7 @@ async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, pro
     let mut upstream_path: Option<PathAndQuery> = None;
     for rule in routing.rules.clone() {
         match (rule.path, rule.path_prefix, rule.path_regexp) {
-            (Some(path), _) => {
+            (Some(path), _, _) => {
                 if *requested_path == *path {
                     upstream_backend = match rule.backend {
                         Some(name) => routing.backends.iter().find(|b| b.name == name),
@@ -242,7 +242,7 @@ async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, pro
                     break;
                 }
             }
-            (None, Some(prefix)) => {
+            (None, Some(prefix), _) => {
                 if requested_path.to_string().starts_with(&prefix) {
                     upstream_backend = match rule.backend {
                         Some(name) => routing.backends.iter().find(|b| b.name == name),
@@ -262,7 +262,7 @@ async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, pro
                 }
             }
             (None, None, Some(pattern)) => {
-                let regexp = Regex::new(pattern).expect("regex pattern should be valid");
+                let regexp = Regex::new(&pattern).expect("regex pattern should be valid");
                 let path = requested_path.to_string();
                 if regexp.is_match(&path) {
                     upstream_backend = match rule.backend {
