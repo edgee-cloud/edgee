@@ -1,5 +1,6 @@
 use std::{fs, io, net::SocketAddr, str::FromStr, sync::Arc};
 
+use anyhow::bail;
 use bytes::Bytes;
 use http::{header::HOST, uri::PathAndQuery, HeaderValue, Request, Response, StatusCode, Uri};
 use http_body_util::{combinators::BoxBody, BodyExt, Empty};
@@ -10,6 +11,7 @@ use hyper_util::{
     rt::{TokioExecutor, TokioIo},
     server::conn::auto::Builder,
 };
+use regex::Regex;
 use rustls::ServerConfig;
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use tokio::net::TcpListener;
@@ -169,9 +171,9 @@ async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, pro
     .expect("host should be available");
 
     let cfg = &config::get().routing;
-    let router = cfg.iter().find(|r| r.domain == host);
+    let routing = cfg.iter().find(|r| r.domain == host);
 
-    if router.is_none() {
+    if routing.is_none() {
         return Ok(Response::builder()
             .status(StatusCode::BAD_GATEWAY)
             .body(empty())
@@ -207,34 +209,93 @@ async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, pro
         );
     }
 
-    let router = router.expect("router should have some value");
-    let default_backend = &router.default_backend;
+    let routing = routing.expect("router should have some value");
 
-    let backends = &config::get().backends;
-    let backend = backends.iter().find(|b| b.name == *default_backend);
+    let default_backend = match routing.backends.iter().find(|b| b.default) {
+        Some(a) => a,
+        None => {
+            return Ok(Response::builder()
+                .status(StatusCode::BAD_GATEWAY)
+                .body(empty())
+                .expect("response should never fail"));
+        }
+    };
 
-    if backend.is_none() {
-        return Ok(Response::builder()
-            .status(StatusCode::BAD_GATEWAY)
-            .body(empty())
-            .expect("response should never fail"));
+    let uri = req.uri_mut();
+    let root_path = PathAndQuery::from_str("/").expect("'/' should be a valid path");
+    let requested_path = uri.path_and_query().unwrap_or(&root_path);
+
+    let mut upstream_backend: Option<&config::BackendConfiguration> = None;
+    let mut upstream_path: Option<PathAndQuery> = None;
+    for rule in routing.rules.clone() {
+        match (rule.path, rule.path_prefix, rule.path_regexp) {
+            (Some(path), _) => {
+                if *requested_path == *path {
+                    upstream_backend = match rule.backend {
+                        Some(name) => routing.backends.iter().find(|b| b.name == name),
+                        None => Some(default_backend),
+                    };
+                    upstream_path = match rule.rewrite {
+                        Some(replacement) => PathAndQuery::from_str(&replacement).ok(),
+                        None => PathAndQuery::from_str(&path).ok(),
+                    };
+                    break;
+                }
+            }
+            (None, Some(prefix)) => {
+                if requested_path.to_string().starts_with(&prefix) {
+                    upstream_backend = match rule.backend {
+                        Some(name) => routing.backends.iter().find(|b| b.name == name),
+                        None => Some(default_backend),
+                    };
+                    upstream_path = match rule.rewrite {
+                        Some(replacement) => {
+                            let new_path =
+                                requested_path
+                                    .to_string()
+                                    .replacen(&prefix, &replacement, 1);
+                            PathAndQuery::from_str(&new_path).ok()
+                        }
+                        None => Some(requested_path.clone()),
+                    };
+                    break;
+                }
+            }
+            (None, None, Some(pattern)) => {
+                let regexp = Regex::new(pattern).expect("regex pattern should be valid");
+                let path = requested_path.to_string();
+                if regexp.is_match(&path) {
+                    upstream_backend = match rule.backend {
+                        Some(name) => routing.backends.iter().find(|b| b.name == name),
+                        None => Some(default_backend),
+                    };
+                    upstream_path = match rule.rewrite {
+                        Some(replacement) => {
+                            PathAndQuery::from_str(&regexp.replacen(&path, 1, &replacement)).ok()
+                        }
+                        None => PathAndQuery::from_str(&path).ok(),
+                    };
+                }
+            }
+            _ => bail!("Invalid routing"),
+        }
     }
 
-    let backend = backend.expect("backend has some value");
+    let backend = upstream_backend.unwrap_or(default_backend);
+    let path = upstream_path.unwrap_or(root_path);
 
     if proto == "http" {
-        forward_http_request(req, backend).await
+        forward_http_request(req, backend, path).await
     } else {
-        forward_https_request(req, backend).await
+        forward_https_request(req, backend, path).await
     }
 }
 
 async fn forward_http_request(
     orig: Request<Incoming>,
     backend: &config::BackendConfiguration,
+    path: PathAndQuery,
 ) -> Resp {
-    let root_path = PathAndQuery::from_str("/").expect("path should be valid");
-    let path = orig.uri().path_and_query().unwrap_or(&root_path);
     let uri: Uri = format!("http://{}{}", &backend.address, path)
         .parse()
         .expect("uri should be valid");
@@ -268,9 +329,8 @@ async fn forward_http_request(
 async fn forward_https_request(
     mut req: Request<Incoming>,
     backend: &config::BackendConfiguration,
+    path: PathAndQuery,
 ) -> Resp {
-    let root_path = PathAndQuery::from_str("/").expect("path should be valid");
-    let path = req.uri().path_and_query().unwrap_or(&root_path);
     let uri: Uri = format!("https://{}{}", &backend.address, path)
         .parse()
         .expect("uri should be valid");

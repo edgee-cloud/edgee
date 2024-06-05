@@ -18,6 +18,7 @@ hyper = { version = "1", features = ["full"] }
 hyper-rustls = { version = "0.27.2", features = ["http2", "ring"] }
 hyper-util = { version = "0.1.5", features = ["full"] }
 log = "0.4"
+regex = "1.10.4"
 rustls = { version = "0.23.5", features = ["ring"] }
 rustls-pemfile = "2.1.2"
 rustls-pki-types = "1.7.0"

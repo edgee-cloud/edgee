@@ -10,7 +10,6 @@ pub struct StaticConfiguration {
     pub https: HttpsConfiguration,
     pub monitor: Option<MonitorConfiguration>,
     pub routing: Vec<RoutingConfiguration>,
-    pub backends: Vec<BackendConfiguration>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -40,21 +39,24 @@ pub struct MonitorConfiguration {
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct RoutingConfiguration {
     pub domain: String,
-    pub default_backend: String,
     #[serde(default)]
     pub rules: Vec<RoutingRulesConfiguration>,
+    pub backends: Vec<BackendConfiguration>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct RoutingRulesConfiguration {
-    #[serde(rename = "match")]
-    pub pattern: String,
-    pub backend: String,
+    pub path: Option<String>,
+    pub path_prefix: Option<String>,
+    pub rewrite: Option<String>,
+    pub backend: Option<String>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct BackendConfiguration {
     pub name: String,
+    #[serde(default)]
+    pub default: bool,
     pub address: String,
 }
 
