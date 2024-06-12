@@ -1,4 +1,5 @@
-use tracing_subscriber::{fmt::Subscriber, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{fmt, registry, EnvFilter};
 
 use crate::config;
 
@@ -12,9 +13,9 @@ pub fn init() {
     }
 
     let filter: EnvFilter = level.into();
-    Subscriber::builder()
-        .with_env_filter(filter)
-        .finish()
-        .try_init()
-        .unwrap();
+    if cfg!(debug_assertions) {
+        registry().with(fmt::layer()).with(filter).init();
+    } else {
+        registry().with(fmt::layer().json()).with(filter).init();
+    }
 }
