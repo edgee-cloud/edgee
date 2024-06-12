@@ -32,24 +32,14 @@
     devShells = forEachSupportedSystem ({pkgs}: {
       default = pkgs.mkShell {
         packages = with pkgs; [
-          # Rust
           rustToolchain
-          openssl
-          pkg-config
           cargo-deny
           cargo-edit
           cargo-expand
           cargo-watch
           rust-analyzer
           rustfmt
-
-          # HTTP
-          mkcert
         ];
-
-        shellHook = ''
-        export CAROOT=$PWD/local/ca
-        '';
       };
     });
   };
