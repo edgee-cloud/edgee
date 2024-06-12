@@ -9,14 +9,14 @@ use hyper_util::{
     server::conn::auto::Builder,
 };
 use tokio::net::TcpListener;
-use tracing::{debug, error};
+use tracing::{error, info};
 
 use crate::config;
 
 pub async fn start() -> anyhow::Result<()> {
     match &config::get().monitor {
         Some(cfg) => {
-            debug!(address = cfg.address, "Starting monitor");
+            info!(address = cfg.address, "Starting monitor");
             let addr: SocketAddr = cfg.address.parse()?;
             let listener = TcpListener::bind(addr)
                 .await

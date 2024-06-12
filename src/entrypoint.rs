@@ -16,7 +16,7 @@ use rustls::ServerConfig;
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 use crate::config;
 
@@ -36,7 +36,7 @@ pub async fn start() -> anyhow::Result<()> {
 async fn start_http() -> anyhow::Result<()> {
     let cfg = &config::get().http;
 
-    debug!(
+    info!(
         address = cfg.address,
         force_https = cfg.force_https,
         "Starting HTTP entrypoint"
@@ -77,7 +77,7 @@ async fn start_http() -> anyhow::Result<()> {
 async fn start_https() -> anyhow::Result<()> {
     let cfg = &config::get().https;
 
-    debug!(address = cfg.address, "Starting HTTPS entrypoint");
+    info!(address = cfg.address, "Starting HTTPS entrypoint");
     let addr: SocketAddr = cfg.address.parse()?;
     let listener = TcpListener::bind(addr).await?;
 
