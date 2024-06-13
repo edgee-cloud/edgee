@@ -282,12 +282,14 @@ async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, pro
     }
 
     let backend = upstream_backend.unwrap_or(default_backend);
-    let path = upstream_path.unwrap_or(root_path);
+    let path = upstream_path.unwrap_or(requested_path.clone());
 
-    if proto == "http" {
-        forward_http_request(req, backend, path).await
-    } else {
+    debug!(?backend, ?path);
+
+    if backend.enable_ssl {
         forward_https_request(req, backend, path).await
+    } else {
+        forward_http_request(req, backend, path).await
     }
 }
 
@@ -299,6 +301,8 @@ async fn forward_http_request(
     let uri: Uri = format!("http://{}{}", &backend.address, path)
         .parse()
         .expect("uri should be valid");
+
+    debug!(origin=?orig.uri(),?uri, "Forwarding HTTP request");
 
     let mut req = Request::builder().uri(uri).method(orig.method());
     let headers = req.headers_mut().expect("request should have headers");
@@ -359,7 +363,7 @@ async fn forward_https_request(
             Ok(Response::builder()
                 .status(StatusCode::BAD_GATEWAY)
                 .body(empty())
-                .expect("response should never fail"))
+                .expect("response builder should never fail"))
         }
     }
 }

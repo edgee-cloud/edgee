@@ -59,6 +59,9 @@ pub struct BackendConfiguration {
     #[serde(default)]
     pub default: bool,
     pub address: String,
+    pub enable_ssl: bool,
+    // certificate
+    // override_host
 }
 
 // TODO: Read config from CLI arguments
