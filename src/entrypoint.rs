@@ -1,9 +1,9 @@
-use std::{fs, io, net::SocketAddr, str::FromStr, sync::Arc};
+use std::{convert::Infallible, fs, io, net::SocketAddr, str::FromStr, sync::Arc};
 
 use anyhow::bail;
 use bytes::Bytes;
-use http::{header::HOST, uri::PathAndQuery, HeaderValue, Request, Response, StatusCode, Uri};
-use http_body_util::{combinators::BoxBody, BodyExt, Empty};
+use http::{header::HOST, uri::PathAndQuery, HeaderValue, StatusCode, Uri};
+use http_body_util::{combinators::BoxBody, BodyExt, Empty, Full};
 use hyper::{body::Incoming, service::service_fn};
 use hyper_rustls::ConfigBuilderExt;
 use hyper_util::{
@@ -19,6 +19,8 @@ use tokio_rustls::TlsAcceptor;
 use tracing::{debug, error, info};
 
 use crate::config;
+
+type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
 pub async fn start() -> anyhow::Result<()> {
     tokio::select! {
@@ -58,7 +60,7 @@ async fn start_http() -> anyhow::Result<()> {
             if let Err(err) = Builder::new(TokioExecutor::new())
                 .serve_connection_with_upgrades(
                     TokioIo::new(stream),
-                    service_fn(|req: Request<Incoming>| async move {
+                    service_fn(|req: http::Request<Incoming>| async move {
                         if cfg.force_https {
                             force_https(req).await
                         } else {
@@ -128,9 +130,7 @@ async fn start_https() -> anyhow::Result<()> {
     }
 }
 
-type Resp = anyhow::Result<Response<BoxBody<Bytes, hyper::Error>>>;
-
-async fn force_https(req: Request<Incoming>) -> Resp {
+async fn force_https(req: http::Request<Incoming>) -> anyhow::Result<Response> {
     // FIXME: Append https port to hostname (if not the default 443)
     let host = match (req.headers().get(HOST), req.uri().host()) {
         (None, Some(value)) => Some(String::from(value)),
@@ -148,20 +148,18 @@ async fn force_https(req: Request<Incoming>) -> Resp {
         .expect("should be valid uri")
         .to_string();
 
-    Ok(Response::builder()
+    Ok(http::Response::builder()
         .status(StatusCode::MOVED_PERMANENTLY)
         .header("localtion", uri)
         .body(empty())
         .expect("body should never fail"))
 }
 
-fn empty() -> BoxBody<Bytes, hyper::Error> {
-    Empty::<Bytes>::new()
-        .map_err(|never| match never {})
-        .boxed()
-}
-
-async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, proto: &str) -> Resp {
+async fn handle_request(
+    mut req: http::Request<Incoming>,
+    remote_addr: SocketAddr,
+    proto: &str,
+) -> anyhow::Result<Response> {
     let host = match (req.headers().get(HOST), req.uri().host()) {
         (None, Some(value)) => Some(String::from(value)),
         (Some(value), _) => Some(value.to_str().unwrap().to_string()),
@@ -174,10 +172,7 @@ async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, pro
     let routing = cfg.iter().find(|r| r.domain == host);
 
     if routing.is_none() {
-        return Ok(Response::builder()
-            .status(StatusCode::BAD_GATEWAY)
-            .body(empty())
-            .expect("response should never fail"));
+        return Ok(error_bad_gateway());
     };
 
     const FORWARDED_FOR: &str = "x-forwarded-for";
@@ -214,10 +209,7 @@ async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, pro
     let default_backend = match routing.backends.iter().find(|b| b.default) {
         Some(a) => a,
         None => {
-            return Ok(Response::builder()
-                .status(StatusCode::BAD_GATEWAY)
-                .body(empty())
-                .expect("response should never fail"));
+            return Ok(error_bad_gateway());
         }
     };
 
@@ -294,17 +286,17 @@ async fn handle_request(mut req: Request<Incoming>, remote_addr: SocketAddr, pro
 }
 
 async fn forward_http_request(
-    orig: Request<Incoming>,
+    orig: http::Request<Incoming>,
     backend: &config::BackendConfiguration,
     path: PathAndQuery,
-) -> Resp {
+) -> anyhow::Result<Response> {
     let uri: Uri = format!("http://{}{}", &backend.address, path)
         .parse()
         .expect("uri should be valid");
 
     debug!(origin=?orig.uri(),?uri, "Forwarding HTTP request");
 
-    let mut req = Request::builder().uri(uri).method(orig.method());
+    let mut req = http::Request::builder().uri(uri).method(orig.method());
     let headers = req.headers_mut().expect("request should have headers");
     for (name, value) in orig.headers().iter() {
         headers.insert(name, value.to_owned());
@@ -319,22 +311,19 @@ async fn forward_http_request(
     let req = req.body(body).expect("request to be built");
     let client = Client::builder(TokioExecutor::new()).build(HttpConnector::new());
     match client.request(req).await {
-        Ok(res) => Ok(res.map(|r| r.boxed())),
+        Ok(res) => Ok(res.map(response_body)),
         Err(err) => {
             error!(?err, "failed to send request to backend");
-            Ok(Response::builder()
-                .status(StatusCode::BAD_GATEWAY)
-                .body(empty())
-                .expect("response should never fail"))
+            Ok(error_bad_gateway())
         }
     }
 }
 
 async fn forward_https_request(
-    mut req: Request<Incoming>,
+    mut req: http::Request<Incoming>,
     backend: &config::BackendConfiguration,
     path: PathAndQuery,
-) -> Resp {
+) -> anyhow::Result<Response> {
     let uri: Uri = format!("https://{}{}", &backend.address, path)
         .parse()
         .expect("uri should be valid");
@@ -357,13 +346,26 @@ async fn forward_https_request(
         .build();
     let client = Client::builder(TokioExecutor::new()).build(connector);
     match client.request(req).await {
-        Ok(res) => Ok(res.map(|r| r.boxed())),
+        Ok(res) => Ok(res.map(response_body)),
         Err(err) => {
             error!(?err, "failed to send request to backend");
-            Ok(Response::builder()
-                .status(StatusCode::BAD_GATEWAY)
-                .body(empty())
-                .expect("response builder should never fail"))
+            Ok(error_bad_gateway())
         }
     }
+}
+
+fn error_bad_gateway() -> Response {
+    static HTML: &str = include_str!("../public/502.html");
+    http::Response::builder()
+        .status(StatusCode::BAD_GATEWAY)
+        .body(Full::from(Bytes::from(HTML)).boxed())
+        .expect("response builder should never fail")
+}
+
+fn response_body(incoming: Incoming) -> BoxBody<Bytes, Infallible> {
+    return incoming.map_err(|_| unreachable!("Infallible")).boxed();
+}
+
+fn empty() -> BoxBody<Bytes, Infallible> {
+    Empty::<Bytes>::new().boxed()
 }
