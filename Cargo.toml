@@ -7,6 +7,8 @@ description = "The full-stack edge platform for your edge oriented applications"
 keywords = ["Edgee"]
 categories = ["wasm"]
 license = "Apache-2.0"
+repository = "https://github.com/edgee-cloud/edgee"
+homepage = "https://www.edgee.cloud"
 
 [dependencies]
 anyhow = "1.0.83"
