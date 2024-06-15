@@ -39,6 +39,8 @@
           cargo-watch
           rust-analyzer
           rustfmt
+
+          gh
         ];
       };
     });

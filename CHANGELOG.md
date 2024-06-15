@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 --> 
 
-## [0.1.0] - 2024-04-28
+## [0.1.0] - 2024-06-15
 ### Added
-- Initial release of the project
+- Proxy HTTP requests
+- Proxy HTTPS requests
