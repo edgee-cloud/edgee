@@ -19,6 +19,7 @@
 [![Edgee](https://img.shields.io/badge/discord-edgee-%237289da.svg?logo=discord)](https://discord.gg/H2Tch53e)
 [![Docs](https://img.shields.io/badge/docs-published-blue)](https://docs.edgee.cloud)
 
+</div>
 
 <!-- TODO: Add FAQ -->
 <!-- TODO: Add Video introduction -->
@@ -31,12 +32,10 @@
 - [Discord](https://discord.gg/H2Tch53e)
 
 ## Contributing
-	If you're interested in contributing to Edgee, read our [contribution guidelines](./CONTRIBUTING.md)
+If you're interested in contributing to Edgee, read our [contribution guidelines](./CONTRIBUTING.md)
 
 <!-- TODO: Add Roadmap section -->
 
 ## Reporting Security Vulnerabilities
-	If you've found a vulnerability or potential vulnerability in our code, please let us know at
-	[edgee-security](mailto:security@edgee.cloud).
-</div>
-
+If you've found a vulnerability or potential vulnerability in our code, please let us know at
+[edgee-security](mailto:security@edgee.cloud).
