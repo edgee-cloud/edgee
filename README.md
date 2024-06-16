@@ -23,12 +23,12 @@
 <!-- TODO: Add FAQ -->
 <!-- TODO: Add Video introduction -->
 ## Documentation
-	- [Official Website](https://www.edgee.cloud)
-	- [Official Documentation](https://docs.edgee.cloud)
+- [Official Website](https://www.edgee.cloud)
+- [Official Documentation](https://docs.edgee.cloud)
 
 ## Contact
-	- [Twitter](https://x.com/edgee_cloud)
-	- [Discord](https://discord.gg/H2Tch53e)
+- [Twitter](https://x.com/edgee_cloud)
+- [Discord](https://discord.gg/H2Tch53e)
 
 ## Contributing
 	If you're interested in contributing to Edgee, read our [contribution guidelines](./CONTRIBUTING.md)
