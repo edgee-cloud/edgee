@@ -13,12 +13,30 @@
 
 **The full-stack edge platform for your edge oriented applications.**
 
-<!--- FIXME: Update crate, repo and CI workflow names here! Remove any that are not relevant --->
-
 [![Edgee](https://img.shields.io/badge/edgee-open%20source-blueviolet.svg)](https://www.edgee.cloud)
+[![Crates.io](https://img.shields.io/crates/v/edgee.svg?logo=rust)](https://crates.io/crates/edgee)
+[![Docker](https://img.shields.io/docker/v/edgeecloud/edgee.svg?logo=docker&label=docker&color=0db7ed)](https://hub.docker.com/edgeecloud/edgee)
 [![Edgee](https://img.shields.io/badge/discord-edgee-%237289da.svg?logo=discord)](https://discord.gg/H2Tch53e)
 [![Docs](https://img.shields.io/badge/docs-published-blue)](https://docs.edgee.cloud)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
+
+<!-- TODO: Add FAQ -->
+<!-- TODO: Add Video introduction -->
+## Documentation
+	- [Official Website](https://www.edgee.cloud)
+	- [Official Documentation](https://docs.edgee.cloud)
+
+## Contact
+	- [Twitter](https://x.com/edgee_cloud)
+	- [Discord](https://discord.gg/H2Tch53e)
+
+## Contributing
+	If you're interested in contributing to Edgee, read our [contribution guidelines](./CONTRIBUTING.md)
+
+<!-- TODO: Add Roadmap section -->
+
+## Reporting Security Vulnerabilities
+	If you've found a vulnerability or potential vulnerability in our code, please let us know at
+	[edgee-security](mailto:security@edgee.cloud).
 </div>
 
