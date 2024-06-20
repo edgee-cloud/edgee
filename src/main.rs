@@ -2,6 +2,7 @@ use tracing::error;
 
 mod config;
 mod entrypoint;
+mod html;
 mod logger;
 mod monitor;
 

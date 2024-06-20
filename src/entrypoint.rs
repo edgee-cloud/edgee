@@ -1,8 +1,12 @@
-use std::{convert::Infallible, net::SocketAddr, str::FromStr};
+use std::{convert::Infallible, io::Read, net::SocketAddr, str::FromStr};
 
 use anyhow::bail;
 use bytes::Bytes;
-use http::{header::HOST, uri::PathAndQuery, HeaderValue, StatusCode, Uri};
+use http::{
+    header::{CONTENT_ENCODING, HOST},
+    uri::PathAndQuery,
+    HeaderValue, StatusCode, Uri,
+};
 use http_body_util::{combinators::BoxBody, BodyExt, Empty, Full};
 use hyper::body::Incoming;
 use hyper_rustls::ConfigBuilderExt;
@@ -10,12 +14,12 @@ use hyper_util::{
     client::legacy::{connect::HttpConnector, Client},
     rt::TokioExecutor,
 };
+use libflate::{deflate, gzip};
 use regex::Regex;
 use tracing::{debug, error};
 
 use crate::config;
-
-type Response = http::Response<BoxBody<Bytes, Infallible>>;
+use crate::html;
 
 pub async fn start() -> anyhow::Result<()> {
     tokio::select! {
@@ -29,6 +33,8 @@ pub async fn start() -> anyhow::Result<()> {
         }
     }
 }
+
+type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
 mod web {
     use std::convert::Infallible;
@@ -70,13 +76,14 @@ mod web {
         loop {
             let (stream, remote_addr) = listener.accept().await?;
             let cfg = cfg.clone();
+            let io = TokioIo::new(stream);
             let service = RequestManager::new(cfg.clone(), remote_addr);
             tokio::spawn(async move {
                 if let Err(err) = Builder::new(TokioExecutor::new())
-                    .serve_connection_with_upgrades(TokioIo::new(stream), service)
+                    .serve_connection_with_upgrades(io, service)
                     .await
                 {
-                    error!(?err, ?remote_addr, "Failed to serve connections");
+                    error!(?err, ?remote_addr, "failed to serve connections");
                 }
             });
         }
@@ -355,20 +362,72 @@ async fn handle_request(
     let backend = upstream_backend.unwrap_or(default_backend);
     let path = upstream_path.unwrap_or(requested_path.clone());
 
-    debug!(?backend, ?path);
-
-    if backend.enable_ssl {
+    let res = if backend.enable_ssl {
         forward_https_request(req, backend, path).await
     } else {
         forward_http_request(req, backend, path).await
+    };
+
+    match res {
+        Err(err) => {
+            error!(?err, "backend request failed");
+            Ok(error_bad_gateway())
+        }
+        Ok(upstream) => {
+            let headers = upstream.headers().clone();
+            let encoding = headers.get(CONTENT_ENCODING).and_then(|h| h.to_str().ok());
+            let body = upstream.collect().await?.to_bytes();
+            let cursor = std::io::Cursor::new(body.clone());
+            let decompressed_body = match encoding {
+                Some("gzip") => {
+                    let mut decoder = gzip::Decoder::new(cursor)?;
+                    let mut buf = Vec::new();
+                    decoder.read_to_end(&mut buf)?;
+                    String::from_utf8_lossy(&buf).to_string()
+                }
+                Some("deflate") => {
+                    let mut decoder = deflate::Decoder::new(cursor);
+                    let mut buf = Vec::new();
+                    decoder.read_to_end(&mut buf)?;
+                    String::from_utf8_lossy(&buf).to_string()
+                }
+                Some("brotli") => {
+                    let mut decoder = brotli::Decompressor::new(cursor, 4096);
+                    let mut buf = Vec::new();
+                    decoder.read_to_end(&mut buf)?;
+                    String::from_utf8_lossy(&buf).to_string()
+                }
+                Some(_) | None => String::from_utf8_lossy(&body).to_string(),
+            };
+
+            let new_body = match parse_body(&decompressed_body) {
+                Embedding::Empty => decompressed_body,
+                Embedding::Doc(_) => decompressed_body,
+            };
+
+            Ok(Response::new(full(new_body)))
+        }
     }
+}
+
+enum Embedding {
+    Empty,
+    Doc(html::Document),
+}
+
+fn parse_body(body: &str) -> Embedding {
+    if !body.contains(r#"id="__EDGEE_SDK__""#) {
+        return Embedding::Empty;
+    }
+
+    Embedding::Doc(html::parse_html(body))
 }
 
 async fn forward_http_request(
     orig: http::Request<Incoming>,
     backend: &config::BackendConfiguration,
     path: PathAndQuery,
-) -> anyhow::Result<Response> {
+) -> anyhow::Result<http::Response<Incoming>> {
     let uri: Uri = format!("http://{}{}", &backend.address, path)
         .parse()
         .expect("uri should be valid");
@@ -389,20 +448,17 @@ async fn forward_http_request(
     let (_parts, body) = orig.into_parts();
     let req = req.body(body).expect("request to be built");
     let client = Client::builder(TokioExecutor::new()).build(HttpConnector::new());
-    match client.request(req).await {
-        Ok(res) => Ok(res.map(response_body)),
-        Err(err) => {
-            error!(?err, "failed to send request to backend");
-            Ok(error_bad_gateway())
-        }
-    }
+    client
+        .request(req)
+        .await
+        .map_err(|err| anyhow::Error::new(err))
 }
 
 async fn forward_https_request(
     mut req: http::Request<Incoming>,
     backend: &config::BackendConfiguration,
     path: PathAndQuery,
-) -> anyhow::Result<Response> {
+) -> anyhow::Result<http::Response<Incoming>> {
     let uri: Uri = format!("https://{}{}", &backend.address, path)
         .parse()
         .expect("uri should be valid");
@@ -424,13 +480,10 @@ async fn forward_https_request(
         .enable_http2()
         .build();
     let client = Client::builder(TokioExecutor::new()).build(connector);
-    match client.request(req).await {
-        Ok(res) => Ok(res.map(response_body)),
-        Err(err) => {
-            error!(?err, "failed to send request to backend");
-            Ok(error_bad_gateway())
-        }
-    }
+    client
+        .request(req)
+        .await
+        .map_err(|err| anyhow::Error::new(err))
 }
 
 fn error_bad_gateway() -> Response {
@@ -441,10 +494,12 @@ fn error_bad_gateway() -> Response {
         .expect("response builder should never fail")
 }
 
-fn response_body(incoming: Incoming) -> BoxBody<Bytes, Infallible> {
-    return incoming.map_err(|_| unreachable!("Infallible")).boxed();
-}
-
 fn empty() -> BoxBody<Bytes, Infallible> {
     Empty::<Bytes>::new().boxed()
+}
+
+fn full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, Infallible> {
+    Full::new(chunk.into())
+        .map_err(|never| match never {})
+        .boxed()
 }
