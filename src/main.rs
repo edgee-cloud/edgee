@@ -5,6 +5,7 @@ mod entrypoint;
 mod html;
 mod logger;
 mod monitor;
+mod path;
 
 #[tokio::main]
 async fn main() {

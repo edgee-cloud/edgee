@@ -1,4 +1,9 @@
-use std::{convert::Infallible, io::Read, net::SocketAddr, str::FromStr};
+use std::{
+    convert::Infallible,
+    io::{Read, Write},
+    net::SocketAddr,
+    str::FromStr,
+};
 
 use anyhow::bail;
 use bytes::Bytes;
@@ -18,8 +23,8 @@ use libflate::{deflate, gzip};
 use regex::Regex;
 use tracing::{debug, error};
 
-use crate::config;
 use crate::html;
+use crate::{config, path};
 
 pub async fn start() -> anyhow::Result<()> {
     tokio::select! {
@@ -391,21 +396,60 @@ async fn handle_request(
                     decoder.read_to_end(&mut buf)?;
                     String::from_utf8_lossy(&buf).to_string()
                 }
-                Some("brotli") => {
-                    let mut decoder = brotli::Decompressor::new(cursor, 4096);
-                    let mut buf = Vec::new();
-                    decoder.read_to_end(&mut buf)?;
-                    String::from_utf8_lossy(&buf).to_string()
-                }
                 Some(_) | None => String::from_utf8_lossy(&body).to_string(),
             };
 
             let new_body = match parse_body(&decompressed_body) {
                 Embedding::Empty => decompressed_body,
-                Embedding::Doc(_) => decompressed_body,
+                Embedding::Doc(document) => {
+                    let hostname = backend
+                        .address
+                        .split(':')
+                        .next()
+                        .unwrap_or(&backend.address);
+                    let mut page_event_param = r#" data-page-event="true""#;
+                    let event_path = path::generate(hostname);
+                    let event_path_param = format!(r#" data-event-path="{}""#, event_path);
+
+                    if !document.trace_uuid.is_empty() {
+                        page_event_param = r#" data-page-event="false""#;
+                    }
+
+                    if !document.inlined_sdk.is_empty() {
+                        let new_tag = format!(
+                            r#"<script{}{}>{}</script>"#,
+                            page_event_param,
+                            event_path_param,
+                            document.inlined_sdk.as_str()
+                        );
+                        decompressed_body.replace(document.sdk_full_tag.as_str(), new_tag.as_str())
+                    } else {
+                        let new_tag = format!(
+                            r#"<script{}{} async src="{}"></script>"#,
+                            page_event_param,
+                            event_path_param,
+                            document.sdk_src.as_str()
+                        );
+                        decompressed_body.replace(document.sdk_full_tag.as_str(), new_tag.as_str())
+                    }
+                }
             };
 
-            Ok(Response::new(full(new_body)))
+            match encoding {
+                Some("gzip") => {
+                    let mut encoder = gzip::Encoder::new(Vec::new())?;
+                    encoder.write_all(new_body.as_bytes())?;
+                    let data = encoder.finish().into_result()?;
+                    Ok(Response::new(full(data)))
+                }
+                Some("deflate") => {
+                    let mut encoder = deflate::Encoder::new(Vec::new());
+                    encoder.write_all(new_body.as_bytes())?;
+                    let data = encoder.finish().into_result()?;
+                    Ok(Response::new(full(data)))
+                }
+                Some(_) | None => Ok(Response::new(full(new_body))),
+            }
         }
     }
 }
