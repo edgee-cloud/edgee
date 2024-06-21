@@ -1,0 +1,25 @@
+.PHONY: all
+MAKEFLAGS += --silent
+
+all: help
+
+help:
+	@grep -E '^[a-zA-Z1-9\._-]+:.*?## .*$$' $(MAKEFILE_LIST) \
+		| sort \
+		| sed -e "s/^Makefile://" -e "s///" \
+		| awk 'BEGIN { FS = ":.*?## " }; { printf "\033[36m%-30s\033[0m %s\n", $$1, $$2 }'
+
+dev.setup: ## Setup dev environment
+	cargo build
+
+dev.up: ## Launch locally: fastly compute serve
+	cargo run
+
+ci.check: ## Check the code
+	cargo check
+
+ci.build: ## Build wasm for fastly
+	cargo build --release
+
+ci.test: ## Run tests
+	cargo test

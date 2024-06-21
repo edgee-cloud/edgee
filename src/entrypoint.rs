@@ -1,158 +1,249 @@
-use std::{convert::Infallible, fs, io, net::SocketAddr, str::FromStr, sync::Arc};
+use std::{
+    convert::Infallible,
+    io::{Read, Write},
+    net::SocketAddr,
+    str::FromStr,
+};
 
 use anyhow::bail;
 use bytes::Bytes;
-use http::{header::HOST, uri::PathAndQuery, HeaderValue, StatusCode, Uri};
+use http::{
+    header::{CONTENT_ENCODING, HOST},
+    uri::PathAndQuery,
+    HeaderValue, StatusCode, Uri,
+};
 use http_body_util::{combinators::BoxBody, BodyExt, Empty, Full};
-use hyper::{body::Incoming, service::service_fn};
+use hyper::body::Incoming;
 use hyper_rustls::ConfigBuilderExt;
 use hyper_util::{
     client::legacy::{connect::HttpConnector, Client},
-    rt::{TokioExecutor, TokioIo},
-    server::conn::auto::Builder,
+    rt::TokioExecutor,
 };
+use libflate::{deflate, gzip};
 use regex::Regex;
-use rustls::ServerConfig;
-use rustls_pki_types::{CertificateDer, PrivateKeyDer};
-use tokio::net::TcpListener;
-use tokio_rustls::TlsAcceptor;
-use tracing::{debug, error, info};
+use tracing::{debug, error};
 
-use crate::config;
-
-type Response = http::Response<BoxBody<Bytes, Infallible>>;
+use crate::html;
+use crate::{config, path};
 
 pub async fn start() -> anyhow::Result<()> {
     tokio::select! {
-        Err(err) = start_http() => {
+        Err(err) = web::start() => {
             error!(?err, "Failed to start HTTPS entrypoint");
             Err(err)
         }
-        Err(err) = start_https() => {
+        Err(err) = websecure::start() => {
             error!(?err, "Failed to start HTTPS entrypoint");
             Err(err)
         }
     }
 }
 
-async fn start_http() -> anyhow::Result<()> {
-    let cfg = &config::get().http;
+type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
-    info!(
-        address = cfg.address,
-        force_https = cfg.force_https,
-        "Starting HTTP entrypoint"
-    );
+mod web {
+    use std::convert::Infallible;
+    use std::future::Future;
+    use std::net::SocketAddr;
+    use std::pin::Pin;
 
-    let addr: SocketAddr = cfg.address.parse()?;
-    let listener = TcpListener::bind(addr).await?;
-    loop {
-        let (stream, remote_addr) = match listener.accept().await {
-            Ok(a) => a,
-            Err(err) => {
-                error!(?err, "Failed to listen for connections");
-                continue;
-            }
-        };
+    use bytes::Bytes;
+    use http::header::HOST;
+    use http::StatusCode;
+    use http::Uri;
+    use http_body_util::combinators::BoxBody;
+    use hyper::body::Incoming;
+    use hyper_util::rt::TokioExecutor;
+    use hyper_util::rt::TokioIo;
+    use hyper_util::server::conn::auto::Builder;
+    use tokio::net::TcpListener;
+    use tracing::debug;
+    use tracing::error;
+    use tracing::info;
 
-        let cfg = cfg.clone();
-        tokio::spawn(async move {
-            if let Err(err) = Builder::new(TokioExecutor::new())
-                .serve_connection_with_upgrades(
-                    TokioIo::new(stream),
-                    service_fn(|req: http::Request<Incoming>| async move {
-                        if cfg.force_https {
-                            force_https(req).await
-                        } else {
-                            handle_request(req, remote_addr, "http").await
-                        }
-                    }),
-                )
-                .await
-            {
-                error!(?err, ?remote_addr, "Failed to serve connections");
-            }
-        });
-    }
-}
+    use crate::config;
 
-async fn start_https() -> anyhow::Result<()> {
-    let cfg = &config::get().https;
+    use super::empty;
+    use super::handle_request;
+    use super::Response;
 
-    info!(address = cfg.address, "Starting HTTPS entrypoint");
-    let addr: SocketAddr = cfg.address.parse()?;
-    let listener = TcpListener::bind(addr).await?;
+    pub async fn start() -> anyhow::Result<()> {
+        let cfg = &config::get().http;
 
-    fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer<'static>>> {
-        let certfile = fs::File::open(filename).unwrap();
-        let mut reader = io::BufReader::new(certfile);
-        rustls_pemfile::certs(&mut reader).collect()
-    }
+        info!(
+            address = cfg.address,
+            force_https = cfg.force_https,
+            "started"
+        );
 
-    fn load_key(filename: &str) -> io::Result<PrivateKeyDer<'static>> {
-        let keyfile = fs::File::open(filename).unwrap();
-        let mut reader = io::BufReader::new(keyfile);
-        rustls_pemfile::private_key(&mut reader).map(|key| key.unwrap())
-    }
-
-    let _ = rustls::crypto::ring::default_provider().install_default();
-    let certs = load_certs(&cfg.cert).unwrap();
-    let key = load_key(&cfg.key).unwrap();
-    let mut server_config = ServerConfig::builder()
-        .with_no_client_auth()
-        .with_single_cert(certs, key)
-        .unwrap();
-    server_config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec(), b"http/1.0".to_vec()];
-    let tls_acceptor = TlsAcceptor::from(Arc::new(server_config));
-
-    loop {
-        let (stream, remote_addr) = listener.accept().await?;
-        let tls_acceptor = tls_acceptor.clone();
-        tokio::spawn(async move {
-            let tls_stream = match tls_acceptor.accept(stream).await {
-                Ok(tls_stream) => tls_stream,
-                Err(err) => {
-                    error!(?err, "failed to perform tls handshake");
-                    return;
+        let addr: SocketAddr = cfg.address.parse()?;
+        let listener = TcpListener::bind(addr).await?;
+        loop {
+            let (stream, remote_addr) = listener.accept().await?;
+            let cfg = cfg.clone();
+            let io = TokioIo::new(stream);
+            let service = RequestManager::new(cfg.clone(), remote_addr);
+            tokio::spawn(async move {
+                if let Err(err) = Builder::new(TokioExecutor::new())
+                    .serve_connection_with_upgrades(io, service)
+                    .await
+                {
+                    error!(?err, ?remote_addr, "failed to serve connections");
                 }
-            };
-            let io = TokioIo::new(tls_stream);
-            if let Err(err) = Builder::new(TokioExecutor::new())
-                .serve_connection_with_upgrades(
-                    io,
-                    service_fn(|req| handle_request(req, remote_addr, "https")),
-                )
-                .await
-            {
-                error!(?err, "failed to serve connections");
+            });
+        }
+    }
+
+    async fn force_https(req: http::Request<Incoming>) -> anyhow::Result<Response> {
+        // FIXME: Append https port to hostname (if not the default 443)
+        let host = match (req.headers().get(HOST), req.uri().host()) {
+            (None, Some(value)) => Some(String::from(value)),
+            (Some(value), _) => Some(value.to_str().unwrap().to_string()),
+            (None, None) => None,
+        }
+        .and_then(|host| host.split(':').next().map(|s| s.to_string()))
+        .expect("host should be available");
+
+        let mut uri_parts = req.uri().clone().into_parts();
+        uri_parts.scheme = Some("https".parse().expect("should be valid scheme"));
+        uri_parts.authority = Some(host.parse().expect("should be valid host"));
+        debug!(?uri_parts, "Forcing HTTPS redirection");
+        let uri = Uri::from_parts(uri_parts)
+            .expect("should be valid uri")
+            .to_string();
+
+        Ok(http::Response::builder()
+            .status(StatusCode::MOVED_PERMANENTLY)
+            .header("localtion", uri)
+            .body(empty())
+            .expect("body should never fail"))
+    }
+
+    type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send + 'static>>;
+
+    struct RequestManager {
+        config: config::HttpConfiguration,
+        remote_addr: SocketAddr,
+    }
+
+    impl RequestManager {
+        fn new(cfg: config::HttpConfiguration, addr: SocketAddr) -> Self {
+            Self {
+                config: cfg,
+                remote_addr: addr,
             }
-        });
+        }
+    }
+
+    impl hyper::service::Service<http::Request<Incoming>> for RequestManager {
+        type Response = http::Response<BoxBody<Bytes, Infallible>>;
+        type Error = anyhow::Error;
+        type Future = BoxFuture<anyhow::Result<Self::Response>>;
+
+        fn call(&self, req: http::Request<Incoming>) -> Self::Future {
+            if self.config.force_https {
+                Box::pin(force_https(req))
+            } else {
+                Box::pin(handle_request(req, self.remote_addr, "http"))
+            }
+        }
     }
 }
 
-async fn force_https(req: http::Request<Incoming>) -> anyhow::Result<Response> {
-    // FIXME: Append https port to hostname (if not the default 443)
-    let host = match (req.headers().get(HOST), req.uri().host()) {
-        (None, Some(value)) => Some(String::from(value)),
-        (Some(value), _) => Some(value.to_str().unwrap().to_string()),
-        (None, None) => None,
+mod websecure {
+    use std::{convert::Infallible, fs, future::Future, io, net::SocketAddr, pin::Pin, sync::Arc};
+
+    use bytes::Bytes;
+    use http_body_util::combinators::BoxBody;
+    use hyper::body::Incoming;
+    use hyper_util::{
+        rt::{TokioExecutor, TokioIo},
+        server::conn::auto::Builder,
+    };
+    use rustls::ServerConfig;
+    use rustls_pki_types::{CertificateDer, PrivateKeyDer};
+    use tokio::net::TcpListener;
+    use tokio_rustls::TlsAcceptor;
+    use tracing::{error, info};
+
+    use crate::config;
+
+    use super::handle_request;
+
+    pub async fn start() -> anyhow::Result<()> {
+        let cfg = &config::get().https;
+
+        info!(address = cfg.address, "Starting HTTPS entrypoint");
+        let addr: SocketAddr = cfg.address.parse()?;
+        let listener = TcpListener::bind(addr).await?;
+
+        fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer<'static>>> {
+            let certfile = fs::File::open(filename).unwrap();
+            let mut reader = io::BufReader::new(certfile);
+            rustls_pemfile::certs(&mut reader).collect()
+        }
+
+        fn load_key(filename: &str) -> io::Result<PrivateKeyDer<'static>> {
+            let keyfile = fs::File::open(filename).unwrap();
+            let mut reader = io::BufReader::new(keyfile);
+            rustls_pemfile::private_key(&mut reader).map(|key| key.unwrap())
+        }
+
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        let certs = load_certs(&cfg.cert).unwrap();
+        let key = load_key(&cfg.key).unwrap();
+        let mut server_config = ServerConfig::builder()
+            .with_no_client_auth()
+            .with_single_cert(certs, key)
+            .unwrap();
+        server_config.alpn_protocols =
+            vec![b"h2".to_vec(), b"http/1.1".to_vec(), b"http/1.0".to_vec()];
+        let tls_acceptor = TlsAcceptor::from(Arc::new(server_config));
+
+        loop {
+            let (stream, remote_addr) = listener.accept().await?;
+            let tls_acceptor = tls_acceptor.clone();
+            tokio::spawn(async move {
+                let tls_stream = match tls_acceptor.accept(stream).await {
+                    Ok(tls_stream) => tls_stream,
+                    Err(err) => {
+                        error!(?err, "failed to perform tls handshake");
+                        return;
+                    }
+                };
+                let io = TokioIo::new(tls_stream);
+                let service = RequestManager::new(remote_addr);
+                if let Err(err) = Builder::new(TokioExecutor::new())
+                    .serve_connection_with_upgrades(io, service)
+                    .await
+                {
+                    error!(?err, "failed to serve connections");
+                }
+            });
+        }
     }
-    .and_then(|host| host.split(':').next().map(|s| s.to_string()))
-    .expect("host should be available");
 
-    let mut uri_parts = req.uri().clone().into_parts();
-    uri_parts.scheme = Some("https".parse().expect("should be valid scheme"));
-    uri_parts.authority = Some(host.parse().expect("should be valid host"));
-    debug!(?uri_parts, "Forcing HTTPS redirection");
-    let uri = Uri::from_parts(uri_parts)
-        .expect("should be valid uri")
-        .to_string();
+    type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send + 'static>>;
 
-    Ok(http::Response::builder()
-        .status(StatusCode::MOVED_PERMANENTLY)
-        .header("localtion", uri)
-        .body(empty())
-        .expect("body should never fail"))
+    struct RequestManager {
+        remote_addr: SocketAddr,
+    }
+
+    impl RequestManager {
+        fn new(addr: SocketAddr) -> Self {
+            Self { remote_addr: addr }
+        }
+    }
+
+    impl hyper::service::Service<http::Request<Incoming>> for RequestManager {
+        type Response = http::Response<BoxBody<Bytes, Infallible>>;
+        type Error = anyhow::Error;
+        type Future = BoxFuture<anyhow::Result<Self::Response>>;
+
+        fn call(&self, req: http::Request<Incoming>) -> Self::Future {
+            Box::pin(handle_request(req, self.remote_addr, "https"))
+        }
+    }
 }
 
 async fn handle_request(
@@ -276,20 +367,111 @@ async fn handle_request(
     let backend = upstream_backend.unwrap_or(default_backend);
     let path = upstream_path.unwrap_or(requested_path.clone());
 
-    debug!(?backend, ?path);
-
-    if backend.enable_ssl {
+    let res = if backend.enable_ssl {
         forward_https_request(req, backend, path).await
     } else {
         forward_http_request(req, backend, path).await
+    };
+
+    match res {
+        Err(err) => {
+            error!(?err, "backend request failed");
+            Ok(error_bad_gateway())
+        }
+        Ok(upstream) => {
+            let headers = upstream.headers().clone();
+            let encoding = headers.get(CONTENT_ENCODING).and_then(|h| h.to_str().ok());
+            let body = upstream.collect().await?.to_bytes();
+            let cursor = std::io::Cursor::new(body.clone());
+            let decompressed_body = match encoding {
+                Some("gzip") => {
+                    let mut decoder = gzip::Decoder::new(cursor)?;
+                    let mut buf = Vec::new();
+                    decoder.read_to_end(&mut buf)?;
+                    String::from_utf8_lossy(&buf).to_string()
+                }
+                Some("deflate") => {
+                    let mut decoder = deflate::Decoder::new(cursor);
+                    let mut buf = Vec::new();
+                    decoder.read_to_end(&mut buf)?;
+                    String::from_utf8_lossy(&buf).to_string()
+                }
+                Some(_) | None => String::from_utf8_lossy(&body).to_string(),
+            };
+
+            let new_body = match parse_body(&decompressed_body) {
+                Embedding::Empty => decompressed_body,
+                Embedding::Doc(document) => {
+                    let hostname = backend
+                        .address
+                        .split(':')
+                        .next()
+                        .unwrap_or(&backend.address);
+                    let mut page_event_param = r#" data-page-event="true""#;
+                    let event_path = path::generate(hostname);
+                    let event_path_param = format!(r#" data-event-path="{}""#, event_path);
+
+                    if !document.trace_uuid.is_empty() {
+                        page_event_param = r#" data-page-event="false""#;
+                    }
+
+                    if !document.inlined_sdk.is_empty() {
+                        let new_tag = format!(
+                            r#"<script{}{}>{}</script>"#,
+                            page_event_param,
+                            event_path_param,
+                            document.inlined_sdk.as_str()
+                        );
+                        decompressed_body.replace(document.sdk_full_tag.as_str(), new_tag.as_str())
+                    } else {
+                        let new_tag = format!(
+                            r#"<script{}{} async src="{}"></script>"#,
+                            page_event_param,
+                            event_path_param,
+                            document.sdk_src.as_str()
+                        );
+                        decompressed_body.replace(document.sdk_full_tag.as_str(), new_tag.as_str())
+                    }
+                }
+            };
+
+            match encoding {
+                Some("gzip") => {
+                    let mut encoder = gzip::Encoder::new(Vec::new())?;
+                    encoder.write_all(new_body.as_bytes())?;
+                    let data = encoder.finish().into_result()?;
+                    Ok(Response::new(full(data)))
+                }
+                Some("deflate") => {
+                    let mut encoder = deflate::Encoder::new(Vec::new());
+                    encoder.write_all(new_body.as_bytes())?;
+                    let data = encoder.finish().into_result()?;
+                    Ok(Response::new(full(data)))
+                }
+                Some(_) | None => Ok(Response::new(full(new_body))),
+            }
+        }
     }
+}
+
+enum Embedding {
+    Empty,
+    Doc(html::Document),
+}
+
+fn parse_body(body: &str) -> Embedding {
+    if !body.contains(r#"id="__EDGEE_SDK__""#) {
+        return Embedding::Empty;
+    }
+
+    Embedding::Doc(html::parse_html(body))
 }
 
 async fn forward_http_request(
     orig: http::Request<Incoming>,
     backend: &config::BackendConfiguration,
     path: PathAndQuery,
-) -> anyhow::Result<Response> {
+) -> anyhow::Result<http::Response<Incoming>> {
     let uri: Uri = format!("http://{}{}", &backend.address, path)
         .parse()
         .expect("uri should be valid");
@@ -310,20 +492,17 @@ async fn forward_http_request(
     let (_parts, body) = orig.into_parts();
     let req = req.body(body).expect("request to be built");
     let client = Client::builder(TokioExecutor::new()).build(HttpConnector::new());
-    match client.request(req).await {
-        Ok(res) => Ok(res.map(response_body)),
-        Err(err) => {
-            error!(?err, "failed to send request to backend");
-            Ok(error_bad_gateway())
-        }
-    }
+    client
+        .request(req)
+        .await
+        .map_err(|err| anyhow::Error::new(err))
 }
 
 async fn forward_https_request(
     mut req: http::Request<Incoming>,
     backend: &config::BackendConfiguration,
     path: PathAndQuery,
-) -> anyhow::Result<Response> {
+) -> anyhow::Result<http::Response<Incoming>> {
     let uri: Uri = format!("https://{}{}", &backend.address, path)
         .parse()
         .expect("uri should be valid");
@@ -345,13 +524,10 @@ async fn forward_https_request(
         .enable_http2()
         .build();
     let client = Client::builder(TokioExecutor::new()).build(connector);
-    match client.request(req).await {
-        Ok(res) => Ok(res.map(response_body)),
-        Err(err) => {
-            error!(?err, "failed to send request to backend");
-            Ok(error_bad_gateway())
-        }
-    }
+    client
+        .request(req)
+        .await
+        .map_err(|err| anyhow::Error::new(err))
 }
 
 fn error_bad_gateway() -> Response {
@@ -362,10 +538,12 @@ fn error_bad_gateway() -> Response {
         .expect("response builder should never fail")
 }
 
-fn response_body(incoming: Incoming) -> BoxBody<Bytes, Infallible> {
-    return incoming.map_err(|_| unreachable!("Infallible")).boxed();
-}
-
 fn empty() -> BoxBody<Bytes, Infallible> {
     Empty::<Bytes>::new().boxed()
+}
+
+fn full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, Infallible> {
+    Full::new(chunk.into())
+        .map_err(|never| match never {})
+        .boxed()
 }
