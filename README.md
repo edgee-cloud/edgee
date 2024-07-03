@@ -29,7 +29,7 @@
 
 ## Contact
 - [Twitter](https://x.com/edgee_cloud)
-- [Discord](https://discord.gg/H2Tch53e)
+- [Slack](https://join.slack.com/t/edgee-users/shared_invite/zt-2m08t4db9-TWhsE_nIvUYDrTQ9kbdo8w)
 
 ## Contributing
 If you're interested in contributing to Edgee, read our [contribution guidelines](./CONTRIBUTING.md)
