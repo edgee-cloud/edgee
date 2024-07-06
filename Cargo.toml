@@ -21,6 +21,7 @@ hyper-rustls = { version = "0.27.2", features = ["http2", "ring"] }
 hyper-util = { version = "0.1.5", features = ["full"] }
 libflate = "2.1.0"
 log = "0.4"
+rand = "0.8.5"
 regex = "1.10.4"
 rustls = { version = "0.23.5", features = ["ring"] }
 rustls-pemfile = "2.1.2"
