@@ -51,6 +51,8 @@ pub struct RoutingRulesConfiguration {
     pub path_regexp: Option<String>,
     pub rewrite: Option<String>,
     pub backend: Option<String>,
+    pub max_compressed_body_size: Option<u64>,
+    pub max_decompressed_body_size: Option<u64>,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]

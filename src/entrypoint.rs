@@ -8,9 +8,9 @@ use std::{
 use anyhow::bail;
 use bytes::Bytes;
 use http::{
-    header::{CONTENT_ENCODING, HOST},
+    header::{CACHE_CONTROL, CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE, HOST},
     uri::PathAndQuery,
-    HeaderValue, StatusCode, Uri,
+    HeaderName, HeaderValue, Method, StatusCode, Uri,
 };
 use http_body_util::{combinators::BoxBody, BodyExt, Empty, Full};
 use hyper::body::Incoming;
@@ -23,8 +23,13 @@ use libflate::{deflate, gzip};
 use regex::Regex;
 use tracing::{debug, error};
 
-use crate::html;
 use crate::{config, path};
+use crate::{config::RoutingRulesConfiguration, html};
+
+mod web;
+mod websecure;
+
+type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
 pub async fn start() -> anyhow::Result<()> {
     tokio::select! {
@@ -35,213 +40,6 @@ pub async fn start() -> anyhow::Result<()> {
         Err(err) = websecure::start() => {
             error!(?err, "Failed to start HTTPS entrypoint");
             Err(err)
-        }
-    }
-}
-
-type Response = http::Response<BoxBody<Bytes, Infallible>>;
-
-mod web {
-    use std::convert::Infallible;
-    use std::future::Future;
-    use std::net::SocketAddr;
-    use std::pin::Pin;
-
-    use bytes::Bytes;
-    use http::header::HOST;
-    use http::StatusCode;
-    use http::Uri;
-    use http_body_util::combinators::BoxBody;
-    use hyper::body::Incoming;
-    use hyper_util::rt::TokioExecutor;
-    use hyper_util::rt::TokioIo;
-    use hyper_util::server::conn::auto::Builder;
-    use tokio::net::TcpListener;
-    use tracing::debug;
-    use tracing::error;
-    use tracing::info;
-
-    use crate::config;
-
-    use super::empty;
-    use super::handle_request;
-    use super::Response;
-
-    pub async fn start() -> anyhow::Result<()> {
-        let cfg = &config::get().http;
-
-        info!(
-            address = cfg.address,
-            force_https = cfg.force_https,
-            "started"
-        );
-
-        let addr: SocketAddr = cfg.address.parse()?;
-        let listener = TcpListener::bind(addr).await?;
-        loop {
-            let (stream, remote_addr) = listener.accept().await?;
-            let cfg = cfg.clone();
-            let io = TokioIo::new(stream);
-            let service = RequestManager::new(cfg.clone(), remote_addr);
-            tokio::spawn(async move {
-                if let Err(err) = Builder::new(TokioExecutor::new())
-                    .serve_connection_with_upgrades(io, service)
-                    .await
-                {
-                    error!(?err, ?remote_addr, "failed to serve connections");
-                }
-            });
-        }
-    }
-
-    async fn force_https(req: http::Request<Incoming>) -> anyhow::Result<Response> {
-        // FIXME: Append https port to hostname (if not the default 443)
-        let host = match (req.headers().get(HOST), req.uri().host()) {
-            (None, Some(value)) => Some(String::from(value)),
-            (Some(value), _) => Some(value.to_str().unwrap().to_string()),
-            (None, None) => None,
-        }
-        .and_then(|host| host.split(':').next().map(|s| s.to_string()))
-        .expect("host should be available");
-
-        let mut uri_parts = req.uri().clone().into_parts();
-        uri_parts.scheme = Some("https".parse().expect("should be valid scheme"));
-        uri_parts.authority = Some(host.parse().expect("should be valid host"));
-        debug!(?uri_parts, "Forcing HTTPS redirection");
-        let uri = Uri::from_parts(uri_parts)
-            .expect("should be valid uri")
-            .to_string();
-
-        Ok(http::Response::builder()
-            .status(StatusCode::MOVED_PERMANENTLY)
-            .header("localtion", uri)
-            .body(empty())
-            .expect("body should never fail"))
-    }
-
-    type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send + 'static>>;
-
-    struct RequestManager {
-        config: config::HttpConfiguration,
-        remote_addr: SocketAddr,
-    }
-
-    impl RequestManager {
-        fn new(cfg: config::HttpConfiguration, addr: SocketAddr) -> Self {
-            Self {
-                config: cfg,
-                remote_addr: addr,
-            }
-        }
-    }
-
-    impl hyper::service::Service<http::Request<Incoming>> for RequestManager {
-        type Response = http::Response<BoxBody<Bytes, Infallible>>;
-        type Error = anyhow::Error;
-        type Future = BoxFuture<anyhow::Result<Self::Response>>;
-
-        fn call(&self, req: http::Request<Incoming>) -> Self::Future {
-            if self.config.force_https {
-                Box::pin(force_https(req))
-            } else {
-                Box::pin(handle_request(req, self.remote_addr, "http"))
-            }
-        }
-    }
-}
-
-mod websecure {
-    use std::{convert::Infallible, fs, future::Future, io, net::SocketAddr, pin::Pin, sync::Arc};
-
-    use bytes::Bytes;
-    use http_body_util::combinators::BoxBody;
-    use hyper::body::Incoming;
-    use hyper_util::{
-        rt::{TokioExecutor, TokioIo},
-        server::conn::auto::Builder,
-    };
-    use rustls::ServerConfig;
-    use rustls_pki_types::{CertificateDer, PrivateKeyDer};
-    use tokio::net::TcpListener;
-    use tokio_rustls::TlsAcceptor;
-    use tracing::{error, info};
-
-    use crate::config;
-
-    use super::handle_request;
-
-    pub async fn start() -> anyhow::Result<()> {
-        let cfg = &config::get().https;
-
-        info!(address = cfg.address, "Starting HTTPS entrypoint");
-        let addr: SocketAddr = cfg.address.parse()?;
-        let listener = TcpListener::bind(addr).await?;
-
-        fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer<'static>>> {
-            let certfile = fs::File::open(filename).unwrap();
-            let mut reader = io::BufReader::new(certfile);
-            rustls_pemfile::certs(&mut reader).collect()
-        }
-
-        fn load_key(filename: &str) -> io::Result<PrivateKeyDer<'static>> {
-            let keyfile = fs::File::open(filename).unwrap();
-            let mut reader = io::BufReader::new(keyfile);
-            rustls_pemfile::private_key(&mut reader).map(|key| key.unwrap())
-        }
-
-        let _ = rustls::crypto::ring::default_provider().install_default();
-        let certs = load_certs(&cfg.cert).unwrap();
-        let key = load_key(&cfg.key).unwrap();
-        let mut server_config = ServerConfig::builder()
-            .with_no_client_auth()
-            .with_single_cert(certs, key)
-            .unwrap();
-        server_config.alpn_protocols =
-            vec![b"h2".to_vec(), b"http/1.1".to_vec(), b"http/1.0".to_vec()];
-        let tls_acceptor = TlsAcceptor::from(Arc::new(server_config));
-
-        loop {
-            let (stream, remote_addr) = listener.accept().await?;
-            let tls_acceptor = tls_acceptor.clone();
-            tokio::spawn(async move {
-                let tls_stream = match tls_acceptor.accept(stream).await {
-                    Ok(tls_stream) => tls_stream,
-                    Err(err) => {
-                        error!(?err, "failed to perform tls handshake");
-                        return;
-                    }
-                };
-                let io = TokioIo::new(tls_stream);
-                let service = RequestManager::new(remote_addr);
-                if let Err(err) = Builder::new(TokioExecutor::new())
-                    .serve_connection_with_upgrades(io, service)
-                    .await
-                {
-                    error!(?err, "failed to serve connections");
-                }
-            });
-        }
-    }
-
-    type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send + 'static>>;
-
-    struct RequestManager {
-        remote_addr: SocketAddr,
-    }
-
-    impl RequestManager {
-        fn new(addr: SocketAddr) -> Self {
-            Self { remote_addr: addr }
-        }
-    }
-
-    impl hyper::service::Service<http::Request<Incoming>> for RequestManager {
-        type Response = http::Response<BoxBody<Bytes, Infallible>>;
-        type Error = anyhow::Error;
-        type Future = BoxFuture<anyhow::Result<Self::Response>>;
-
-        fn call(&self, req: http::Request<Incoming>) -> Self::Future {
-            Box::pin(handle_request(req, self.remote_addr, "https"))
         }
     }
 }
@@ -262,55 +60,45 @@ async fn handle_request(
     let cfg = &config::get().routing;
     let routing = cfg.iter().find(|r| r.domain == host);
 
-    if routing.is_none() {
-        return Ok(error_bad_gateway());
+    let routing = match routing {
+        None => return Ok(error_bad_gateway()),
+        Some(r) => r,
     };
 
-    const FORWARDED_FOR: &str = "x-forwarded-for";
-    let client_ip = remote_addr.ip().to_string();
-    if let Some(forwarded_for) = req.headers_mut().get_mut(FORWARDED_FOR) {
-        let existing_value = forwarded_for.to_str().unwrap();
-        let new_value = format!("{}, {}", existing_value, client_ip);
-        *forwarded_for = HeaderValue::from_str(&new_value).expect("header value should be valid");
-    } else {
-        req.headers_mut().insert(
-            FORWARDED_FOR,
-            HeaderValue::from_str(&client_ip).expect("header value should be valid"),
-        );
-    }
-
-    const FORWARDED_PROTO: &str = "x-forwarded-proto";
-    if req.headers().get(FORWARDED_PROTO).is_none() {
-        req.headers_mut().insert(
-            FORWARDED_PROTO,
-            HeaderValue::from_str(proto).expect("header value should be valid"),
-        );
-    }
-
-    const FORWARDED_HOST: &str = "x-forwarded-host";
-    if req.headers().get(FORWARDED_HOST).is_none() {
-        req.headers_mut().insert(
-            FORWARDED_HOST,
-            HeaderValue::from_str(&host).expect("header value should be valid"),
-        );
-    }
-
-    let routing = routing.expect("router should have some value");
-
-    let default_backend = match routing.backends.iter().find(|b| b.default) {
-        Some(a) => a,
-        None => {
-            return Ok(error_bad_gateway());
-        }
+    let has_debug_header = match req.headers().get("edgee-debug") {
+        Some(_) => true,
+        None => false,
     };
 
+    let method = req.method().clone();
+    let headers = req.headers().clone();
+    let default_content_type = &HeaderValue::from_str("").unwrap();
+    let content_type = headers.get(CONTENT_TYPE).unwrap_or(default_content_type);
     let uri = req.uri_mut();
     let root_path = PathAndQuery::from_str("/").expect("'/' should be a valid path");
     let requested_path = uri.path_and_query().unwrap_or(&root_path);
 
+    if method == Method::GET
+        && (requested_path == "/_edgee/sdk.js" || requested_path == "/_edgee/libs/edgee.v.1.0.0.js")
+    {
+        return serve_sdk(requested_path.as_str());
+    }
+
+    // TODO: Process events
+    if method == Method::POST && content_type == "application/json" {
+        return Ok(error_bad_gateway());
+    }
+
+    let default_backend = match routing.backends.iter().find(|b| b.default) {
+        Some(a) => a,
+        None => return Ok(error_bad_gateway()),
+    };
+
     let mut upstream_backend: Option<&config::BackendConfiguration> = None;
     let mut upstream_path: Option<PathAndQuery> = None;
+    let mut current_rule: Option<RoutingRulesConfiguration> = None;
     for rule in routing.rules.clone() {
+        current_rule = Some(rule.clone());
         match (rule.path, rule.path_prefix, rule.path_regexp) {
             (Some(path), _, _) => {
                 if *requested_path == *path {
@@ -358,6 +146,7 @@ async fn handle_request(
                         }
                         None => PathAndQuery::from_str(&path).ok(),
                     };
+                    break;
                 }
             }
             _ => bail!("Invalid routing"),
@@ -366,7 +155,36 @@ async fn handle_request(
 
     let backend = upstream_backend.unwrap_or(default_backend);
     let path = upstream_path.unwrap_or(requested_path.clone());
+    let current_rule = current_rule.unwrap();
 
+    const FORWARDED_FOR: &str = "x-forwarded-for";
+    let client_ip = remote_addr.ip().to_string();
+    if let Some(forwarded_for) = req.headers_mut().get_mut(FORWARDED_FOR) {
+        let existing_value = forwarded_for.to_str().unwrap();
+        let new_value = format!("{}, {}", existing_value, client_ip);
+        *forwarded_for = HeaderValue::from_str(&new_value).expect("header value should be valid");
+    } else {
+        req.headers_mut().insert(
+            FORWARDED_FOR,
+            HeaderValue::from_str(&client_ip).expect("header value should be valid"),
+        );
+    }
+
+    const FORWARDED_PROTO: &str = "x-forwarded-proto";
+    if req.headers().get(FORWARDED_PROTO).is_none() {
+        req.headers_mut().insert(
+            FORWARDED_PROTO,
+            HeaderValue::from_str(proto).expect("header value should be valid"),
+        );
+    }
+
+    const FORWARDED_HOST: &str = "x-forwarded-host";
+    if req.headers().get(FORWARDED_HOST).is_none() {
+        req.headers_mut().insert(
+            FORWARDED_HOST,
+            HeaderValue::from_str(&host).expect("header value should be valid"),
+        );
+    }
     let res = if backend.enable_ssl {
         forward_https_request(req, backend, path).await
     } else {
@@ -379,9 +197,91 @@ async fn handle_request(
             Ok(error_bad_gateway())
         }
         Ok(upstream) => {
-            let headers = upstream.headers().clone();
+            const EDGEE_PROCESS_HEADER: &str = "x-edgee-process";
+
+            let (mut parts, incoming) = upstream.into_parts();
+            let body = incoming.collect().await?.to_bytes();
+            let headers = parts.headers.clone();
             let encoding = headers.get(CONTENT_ENCODING).and_then(|h| h.to_str().ok());
-            let body = upstream.collect().await?.to_bytes();
+            let content_type = headers.get(CONTENT_TYPE).and_then(|h| h.to_str().ok());
+            let content_length = headers.get(CONTENT_LENGTH).and_then(|h| h.to_str().ok());
+
+            if body.is_empty() {
+                if has_debug_header {
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                        HeaderValue::from_str("proxy-only(no-body)").unwrap(),
+                    );
+                }
+                return Ok(build_response(parts, body));
+            }
+
+            if method == Method::HEAD
+                || method == Method::OPTIONS
+                || method == Method::TRACE
+                || method == Method::CONNECT
+            {
+                if has_debug_header {
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                        HeaderValue::from_str("proxy-only(method)").unwrap(),
+                    );
+                }
+                return Ok(build_response(parts, body));
+            }
+
+            if parts.status.is_redirection() {
+                if has_debug_header {
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                        HeaderValue::from_str("proxy-only(3xx").unwrap(),
+                    );
+                }
+                return Ok(build_response(parts, body));
+            }
+
+            if parts.status.is_informational() {
+                if has_debug_header {
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                        HeaderValue::from_str("proxy-only(1xx)").unwrap(),
+                    );
+                }
+                return Ok(build_response(parts, body));
+            }
+
+            if content_type.is_none() {
+                if has_debug_header {
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                        HeaderValue::from_str("proxy-only(no-content-type)").unwrap(),
+                    );
+                }
+                return Ok(build_response(parts, body));
+            }
+
+            if !content_type.unwrap().starts_with("text/html") {
+                if has_debug_header {
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                        HeaderValue::from_str("proxy-only(non-html)").unwrap(),
+                    );
+                }
+                return Ok(build_response(parts, body));
+            }
+
+            if content_length.is_some() && current_rule.max_compressed_body_size.is_some() {
+                let content_length = content_length.and_then(|s| s.parse::<u64>().ok()).unwrap();
+                let size_limit = current_rule.max_compressed_body_size.unwrap();
+                if has_debug_header && content_length > size_limit {
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                        HeaderValue::from_str("proxy-only(compressed-body-too-large)").unwrap(),
+                    );
+                }
+                return Ok(build_response(parts, body));
+            }
+
             let cursor = std::io::Cursor::new(body.clone());
             let decompressed_body = match encoding {
                 Some("gzip") => {
@@ -440,15 +340,15 @@ async fn handle_request(
                     let mut encoder = gzip::Encoder::new(Vec::new())?;
                     encoder.write_all(new_body.as_bytes())?;
                     let data = encoder.finish().into_result()?;
-                    Ok(Response::new(full(data)))
+                    Ok(build_response(parts, Bytes::from(data)))
                 }
                 Some("deflate") => {
                     let mut encoder = deflate::Encoder::new(Vec::new());
                     encoder.write_all(new_body.as_bytes())?;
                     let data = encoder.finish().into_result()?;
-                    Ok(Response::new(full(data)))
+                    Ok(build_response(parts, Bytes::from(data)))
                 }
-                Some(_) | None => Ok(Response::new(full(new_body))),
+                Some(_) | None => Ok(build_response(parts, Bytes::from(new_body))),
             }
         }
     }
@@ -546,4 +446,32 @@ fn full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, Infallible> {
     Full::new(chunk.into())
         .map_err(|never| match never {})
         .boxed()
+}
+
+fn serve_sdk(path: &str) -> anyhow::Result<Response> {
+    static V0: &str = include_str!("../public/sdk.js");
+    static V1: &str = include_str!("../public/edgee.v1.0.0.js");
+    let body = if path == "/_edgee/sdk.js" { V0 } else { V1 };
+    let resp = http::Response::builder()
+        .status(StatusCode::OK)
+        .header(CONTENT_TYPE, "application/javascript")
+        .header(CACHE_CONTROL, "public, max-age=300")
+        .body(Full::from(Bytes::from(body)).boxed())
+        .expect("serving sdk should never fail");
+    Ok(resp)
+}
+
+fn build_response(parts: http::response::Parts, body: Bytes) -> Response {
+    let mut builder = http::Response::builder();
+    for (name, value) in parts.headers {
+        if name.is_some() {
+            builder = builder.header(name.unwrap(), value);
+        }
+    }
+    builder
+        .status(parts.status)
+        .version(parts.version)
+        .extension(parts.extensions)
+        .body(Full::from(body).boxed())
+        .unwrap()
 }
