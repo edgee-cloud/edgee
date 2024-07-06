@@ -5,10 +5,11 @@ static CONFIG: OnceCell<StaticConfiguration> = OnceCell::const_new();
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct StaticConfiguration {
-    pub log: LogConfiguration,
+    pub log: Option<LogConfiguration>,
     pub http: HttpConfiguration,
     pub https: HttpsConfiguration,
     pub monitor: Option<MonitorConfiguration>,
+    #[serde(default)]
     pub routing: Vec<RoutingConfiguration>,
 }
 
@@ -17,7 +18,7 @@ pub struct LogConfiguration {
     pub level: String,
 }
 
-#[derive(Deserialize, Debug, Clone, Default)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct HttpConfiguration {
     pub address: String,
     #[serde(default)]
@@ -69,9 +70,9 @@ pub struct BackendConfiguration {
 // TODO: Support dynamic configuration via Redis
 // TODO: Validate configuration (e.g. no two routers should point for the same domain)
 pub fn init() {
-    let config_file = std::fs::read_to_string("edgee.toml").expect("Should read edgee.toml");
+    let config_file = std::fs::read_to_string("edgee.toml").expect("should read edgee.toml");
     let config: StaticConfiguration =
-        toml::from_str(&config_file).expect("Should parse config file");
+        toml::from_str(&config_file).expect("should parse config file");
     CONFIG.set(config).expect("Should initialize config");
 }
 
