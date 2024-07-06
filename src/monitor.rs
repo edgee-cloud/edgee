@@ -9,7 +9,7 @@ use hyper_util::{
     server::conn::auto::Builder,
 };
 use tokio::net::TcpListener;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::config;
 
@@ -56,6 +56,7 @@ async fn handle_request(
                         .boxed(),
                 )
                 .expect("Should build body");
+            debug!("monitor responded ok");
             Ok(res)
         }
         _ => {
@@ -67,6 +68,7 @@ async fn handle_request(
                         .boxed(),
                 )
                 .expect("Should build body");
+            debug!("monitor responded not found");
             Ok(res)
         }
     }

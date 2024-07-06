@@ -6,7 +6,11 @@ use crate::config;
 const ACCEPTED_LEVELS: [&str; 6] = ["trace", "debug", "info", "warn", "error", "fatal"];
 
 pub fn init() {
-    let level = &config::get().log.level;
+    let warn_level = "warn".to_string();
+    let level = match &config::get().log {
+        Some(log) => &log.level,
+        None => &warn_level,
+    };
 
     if !ACCEPTED_LEVELS.contains(&level.as_str()) {
         panic!("Unsupported log level: {level}");

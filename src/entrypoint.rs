@@ -206,16 +206,6 @@ async fn handle_request(
             let content_type = headers.get(CONTENT_TYPE).and_then(|h| h.to_str().ok());
             let content_length = headers.get(CONTENT_LENGTH).and_then(|h| h.to_str().ok());
 
-            if body.is_empty() {
-                if has_debug_header {
-                    parts.headers.insert(
-                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
-                        HeaderValue::from_str("proxy-only(no-body)").unwrap(),
-                    );
-                }
-                return Ok(build_response(parts, body));
-            }
-
             if method == Method::HEAD
                 || method == Method::OPTIONS
                 || method == Method::TRACE
@@ -225,6 +215,16 @@ async fn handle_request(
                     parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(method)").unwrap(),
+                    );
+                }
+                return Ok(build_response(parts, body));
+            }
+
+            if body.is_empty() {
+                if has_debug_header {
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                        HeaderValue::from_str("proxy-only(no-body)").unwrap(),
                     );
                 }
                 return Ok(build_response(parts, body));
@@ -442,11 +442,11 @@ fn empty() -> BoxBody<Bytes, Infallible> {
     Empty::<Bytes>::new().boxed()
 }
 
-fn full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, Infallible> {
-    Full::new(chunk.into())
-        .map_err(|never| match never {})
-        .boxed()
-}
+// fn full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, Infallible> {
+//     Full::new(chunk.into())
+//         .map_err(|never| match never {})
+//         .boxed()
+// }
 
 fn serve_sdk(path: &str) -> anyhow::Result<Response> {
     static V0: &str = include_str!("../public/sdk.js");
