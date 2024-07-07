@@ -49,6 +49,8 @@ async fn handle_request(
     remote_addr: SocketAddr,
     proto: &str,
 ) -> anyhow::Result<Response> {
+    let timer_start = std::time::Instant::now();
+
     let host = match (req.headers().get(HOST), req.uri().host()) {
         (None, Some(value)) => Some(String::from(value)),
         (Some(value), _) => Some(value.to_str().unwrap().to_string()),
@@ -198,6 +200,9 @@ async fn handle_request(
         }
         Ok(upstream) => {
             const EDGEE_PROCESS_HEADER: &str = "x-edgee-process";
+            const EDGEE_FULL_DURATION_HEADER: &str = "x-edgee-full-duration";
+            const EDGEE_COMPUTE_DURATION_HEADER: &str = "x-edgee-compute-duration";
+            const EDGEE_PROXY_DURATION_HEADER: &str = "x-edgee-proxy-duration";
 
             let (mut parts, incoming) = upstream.into_parts();
             let body = incoming.collect().await?.to_bytes();
@@ -216,6 +221,12 @@ async fn handle_request(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(method)").unwrap(),
                     );
+
+                    let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
+                        HeaderValue::from_str(&elapsed_time).unwrap(),
+                    );
                 }
                 return Ok(build_response(parts, body));
             }
@@ -225,6 +236,12 @@ async fn handle_request(
                     parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(no-body)").unwrap(),
+                    );
+
+                    let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
+                        HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
                 return Ok(build_response(parts, body));
@@ -236,6 +253,12 @@ async fn handle_request(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(3xx").unwrap(),
                     );
+
+                    let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
+                        HeaderValue::from_str(&elapsed_time).unwrap(),
+                    );
                 }
                 return Ok(build_response(parts, body));
             }
@@ -245,6 +268,12 @@ async fn handle_request(
                     parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(1xx)").unwrap(),
+                    );
+
+                    let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
+                        HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
                 return Ok(build_response(parts, body));
@@ -256,6 +285,12 @@ async fn handle_request(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(no-content-type)").unwrap(),
                     );
+
+                    let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
+                        HeaderValue::from_str(&elapsed_time).unwrap(),
+                    );
                 }
                 return Ok(build_response(parts, body));
             }
@@ -265,6 +300,12 @@ async fn handle_request(
                     parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(non-html)").unwrap(),
+                    );
+
+                    let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
+                        HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
                 return Ok(build_response(parts, body));
@@ -278,9 +319,17 @@ async fn handle_request(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(compressed-body-too-large)").unwrap(),
                     );
+
+                    let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
+                    parts.headers.insert(
+                        HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
+                        HeaderValue::from_str(&elapsed_time).unwrap(),
+                    );
                 }
                 return Ok(build_response(parts, body));
             }
+
+            let timer_proxy = timer_start.elapsed().as_millis();
 
             let cursor = std::io::Cursor::new(body.clone());
             let decompressed_body = match encoding {
@@ -335,21 +384,45 @@ async fn handle_request(
                 }
             };
 
-            match encoding {
+            let data = match encoding {
                 Some("gzip") => {
                     let mut encoder = gzip::Encoder::new(Vec::new())?;
                     encoder.write_all(new_body.as_bytes())?;
-                    let data = encoder.finish().into_result()?;
-                    Ok(build_response(parts, Bytes::from(data)))
+                    encoder.finish().into_result()?
                 }
                 Some("deflate") => {
                     let mut encoder = deflate::Encoder::new(Vec::new());
                     encoder.write_all(new_body.as_bytes())?;
-                    let data = encoder.finish().into_result()?;
-                    Ok(build_response(parts, Bytes::from(data)))
+                    encoder.finish().into_result()?
                 }
-                Some(_) | None => Ok(build_response(parts, Bytes::from(new_body))),
+                Some(_) | None => new_body.into(),
+            };
+
+            let timer_end = timer_start.elapsed().as_millis();
+            let timer_compute = timer_end - timer_proxy;
+
+            if has_debug_header {
+                let full_duration = format!("{}ms", timer_end);
+                let proxy_duration = format!("{}ms", timer_proxy);
+
+                parts.headers.insert(
+                    HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
+                    HeaderValue::from_str(&full_duration).unwrap(),
+                );
+
+                parts.headers.insert(
+                    HeaderName::from_str(EDGEE_PROXY_DURATION_HEADER).unwrap(),
+                    HeaderValue::from_str(&proxy_duration).unwrap(),
+                );
             }
+
+            let compute_duration = format!("{}ms", timer_compute);
+            parts.headers.insert(
+                HeaderName::from_str(EDGEE_COMPUTE_DURATION_HEADER).unwrap(),
+                HeaderValue::from_str(&compute_duration).unwrap(),
+            );
+
+            Ok(build_response(parts, Bytes::from(data)))
         }
     }
 }
@@ -441,12 +514,6 @@ fn error_bad_gateway() -> Response {
 fn empty() -> BoxBody<Bytes, Infallible> {
     Empty::<Bytes>::new().boxed()
 }
-
-// fn full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, Infallible> {
-//     Full::new(chunk.into())
-//         .map_err(|never| match never {})
-//         .boxed()
-// }
 
 fn serve_sdk(path: &str) -> anyhow::Result<Response> {
     static V0: &str = include_str!("../public/sdk.js");
