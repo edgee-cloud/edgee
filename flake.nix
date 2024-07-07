@@ -30,7 +30,6 @@
         pname = "edgee";
         version = "0.1.1";
         buildInputs = with pkgs; [ 
-          darwin.apple_sdk.frameworks.Security
           rustToolchain 
         ];
         src = ./.;
@@ -41,6 +40,7 @@
     devShells = forAllSystems ({pkgs}: {
       default = pkgs.mkShell {
         packages = with pkgs; [
+          darwin.apple_sdk.frameworks.Security
           rustToolchain
           cargo-deny
           cargo-edit

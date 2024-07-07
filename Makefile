@@ -18,7 +18,7 @@ dev.up: ## Launch locally: fastly compute serve
 ci.check: ## Check the code
 	cargo check
 
-ci.build: ## Build wasm for fastly
+ci.build: ## Build release version
 	cargo build --release
 
 ci.test: ## Run tests
