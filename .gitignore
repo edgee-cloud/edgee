@@ -34,3 +34,4 @@ target/
 #Specific
 local
 edgee.toml
+result
