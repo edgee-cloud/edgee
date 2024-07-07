@@ -28,7 +28,7 @@
     packages = forAllSystems ({ pkgs }: {
       default = pkgs.rustPlatform.buildRustPackage {
         pname = "edgee";
-        version = "0.1.1";
+        version = "0.1.2";
         buildInputs = with pkgs; [ 
           rustToolchain 
         ];
