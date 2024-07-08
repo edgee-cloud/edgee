@@ -11,14 +11,23 @@ repository = "https://github.com/edgee-cloud/edgee"
 homepage = "https://www.edgee.cloud"
 
 [dependencies]
+addr = "0.15.6"
+aes = "0.8.4"
 anyhow = "1.0.83"
 bytes = "1.6.0"
+cbc = { version = "0.1.2", features = ["std"] }
+chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "^4", features = ["derive"] }
+cookie = "0.18.1"
+hex = "0.4.3"
+html-escape = "0.2.13"
 http = "1.1.0"
 http-body-util = "0.1"
 hyper = { version = "1", features = ["full"] }
 hyper-rustls = { version = "0.27.2", features = ["http2", "ring"] }
 hyper-util = { version = "0.1.5", features = ["full"] }
+ipnetwork = "0.20.0"
+json_comments = "0.2.2"
 libflate = "2.1.0"
 log = "0.4"
 rand = "0.8.5"
@@ -34,3 +43,5 @@ tokio-rustls = { version = "0.26.0", features = ["ring"] }
 toml = "0.8.12"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
+url = "2.5.2"
+uuid = { version = "1.9.1", features = ["v4", "serde"] }

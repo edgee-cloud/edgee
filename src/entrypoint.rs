@@ -8,7 +8,9 @@ use std::{
 use anyhow::bail;
 use bytes::Bytes;
 use http::{
-    header::{CACHE_CONTROL, CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE, HOST},
+    header::{
+        CACHE_CONTROL, CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE, COOKIE, HOST, SET_COOKIE,
+    },
     uri::PathAndQuery,
     HeaderName, HeaderValue, Method, StatusCode, Uri,
 };
@@ -21,9 +23,9 @@ use hyper_util::{
 };
 use libflate::{deflate, gzip};
 use regex::Regex;
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 
-use crate::{config, path};
+use crate::{analytics, config, cookie, path};
 use crate::{config::RoutingRulesConfiguration, html};
 
 mod web;
@@ -72,22 +74,24 @@ async fn handle_request(
         None => false,
     };
 
-    let method = req.method().clone();
-    let headers = req.headers().clone();
+    let request_method = req.method().clone();
+    let request_headers = req.headers().clone();
     let default_content_type = &HeaderValue::from_str("").unwrap();
-    let content_type = headers.get(CONTENT_TYPE).unwrap_or(default_content_type);
-    let uri = req.uri_mut();
+    let content_type = request_headers
+        .get(CONTENT_TYPE)
+        .unwrap_or(default_content_type);
+    let uri = req.uri().clone();
     let root_path = PathAndQuery::from_str("/").expect("'/' should be a valid path");
     let requested_path = uri.path_and_query().unwrap_or(&root_path);
 
-    if method == Method::GET
+    if request_method == Method::GET
         && (requested_path == "/_edgee/sdk.js" || requested_path == "/_edgee/libs/edgee.v.1.0.0.js")
     {
         return serve_sdk(requested_path.as_str());
     }
 
     // TODO: Process events
-    if method == Method::POST && content_type == "application/json" {
+    if request_method == Method::POST && content_type == "application/json" {
         return Ok(error_bad_gateway());
     }
 
@@ -204,134 +208,145 @@ async fn handle_request(
             const EDGEE_COMPUTE_DURATION_HEADER: &str = "x-edgee-compute-duration";
             const EDGEE_PROXY_DURATION_HEADER: &str = "x-edgee-proxy-duration";
 
-            let (mut parts, incoming) = upstream.into_parts();
-            let body = incoming.collect().await?.to_bytes();
-            let headers = parts.headers.clone();
-            let encoding = headers.get(CONTENT_ENCODING).and_then(|h| h.to_str().ok());
-            let content_type = headers.get(CONTENT_TYPE).and_then(|h| h.to_str().ok());
-            let content_length = headers.get(CONTENT_LENGTH).and_then(|h| h.to_str().ok());
+            let (mut response_parts, incoming) = upstream.into_parts();
+            let response_body = incoming.collect().await?.to_bytes();
+            let response_headers = response_parts.headers.clone();
+            let encoding = response_headers
+                .get(CONTENT_ENCODING)
+                .and_then(|h| h.to_str().ok());
+            let content_type = response_headers
+                .get(CONTENT_TYPE)
+                .and_then(|h| h.to_str().ok());
+            let content_length = response_headers
+                .get(CONTENT_LENGTH)
+                .and_then(|h| h.to_str().ok());
 
-            if method == Method::HEAD
-                || method == Method::OPTIONS
-                || method == Method::TRACE
-                || method == Method::CONNECT
+            if request_method == Method::HEAD
+                || request_method == Method::OPTIONS
+                || request_method == Method::TRACE
+                || request_method == Method::CONNECT
             {
                 if has_debug_header {
-                    parts.headers.insert(
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(method)").unwrap(),
                     );
 
                     let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
-                    parts.headers.insert(
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
                         HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
-                return Ok(build_response(parts, body));
+                return Ok(build_response(response_parts, response_body));
             }
 
-            if body.is_empty() {
+            if response_body.is_empty() {
                 if has_debug_header {
-                    parts.headers.insert(
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(no-body)").unwrap(),
                     );
 
                     let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
-                    parts.headers.insert(
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
                         HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
-                return Ok(build_response(parts, body));
+                return Ok(build_response(response_parts, response_body));
             }
 
-            if parts.status.is_redirection() {
+            if response_parts.status.is_redirection() {
                 if has_debug_header {
-                    parts.headers.insert(
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(3xx").unwrap(),
                     );
 
                     let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
-                    parts.headers.insert(
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
                         HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
-                return Ok(build_response(parts, body));
+                return Ok(build_response(response_parts, response_body));
             }
 
-            if parts.status.is_informational() {
+            if response_parts.status.is_informational() {
                 if has_debug_header {
-                    parts.headers.insert(
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(1xx)").unwrap(),
                     );
 
                     let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
-                    parts.headers.insert(
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
                         HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
-                return Ok(build_response(parts, body));
+                return Ok(build_response(response_parts, response_body));
             }
 
             if content_type.is_none() {
                 if has_debug_header {
-                    parts.headers.insert(
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(no-content-type)").unwrap(),
                     );
 
                     let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
-                    parts.headers.insert(
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
                         HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
-                return Ok(build_response(parts, body));
+                return Ok(build_response(response_parts, response_body));
             }
 
             if !content_type.unwrap().starts_with("text/html") {
                 if has_debug_header {
-                    parts.headers.insert(
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(non-html)").unwrap(),
                     );
 
                     let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
-                    parts.headers.insert(
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
                         HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
-                return Ok(build_response(parts, body));
+                return Ok(build_response(response_parts, response_body));
             }
 
             if content_length.is_some() && current_rule.max_compressed_body_size.is_some() {
                 let content_length = content_length.and_then(|s| s.parse::<u64>().ok()).unwrap();
                 let size_limit = current_rule.max_compressed_body_size.unwrap();
                 if has_debug_header && content_length > size_limit {
-                    parts.headers.insert(
+                    warn!(
+                        size = content_length,
+                        limit = size_limit,
+                        "compressed body too large"
+                    );
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(compressed-body-too-large)").unwrap(),
                     );
 
                     let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
-                    parts.headers.insert(
+                    response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
                         HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
-                return Ok(build_response(parts, body));
+                return Ok(build_response(response_parts, response_body));
             }
 
             let timer_proxy = timer_start.elapsed().as_millis();
 
-            let cursor = std::io::Cursor::new(body.clone());
+            let cursor = std::io::Cursor::new(response_body.clone());
             let decompressed_body = match encoding {
                 Some("gzip") => {
                     let mut decoder = gzip::Decoder::new(cursor)?;
@@ -345,43 +360,131 @@ async fn handle_request(
                     decoder.read_to_end(&mut buf)?;
                     String::from_utf8_lossy(&buf).to_string()
                 }
-                Some(_) | None => String::from_utf8_lossy(&body).to_string(),
+                Some(_) | None => String::from_utf8_lossy(&response_body).to_string(),
             };
 
-            let new_body = match parse_body(&decompressed_body) {
-                Embedding::Empty => decompressed_body,
-                Embedding::Doc(document) => {
-                    let hostname = backend
-                        .address
-                        .split(':')
-                        .next()
-                        .unwrap_or(&backend.address);
-                    let mut page_event_param = r#" data-page-event="true""#;
-                    let event_path = path::generate(hostname);
-                    let event_path_param = format!(r#" data-event-path="{}""#, event_path);
-
-                    if !document.trace_uuid.is_empty() {
-                        page_event_param = r#" data-page-event="false""#;
-                    }
-
-                    if !document.inlined_sdk.is_empty() {
-                        let new_tag = format!(
-                            r#"<script{}{}>{}</script>"#,
-                            page_event_param,
-                            event_path_param,
-                            document.inlined_sdk.as_str()
+            if current_rule.max_decompressed_body_size.is_some() {
+                let size_limit = current_rule.max_decompressed_body_size.unwrap() as usize;
+                if decompressed_body.len() > size_limit {
+                    warn!(
+                        size = decompressed_body.len(),
+                        limit = size_limit,
+                        "decompressed body too large"
+                    );
+                    if has_debug_header {
+                        response_parts.headers.insert(
+                            HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                            HeaderValue::from_str("compute-aborted(decompressed-body-too-large)")
+                                .unwrap(),
                         );
-                        decompressed_body.replace(document.sdk_full_tag.as_str(), new_tag.as_str())
-                    } else {
-                        let new_tag = format!(
-                            r#"<script{}{} async src="{}"></script>"#,
-                            page_event_param,
-                            event_path_param,
-                            document.sdk_src.as_str()
-                        );
-                        decompressed_body.replace(document.sdk_full_tag.as_str(), new_tag.as_str())
                     }
+                    return Ok(build_response(response_parts, response_body));
                 }
+            }
+
+            if !decompressed_body.contains(r#"id="__EDGEE_SDK__""#) {
+                if has_debug_header {
+                    response_parts.headers.insert(
+                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                        HeaderValue::from_str("compute-aborted(no-sdk)").unwrap(),
+                    );
+                }
+                return Ok(build_response(response_parts, response_body));
+            }
+
+            let purpose = response_headers
+                .get("purpose")
+                .and_then(|h| h.to_str().ok())
+                .unwrap_or("");
+            let sec_purpose = response_headers
+                .get("sec-purpose")
+                .and_then(|h| h.to_str().ok())
+                .unwrap_or("");
+            if purpose.contains("prefetch") || sec_purpose.contains("prefetch") {
+                if has_debug_header {
+                    response_parts.headers.insert(
+                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                        HeaderValue::from_str("compute-aborted(prefetch)").unwrap(),
+                    );
+                }
+                return Ok(build_response(response_parts, response_body));
+            }
+
+            let query = requested_path.query().unwrap_or("");
+            if query.contains("disableEdgeAnalytics") {
+                if has_debug_header {
+                    response_parts.headers.insert(
+                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                        HeaderValue::from_str("compute-aborted(disableEdgeAnalytics)").unwrap(),
+                    );
+                }
+                return Ok(build_response(response_parts, response_body));
+            }
+
+            let mut document = html::parse_html(&decompressed_body);
+
+            let cookies = response_headers
+                .get(COOKIE)
+                .and_then(|h| h.to_str().ok())
+                .unwrap_or("");
+            if cookies == "" {
+                if has_debug_header {
+                    response_parts.headers.insert(
+                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                        HeaderValue::from_str("compute-aborted(no-cookie)").unwrap(),
+                    );
+                }
+                return Ok(build_response(response_parts, response_body));
+            } else {
+                let (cookie_str, edgee_cookie) = cookie::get(&host, proto == "https", cookies);
+                response_parts
+                    .headers
+                    .insert(SET_COOKIE, HeaderValue::from_str(&cookie_str).unwrap());
+
+                let payload = analytics::process_document(
+                    &document,
+                    &edgee_cookie,
+                    proto,
+                    &host,
+                    requested_path,
+                    &response_headers,
+                    remote_addr,
+                );
+
+                document.trace_uuid = payload.uuid;
+
+                // TODO: Send payload
+            }
+
+            let hostname = backend
+                .address
+                .split(':')
+                .next()
+                .unwrap_or(&backend.address);
+            let mut page_event_param = r#" data-page-event="true""#;
+            let event_path = path::generate(hostname);
+            let event_path_param = format!(r#" data-event-path="{}""#, event_path);
+
+            if !document.trace_uuid.is_empty() {
+                page_event_param = r#" data-page-event="false""#;
+            }
+
+            let new_body = if !document.inlined_sdk.is_empty() {
+                let new_tag = format!(
+                    r#"<script{}{}>{}</script>"#,
+                    page_event_param,
+                    event_path_param,
+                    document.inlined_sdk.as_str()
+                );
+                decompressed_body.replace(document.sdk_full_tag.as_str(), new_tag.as_str())
+            } else {
+                let new_tag = format!(
+                    r#"<script{}{} async src="{}"></script>"#,
+                    page_event_param,
+                    event_path_param,
+                    document.sdk_src.as_str()
+                );
+                decompressed_body.replace(document.sdk_full_tag.as_str(), new_tag.as_str())
             };
 
             let data = match encoding {
@@ -405,39 +508,26 @@ async fn handle_request(
                 let full_duration = format!("{}ms", timer_end);
                 let proxy_duration = format!("{}ms", timer_proxy);
 
-                parts.headers.insert(
+                response_parts.headers.insert(
                     HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
                     HeaderValue::from_str(&full_duration).unwrap(),
                 );
 
-                parts.headers.insert(
+                response_parts.headers.insert(
                     HeaderName::from_str(EDGEE_PROXY_DURATION_HEADER).unwrap(),
                     HeaderValue::from_str(&proxy_duration).unwrap(),
                 );
             }
 
             let compute_duration = format!("{}ms", timer_compute);
-            parts.headers.insert(
+            response_parts.headers.insert(
                 HeaderName::from_str(EDGEE_COMPUTE_DURATION_HEADER).unwrap(),
                 HeaderValue::from_str(&compute_duration).unwrap(),
             );
 
-            Ok(build_response(parts, Bytes::from(data)))
+            Ok(build_response(response_parts, Bytes::from(data)))
         }
     }
-}
-
-enum Embedding {
-    Empty,
-    Doc(html::Document),
-}
-
-fn parse_body(body: &str) -> Embedding {
-    if !body.contains(r#"id="__EDGEE_SDK__""#) {
-        return Embedding::Empty;
-    }
-
-    Embedding::Doc(html::parse_html(body))
 }
 
 async fn forward_http_request(

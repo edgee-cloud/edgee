@@ -11,6 +11,8 @@ pub struct StaticConfiguration {
     pub monitor: Option<MonitorConfiguration>,
     #[serde(default)]
     pub routing: Vec<RoutingConfiguration>,
+    #[serde(skip)]
+    pub security: SecurityConfiguration,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -65,14 +67,43 @@ pub struct BackendConfiguration {
     pub enable_ssl: bool,
 }
 
+#[derive(Debug, Clone)]
+pub struct SecurityConfiguration {
+    pub cookie_name: String,
+    pub aes_key: String,
+    pub aes_iv: String,
+}
+
+impl Default for SecurityConfiguration {
+    fn default() -> Self {
+        Self {
+            cookie_name: String::from("edgee"),
+            aes_key: String::from("_key.edgee.cloud"),
+            aes_iv: String::from("__iv.edgee.cloud"),
+        }
+    }
+}
+
 // TODO: Read config from CLI arguments
 // TODO: Support YAML
 // TODO: Support dynamic configuration via Redis
 // TODO: Validate configuration (e.g. no two routers should point for the same domain)
+// TODO: Improve error messages for configuration errors
 pub fn init() {
     let config_file = std::fs::read_to_string("edgee.toml").expect("should read edgee.toml");
-    let config: StaticConfiguration =
+    let mut config: StaticConfiguration =
         toml::from_str(&config_file).expect("should parse config file");
+
+    config.security = SecurityConfiguration::default();
+
+    if let Some(key) = std::env::var("EDGEE_SECURITY_AES_KEY").ok() {
+        config.security.aes_key = key;
+    }
+
+    if let Some(iv) = std::env::var("EDGEE_SECURITY_AES_IV").ok() {
+        config.security.aes_iv = iv;
+    }
+
     CONFIG.set(config).expect("Should initialize config");
 }
 

@@ -221,21 +221,6 @@ fn decrypt_string(input: &str, correspondence_index: usize) -> String {
     result
 }
 
-/// This function calculates the possible sizes of the path based on the hostname.
-///
-/// # Arguments
-///
-/// * `hostname` - A string slice that holds the hostname.
-///
-/// # Returns
-///
-/// * A Vector of i32 that represents the possible sizes of the path.
-///
-/// # Process
-///
-/// The function first retrieves the sizes from the SIZES constant and the length of the hostname.
-/// It then calculates the possible sizes of the path by adding the length of the hostname and the length of the first slash to each size in the SIZES constant.
-/// The calculated sizes are stored in a new vector.
 fn guess_path_sizes(hostname: &str) -> Vec<i32> {
     let sizes = SIZES;
     let hostname_len = hostname.len() as i32;
@@ -248,23 +233,6 @@ fn guess_path_sizes(hostname: &str) -> Vec<i32> {
     merged
 }
 
-/// This function generates a random string of a given length.
-///
-/// # Arguments
-///
-/// * `len` - An usize that represents the length of the string to be generated.
-///
-/// # Returns
-///
-/// * A String that represents the generated random string.
-///
-/// # Process
-///
-/// The function first defines a character set that excludes the characters 'E', 'd', 'g', and 'e'.
-/// It then creates a random number generator.
-/// The function generates the random string by choosing a character from the character set for each position in the string.
-/// The chosen character is then converted to a char and added to the string.
-/// The process is repeated until the string reaches the desired length.
 fn generate_random_string(len: usize) -> String {
     // string in which it is impossible to find Edgee
     let charset: &[u8] = b"abcfhijklmnopqrstuvwxyzABCDFGHIJKLMNOPQRSTUVWXYZ0123456789-_.";
@@ -276,29 +244,6 @@ fn generate_random_string(len: usize) -> String {
     random_string
 }
 
-/// This function generates a path for a given hostname.
-///
-/// # Arguments
-///
-/// * `hostname` - A string slice that holds the hostname.
-///
-/// # Returns
-///
-/// * A String that represents the generated path.
-///
-/// # Process
-///
-/// The function first creates a random number generator and generates a random string of a size chosen from the SIZES constant.
-/// It then encrypts the hostname.
-///
-/// The function then generates the path by merging the random string and the encrypted hostname.
-/// If the total length of the random string and the encrypted hostname is greater than or equal to twice the length of the encrypted hostname,
-/// each character of the encrypted hostname is inserted after each character of the random string.
-/// If the total length is less than twice the length of the encrypted hostname,
-/// the first (total length - length of the encrypted hostname) characters of the encrypted hostname are inserted after each character of the random string,
-/// and the remaining characters of the encrypted hostname are appended to the end of the random string.
-///
-/// The function returns the generated path, which starts with a slash.
 pub fn generate(hostname: &str) -> String {
     // Create a random number generator
     let mut rng = thread_rng();
