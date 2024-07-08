@@ -466,6 +466,10 @@ async fn handle_request(
             let event_path_param = format!(r#" data-event-path="{}""#, event_path);
 
             if !document.trace_uuid.is_empty() {
+                response_parts.headers.insert(
+                    HeaderName::from_str("x-edgee-analytics-trace").unwrap(),
+                    HeaderValue::from_str(&document.trace_uuid).unwrap(),
+                );
                 page_event_param = r#" data-page-event="false""#;
             }
 
