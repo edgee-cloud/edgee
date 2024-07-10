@@ -16,8 +16,8 @@
 [![Edgee](https://img.shields.io/badge/edgee-open%20source-blueviolet.svg)](https://www.edgee.cloud)
 [![Crates.io](https://img.shields.io/crates/v/edgee.svg?logo=rust)](https://crates.io/crates/edgee)
 [![FlakeHub](https://img.shields.io/endpoint?url=https://flakehub.com/f/edgee-cloud/edgee/badge)](https://flakehub.com/flake/edgee-cloud/edgee)
-[![Docker](https://img.shields.io/docker/v/edgeecloud/edgee.svg?logo=docker&label=docker&color=0db7ed)](https://hub.docker.com/edgeecloud/edgee)
-[![Edgee](https://img.shields.io/badge/slack-edgee-blueviolet.svg?logo=slack)](https://join.slack.com/t/edgee-users/shared_invite/zt-2m08t4db9-TWhsE_nIvUYDrTQ9kbdo8w)
+[![Docker](https://img.shields.io/docker/v/edgeecloud/edgee.svg?logo=docker&label=docker&color=0db7ed)](https://hub.docker.com/r/edgeecloud/edgee)
+[![Edgee](https://img.shields.io/badge/slack-edgee-blueviolet.svg?logo=slack)](https://www.edgee.cloud/slack)
 [![Docs](https://img.shields.io/badge/docs-published-blue)](https://docs.edgee.cloud)
 
 </div>
