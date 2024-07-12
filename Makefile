@@ -12,7 +12,7 @@ help:
 dev.setup: ## Setup dev environment
 	cargo build
 
-dev.up: ## Launch locally: fastly compute serve
+dev.up: ## Launch locally
 	cargo run
 
 ci.check: ## Check the code

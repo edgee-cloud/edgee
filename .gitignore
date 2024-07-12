@@ -35,3 +35,4 @@ target/
 local
 edgee.toml
 result
+certs
