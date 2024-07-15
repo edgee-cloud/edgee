@@ -216,9 +216,12 @@ async fn handle_request(
                     .map(String::from)
                     .unwrap_or_default();
 
-                if let Err(err) = destinations::send_data_collection(payload).await {
-                    warn!(?err, "failed to process data collection");
-                }
+                tokio::task::spawn_blocking(move || {
+                    if let Err(err) = destinations::send_data_collection(payload) {
+                        warn!(?err, "failed to process data collection");
+                    }
+                })
+                .await?;
 
                 Ok(res)
             }
@@ -511,10 +514,13 @@ async fn handle_request(
                 );
 
                 let uuid = payload.uuid.clone();
-                match destinations::send_data_collection(payload).await {
-                    Ok(_) => document.trace_uuid = uuid,
-                    Err(e) => return Err(e),
-                }
+                tokio::task::spawn_blocking(move || {
+                    if let Err(err) = destinations::send_data_collection(payload) {
+                        warn!(?err, "failed to send data collection payload");
+                    }
+                })
+                .await?;
+                document.trace_uuid = uuid;
             }
 
             let hostname = routing_ctx
