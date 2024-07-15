@@ -1,33 +1,37 @@
 use std::{
+    collections::HashMap,
     convert::Infallible,
     io::{Read, Write},
     net::SocketAddr,
     str::FromStr,
 };
 
-use anyhow::bail;
-use bytes::Bytes;
+use bytes::{Buf, Bytes};
 use http::{
     header::{
-        CACHE_CONTROL, CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE, COOKIE, HOST, SET_COOKIE,
+        ACCEPT_LANGUAGE, CACHE_CONTROL, CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE, COOKIE,
+        REFERER, SET_COOKIE, USER_AGENT,
     },
-    uri::PathAndQuery,
-    HeaderName, HeaderValue, Method, StatusCode, Uri,
+    HeaderMap, HeaderName, HeaderValue, Method, StatusCode,
 };
 use http_body_util::{combinators::BoxBody, BodyExt, Empty, Full};
 use hyper::body::Incoming;
-use hyper_rustls::ConfigBuilderExt;
-use hyper_util::{
-    client::legacy::{connect::HttpConnector, Client},
-    rt::TokioExecutor,
-};
+use incoming_context::IncomingContext;
 use libflate::{deflate, gzip};
-use regex::Regex;
+use proxy_context::ProxyContext;
+use routing_context::RoutingContext;
 use tracing::{debug, error, warn};
 
-use crate::{analytics, config, cookie, path};
-use crate::{config::RoutingRulesConfiguration, html};
+use crate::{
+    cookie,
+    data_collection::{self, Identify, Session},
+    destinations, path, real_ip,
+};
+use crate::{data_collection::Payload, html};
 
+mod incoming_context;
+mod proxy_context;
+mod routing_context;
 mod web;
 mod websecure;
 
@@ -47,155 +51,187 @@ pub async fn start() -> anyhow::Result<()> {
 }
 
 async fn handle_request(
-    mut req: http::Request<Incoming>,
+    request: http::Request<Incoming>,
     remote_addr: SocketAddr,
     proto: &str,
 ) -> anyhow::Result<Response> {
     let timer_start = std::time::Instant::now();
+    let incoming_ctx = IncomingContext::new(request, remote_addr, proto == "https");
 
-    let host = match (req.headers().get(HOST), req.uri().host()) {
-        (None, Some(value)) => Some(String::from(value)),
-        (Some(value), _) => Some(value.to_str().unwrap().to_string()),
-        (None, None) => None,
-    }
-    .and_then(|host| host.split(':').next().map(|s| s.to_string()))
-    .expect("host should be available");
-
-    let cfg = &config::get().routing;
-    let routing = cfg.iter().find(|r| r.domain == host);
-
-    let routing = match routing {
-        None => return Ok(error_bad_gateway()),
-        Some(r) => r,
-    };
-
-    let has_debug_header = match req.headers().get("edgee-debug") {
+    let is_debug_mode = match incoming_ctx.header("edgee-debug") {
         Some(_) => true,
         None => false,
     };
 
-    let request_method = req.method().clone();
-    let request_headers = req.headers().clone();
-    let default_content_type = &HeaderValue::from_str("").unwrap();
-    let content_type = request_headers
-        .get(CONTENT_TYPE)
-        .unwrap_or(default_content_type);
-    let uri = req.uri().clone();
-    let root_path = PathAndQuery::from_str("/").expect("'/' should be a valid path");
-    let requested_path = uri.path_and_query().unwrap_or(&root_path);
-
-    if request_method == Method::GET
-        && (requested_path == "/_edgee/sdk.js" || requested_path == "/_edgee/libs/edgee.v.1.0.0.js")
-    {
-        return serve_sdk(requested_path.as_str());
-    }
-
-    // TODO: Process events
-    if request_method == Method::POST && content_type == "application/json" {
-        return Ok(error_bad_gateway());
-    }
-
-    let default_backend = match routing.backends.iter().find(|b| b.default) {
-        Some(a) => a,
+    let routing_ctx = match RoutingContext::from_request_context(&incoming_ctx) {
         None => return Ok(error_bad_gateway()),
+        Some(r) => r,
     };
 
-    let mut upstream_backend: Option<&config::BackendConfiguration> = None;
-    let mut upstream_path: Option<PathAndQuery> = None;
-    let mut current_rule: Option<RoutingRulesConfiguration> = None;
-    for rule in routing.rules.clone() {
-        current_rule = Some(rule.clone());
-        match (rule.path, rule.path_prefix, rule.path_regexp) {
-            (Some(path), _, _) => {
-                if *requested_path == *path {
-                    upstream_backend = match rule.backend {
-                        Some(name) => routing.backends.iter().find(|b| b.name == name),
-                        None => Some(default_backend),
-                    };
-                    upstream_path = match rule.rewrite {
-                        Some(replacement) => PathAndQuery::from_str(&replacement).ok(),
-                        None => PathAndQuery::from_str(&path).ok(),
-                    };
-                    break;
-                }
-            }
-            (None, Some(prefix), _) => {
-                if requested_path.to_string().starts_with(&prefix) {
-                    upstream_backend = match rule.backend {
-                        Some(name) => routing.backends.iter().find(|b| b.name == name),
-                        None => Some(default_backend),
-                    };
-                    upstream_path = match rule.rewrite {
-                        Some(replacement) => {
-                            let new_path =
-                                requested_path
-                                    .to_string()
-                                    .replacen(&prefix, &replacement, 1);
-                            PathAndQuery::from_str(&new_path).ok()
-                        }
-                        None => Some(requested_path.clone()),
-                    };
-                    break;
-                }
-            }
-            (None, None, Some(pattern)) => {
-                let regexp = Regex::new(&pattern).expect("regex pattern should be valid");
-                let path = requested_path.to_string();
-                if regexp.is_match(&path) {
-                    upstream_backend = match rule.backend {
-                        Some(name) => routing.backends.iter().find(|b| b.name == name),
-                        None => Some(default_backend),
-                    };
-                    upstream_path = match rule.rewrite {
-                        Some(replacement) => {
-                            PathAndQuery::from_str(&regexp.replacen(&path, 1, &replacement)).ok()
-                        }
-                        None => PathAndQuery::from_str(&path).ok(),
-                    };
-                    break;
-                }
-            }
-            _ => bail!("Invalid routing"),
-        }
+    let content_type = incoming_ctx.header(CONTENT_TYPE).unwrap_or(String::new());
+    let incoming_method = incoming_ctx.method().clone();
+    let incoming_host = incoming_ctx.host().clone();
+    let incoming_path = incoming_ctx.path().clone();
+    let incoming_headers = incoming_ctx.headers().clone();
+
+    if incoming_method == Method::GET
+        && (incoming_path == "/_edgee/sdk.js" || incoming_path == "/_edgee/libs/edgee.v.1.0.0.js")
+    {
+        debug!(?incoming_path, "serving sdk");
+        return serve_sdk(incoming_path.as_str());
     }
 
-    let backend = upstream_backend.unwrap_or(default_backend);
-    let path = upstream_path.unwrap_or(requested_path.clone());
-    let current_rule = current_rule.unwrap();
+    if incoming_method == Method::POST
+        && incoming_path == "/_edgee/event"
+        && content_type == "application/json"
+    {
+        let mut res = http::Response::builder()
+            .status(StatusCode::NO_CONTENT)
+            .header(CACHE_CONTROL, "private, no-store")
+            .body(empty())
+            .unwrap();
 
-    const FORWARDED_FOR: &str = "x-forwarded-for";
-    let client_ip = remote_addr.ip().to_string();
-    if let Some(forwarded_for) = req.headers_mut().get_mut(FORWARDED_FOR) {
-        let existing_value = forwarded_for.to_str().unwrap();
-        let new_value = format!("{}, {}", existing_value, client_ip);
-        *forwarded_for = HeaderValue::from_str(&new_value).expect("header value should be valid");
-    } else {
-        req.headers_mut().insert(
-            FORWARDED_FOR,
-            HeaderValue::from_str(&client_ip).expect("header value should be valid"),
+        let edgee_cookie = cookie::get_or_create(
+            &incoming_headers,
+            res.headers_mut(),
+            &incoming_host,
+            proto == "https",
         );
+
+        let body = incoming_ctx.incoming_body.collect().await?.to_bytes();
+        let result: Result<Payload, _> = serde_json::from_reader(body.reader());
+        return match result {
+            Ok(mut payload) => {
+                payload.uuid = uuid::Uuid::new_v4().to_string();
+                payload.timestamp = chrono::Utc::now();
+
+                let user_id = edgee_cookie.id.to_string();
+                payload.identify = Identify::default();
+                payload.identify.edgee_id = user_id.clone();
+                payload.session = Session {
+                    session_id: edgee_cookie.ss.timestamp().to_string(),
+                    previous_session_id: edgee_cookie
+                        .ps
+                        .map(|t| t.timestamp().to_string())
+                        .unwrap_or_default(),
+                    session_count: edgee_cookie.sc,
+                    session_start: edgee_cookie.ss == edgee_cookie.ls,
+                    first_seen: edgee_cookie.fs,
+                    last_seen: edgee_cookie.ls,
+                };
+
+                if payload.page.referrer.is_empty() {
+                    let referrer = incoming_headers
+                        .get(REFERER)
+                        .and_then(|h| h.to_str().ok())
+                        .map(String::from)
+                        .unwrap_or_default();
+                    payload.page.referrer = referrer;
+                }
+
+                payload.client.user_agent = incoming_headers
+                    .get(USER_AGENT)
+                    .and_then(|h| h.to_str().ok())
+                    .map(String::from)
+                    .unwrap_or_default();
+
+                payload.client.x_forwarded_for = incoming_headers
+                    .get("x-forwarded-for")
+                    .and_then(|h| h.to_str().ok())
+                    .map(String::from)
+                    .unwrap_or_default();
+
+                payload.client.user_agent_architecture = incoming_headers
+                    .get("sec-ch-ua-arch")
+                    .and_then(|h| h.to_str().ok())
+                    .map(String::from)
+                    .unwrap_or_default();
+
+                payload.client.user_agent_bitness = incoming_headers
+                    .get("sec-ch-ua-bitness")
+                    .and_then(|h| h.to_str().ok())
+                    .map(String::from)
+                    .unwrap_or_default();
+
+                payload.client.user_agent_full_version_list = incoming_headers
+                    .get("sec-ch-ua")
+                    .and_then(|h| h.to_str().ok())
+                    .map(String::from)
+                    .unwrap_or_default();
+
+                payload.client.user_agent_mobile = incoming_headers
+                    .get("sec-ch-ua-mobile")
+                    .and_then(|h| h.to_str().ok())
+                    .map(String::from)
+                    .unwrap_or_default();
+
+                payload.client.user_agent_model = incoming_headers
+                    .get("sec-ch-ua-model")
+                    .and_then(|h| h.to_str().ok())
+                    .map(String::from)
+                    .unwrap_or_default();
+
+                payload.client.os_name = incoming_headers
+                    .get("sec-ch-ua-platform")
+                    .and_then(|h| h.to_str().ok())
+                    .map(String::from)
+                    .unwrap_or_default();
+
+                payload.client.os_version = incoming_headers
+                    .get("sec-ch-ua-platform-version")
+                    .and_then(|h| h.to_str().ok())
+                    .map(String::from)
+                    .unwrap_or_default();
+
+                payload.client.ip = real_ip::get(remote_addr, &incoming_headers);
+                payload.client.locale = preferred_language(&incoming_headers);
+
+                let map: HashMap<String, String> =
+                    url::form_urlencoded::parse(incoming_path.query().unwrap_or("").as_bytes())
+                        .into_owned()
+                        .collect();
+
+                payload.campaign.name = map
+                    .get("utm_campaign")
+                    .map(String::from)
+                    .unwrap_or_default();
+
+                payload.campaign.source =
+                    map.get("utm_source").map(String::from).unwrap_or_default();
+
+                payload.campaign.medium =
+                    map.get("utm_medium").map(String::from).unwrap_or_default();
+
+                payload.campaign.term = map.get("utm_term").map(String::from).unwrap_or_default();
+
+                payload.campaign.content =
+                    map.get("utm_content").map(String::from).unwrap_or_default();
+
+                payload.campaign.creative_format = map
+                    .get("utm_creative_format")
+                    .map(String::from)
+                    .unwrap_or_default();
+
+                payload.campaign.marketing_tactic = map
+                    .get("utm_marketing_tactic")
+                    .map(String::from)
+                    .unwrap_or_default();
+
+                if let Err(err) = destinations::send_data_collection(&payload).await {
+                    warn!(?err, "failed to process data collection");
+                }
+
+                Ok(res)
+            }
+            Err(err) => {
+                warn!(?err, "failed to parse json payload");
+                Ok(res)
+            }
+        };
     }
 
-    const FORWARDED_PROTO: &str = "x-forwarded-proto";
-    if req.headers().get(FORWARDED_PROTO).is_none() {
-        req.headers_mut().insert(
-            FORWARDED_PROTO,
-            HeaderValue::from_str(proto).expect("header value should be valid"),
-        );
-    }
-
-    const FORWARDED_HOST: &str = "x-forwarded-host";
-    if req.headers().get(FORWARDED_HOST).is_none() {
-        req.headers_mut().insert(
-            FORWARDED_HOST,
-            HeaderValue::from_str(&host).expect("header value should be valid"),
-        );
-    }
-    let res = if backend.enable_ssl {
-        forward_https_request(req, backend, path).await
-    } else {
-        forward_http_request(req, backend, path).await
-    };
+    let proxy_ctx = ProxyContext::new(incoming_ctx, &routing_ctx);
+    let res = proxy_ctx.response().await;
 
     match res {
         Err(err) => {
@@ -221,12 +257,19 @@ async fn handle_request(
                 .get(CONTENT_LENGTH)
                 .and_then(|h| h.to_str().ok());
 
-            if request_method == Method::HEAD
-                || request_method == Method::OPTIONS
-                || request_method == Method::TRACE
-                || request_method == Method::CONNECT
+            debug!(
+                ?encoding,
+                ?content_type,
+                ?content_length,
+                "upstream response"
+            );
+
+            if incoming_method == Method::HEAD
+                || incoming_method == Method::OPTIONS
+                || incoming_method == Method::TRACE
+                || incoming_method == Method::CONNECT
             {
-                if has_debug_header {
+                if is_debug_mode {
                     response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(method)").unwrap(),
@@ -238,27 +281,12 @@ async fn handle_request(
                         HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
-                return Ok(build_response(response_parts, response_body));
-            }
-
-            if response_body.is_empty() {
-                if has_debug_header {
-                    response_parts.headers.insert(
-                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
-                        HeaderValue::from_str("proxy-only(no-body)").unwrap(),
-                    );
-
-                    let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
-                    response_parts.headers.insert(
-                        HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
-                        HeaderValue::from_str(&elapsed_time).unwrap(),
-                    );
-                }
+                debug!(?incoming_method, "proxy only: contentless method");
                 return Ok(build_response(response_parts, response_body));
             }
 
             if response_parts.status.is_redirection() {
-                if has_debug_header {
+                if is_debug_mode {
                     response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(3xx").unwrap(),
@@ -270,11 +298,12 @@ async fn handle_request(
                         HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
+                debug!(status=?response_parts.status, "proxy only: redirection");
                 return Ok(build_response(response_parts, response_body));
             }
 
             if response_parts.status.is_informational() {
-                if has_debug_header {
+                if is_debug_mode {
                     response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(1xx)").unwrap(),
@@ -286,11 +315,29 @@ async fn handle_request(
                         HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
+                debug!(status=?response_parts.status, "proxy only: informational");
+                return Ok(build_response(response_parts, response_body));
+            }
+
+            if response_body.is_empty() {
+                if is_debug_mode {
+                    response_parts.headers.insert(
+                        HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
+                        HeaderValue::from_str("proxy-only(no-body)").unwrap(),
+                    );
+
+                    let elapsed_time = &format!("{}ms", timer_start.elapsed().as_millis());
+                    response_parts.headers.insert(
+                        HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
+                        HeaderValue::from_str(&elapsed_time).unwrap(),
+                    );
+                }
+                debug!("proxy only: no body");
                 return Ok(build_response(response_parts, response_body));
             }
 
             if content_type.is_none() {
-                if has_debug_header {
+                if is_debug_mode {
                     response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(no-content-type)").unwrap(),
@@ -302,11 +349,12 @@ async fn handle_request(
                         HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
+                debug!(?content_type, "proxy only: no content type");
                 return Ok(build_response(response_parts, response_body));
             }
 
             if !content_type.unwrap().starts_with("text/html") {
-                if has_debug_header {
+                if is_debug_mode {
                     response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("proxy-only(non-html)").unwrap(),
@@ -318,13 +366,14 @@ async fn handle_request(
                         HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
+                debug!(?content_type, "proxy only: not html");
                 return Ok(build_response(response_parts, response_body));
             }
 
-            if content_length.is_some() && current_rule.max_compressed_body_size.is_some() {
+            if content_length.is_some() && routing_ctx.rule.max_compressed_body_size.is_some() {
                 let content_length = content_length.and_then(|s| s.parse::<u64>().ok()).unwrap();
-                let size_limit = current_rule.max_compressed_body_size.unwrap();
-                if has_debug_header && content_length > size_limit {
+                let size_limit = routing_ctx.rule.max_compressed_body_size.unwrap();
+                if is_debug_mode && content_length > size_limit {
                     warn!(
                         size = content_length,
                         limit = size_limit,
@@ -341,6 +390,7 @@ async fn handle_request(
                         HeaderValue::from_str(&elapsed_time).unwrap(),
                     );
                 }
+                debug!(?content_length, "proxy only: compressed body too large");
                 return Ok(build_response(response_parts, response_body));
             }
 
@@ -363,32 +413,37 @@ async fn handle_request(
                 Some(_) | None => String::from_utf8_lossy(&response_body).to_string(),
             };
 
-            if current_rule.max_decompressed_body_size.is_some() {
-                let size_limit = current_rule.max_decompressed_body_size.unwrap() as usize;
+            if routing_ctx.rule.max_decompressed_body_size.is_some() {
+                let size_limit = routing_ctx.rule.max_decompressed_body_size.unwrap() as usize;
                 if decompressed_body.len() > size_limit {
                     warn!(
                         size = decompressed_body.len(),
                         limit = size_limit,
                         "decompressed body too large"
                     );
-                    if has_debug_header {
+                    if is_debug_mode {
                         response_parts.headers.insert(
                             HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                             HeaderValue::from_str("compute-aborted(decompressed-body-too-large)")
                                 .unwrap(),
                         );
                     }
+                    debug!(
+                        ?content_length,
+                        "compute aborted: decompressed body too large"
+                    );
                     return Ok(build_response(response_parts, response_body));
                 }
             }
 
             if !decompressed_body.contains(r#"id="__EDGEE_SDK__""#) {
-                if has_debug_header {
+                if is_debug_mode {
                     response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("compute-aborted(no-sdk)").unwrap(),
                     );
                 }
+                debug!("compute aborted: no sdl");
                 return Ok(build_response(response_parts, response_body));
             }
 
@@ -401,23 +456,25 @@ async fn handle_request(
                 .and_then(|h| h.to_str().ok())
                 .unwrap_or("");
             if purpose.contains("prefetch") || sec_purpose.contains("prefetch") {
-                if has_debug_header {
+                if is_debug_mode {
                     response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("compute-aborted(prefetch)").unwrap(),
                     );
                 }
+                debug!("compute aborted: prefetch");
                 return Ok(build_response(response_parts, response_body));
             }
 
-            let query = requested_path.query().unwrap_or("");
+            let query = incoming_path.query().unwrap_or("");
             if query.contains("disableEdgeAnalytics") {
-                if has_debug_header {
+                if is_debug_mode {
                     response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("compute-aborted(disableEdgeAnalytics)").unwrap(),
                     );
                 }
+                debug!("compute aborted: disable edge analytics");
                 return Ok(build_response(response_parts, response_body));
             }
 
@@ -428,39 +485,44 @@ async fn handle_request(
                 .and_then(|h| h.to_str().ok())
                 .unwrap_or("");
             if cookies == "" {
-                if has_debug_header {
+                if is_debug_mode {
                     response_parts.headers.insert(
                         HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
                         HeaderValue::from_str("compute-aborted(no-cookie)").unwrap(),
                     );
                 }
+
+                debug!("compute aborted: no cookie");
                 return Ok(build_response(response_parts, response_body));
             } else {
-                let (cookie_str, edgee_cookie) = cookie::get(&host, proto == "https", cookies);
+                let (cookie_str, edgee_cookie) =
+                    cookie::get(&incoming_host, proto == "https", cookies);
                 response_parts
                     .headers
                     .insert(SET_COOKIE, HeaderValue::from_str(&cookie_str).unwrap());
 
-                let payload = analytics::process_document(
+                let payload = data_collection::process_document(
                     &document,
                     &edgee_cookie,
                     proto,
-                    &host,
-                    requested_path,
+                    &incoming_host,
+                    &incoming_path,
                     &response_headers,
                     remote_addr,
                 );
 
-                document.trace_uuid = payload.uuid;
-
-                // TODO: Send payload
+                match destinations::send_data_collection(&payload).await {
+                    Ok(_) => document.trace_uuid = payload.uuid,
+                    Err(e) => return Err(e),
+                }
             }
 
-            let hostname = backend
+            let hostname = routing_ctx
+                .backend
                 .address
                 .split(':')
                 .next()
-                .unwrap_or(&backend.address);
+                .unwrap_or(&routing_ctx.backend.address);
             let mut page_event_param = r#" data-page-event="true""#;
             let event_path = path::generate(hostname);
             let event_path_param = format!(r#" data-event-path="{}""#, event_path);
@@ -508,7 +570,7 @@ async fn handle_request(
             let timer_end = timer_start.elapsed().as_millis();
             let timer_compute = timer_end - timer_proxy;
 
-            if has_debug_header {
+            if is_debug_mode {
                 let full_duration = format!("{}ms", timer_end);
                 let proxy_duration = format!("{}ms", timer_proxy);
 
@@ -532,69 +594,6 @@ async fn handle_request(
             Ok(build_response(response_parts, Bytes::from(data)))
         }
     }
-}
-
-async fn forward_http_request(
-    orig: http::Request<Incoming>,
-    backend: &config::BackendConfiguration,
-    path: PathAndQuery,
-) -> anyhow::Result<http::Response<Incoming>> {
-    let uri: Uri = format!("http://{}{}", &backend.address, path)
-        .parse()
-        .expect("uri should be valid");
-
-    debug!(origin=?orig.uri(),?uri, "Forwarding HTTP request");
-
-    let mut req = http::Request::builder().uri(uri).method(orig.method());
-    let headers = req.headers_mut().expect("request should have headers");
-    for (name, value) in orig.headers().iter() {
-        headers.insert(name, value.to_owned());
-    }
-
-    headers.insert(
-        "host",
-        HeaderValue::from_str(&backend.address).expect("host should be valid"),
-    );
-
-    let (_parts, body) = orig.into_parts();
-    let req = req.body(body).expect("request to be built");
-    let client = Client::builder(TokioExecutor::new()).build(HttpConnector::new());
-    client
-        .request(req)
-        .await
-        .map_err(|err| anyhow::Error::new(err))
-}
-
-async fn forward_https_request(
-    mut req: http::Request<Incoming>,
-    backend: &config::BackendConfiguration,
-    path: PathAndQuery,
-) -> anyhow::Result<http::Response<Incoming>> {
-    let uri: Uri = format!("https://{}{}", &backend.address, path)
-        .parse()
-        .expect("uri should be valid");
-
-    *req.uri_mut() = uri;
-
-    req.headers_mut().insert(
-        "host",
-        HeaderValue::from_str(&backend.address).expect("host should be valid"),
-    );
-
-    let client_config = rustls::ClientConfig::builder()
-        .with_native_roots()?
-        .with_no_client_auth();
-    let connector = hyper_rustls::HttpsConnectorBuilder::new()
-        .with_tls_config(client_config)
-        .https_or_http()
-        .enable_http1()
-        .enable_http2()
-        .build();
-    let client = Client::builder(TokioExecutor::new()).build(connector);
-    client
-        .request(req)
-        .await
-        .map_err(|err| anyhow::Error::new(err))
 }
 
 fn error_bad_gateway() -> Response {
@@ -635,4 +634,20 @@ fn build_response(parts: http::response::Parts, body: Bytes) -> Response {
         .extension(parts.extensions)
         .body(Full::from(body).boxed())
         .unwrap()
+}
+
+fn preferred_language(headers: &HeaderMap) -> String {
+    let accept_language_header = headers
+        .get(ACCEPT_LANGUAGE)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or_default();
+    let languages = accept_language_header.split(",");
+    let lang = "en-us".to_string();
+    for l in languages {
+        let lang = l.split(";").next().unwrap_or("").trim();
+        if !lang.is_empty() {
+            return lang.to_lowercase();
+        }
+    }
+    lang
 }

@@ -3,7 +3,7 @@ use crate::crypto::{decrypt, encrypt};
 use chrono::{DateTime, Duration, Utc};
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, SameSite};
-use http::header::COOKIE;
+use http::header::{COOKIE, SET_COOKIE};
 use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
@@ -53,7 +53,7 @@ pub fn get_or_create(
         .and_then(|h| h.to_str().ok())
         .unwrap_or("");
     let (cookie_str, edgee_cookie) = get(host, is_https, cookies);
-    res_headers.insert(COOKIE, HeaderValue::from_str(&cookie_str).unwrap());
+    res_headers.insert(SET_COOKIE, HeaderValue::from_str(&cookie_str).unwrap());
     return edgee_cookie;
 }
 
@@ -61,7 +61,9 @@ pub fn get(host: &str, is_https: bool, cookies: &str) -> (String, EdgeeCookie) {
     let mut hashmap = HashMap::new();
     for item in cookies.split("; ") {
         let parts: Vec<&str> = item.split('=').collect();
-        hashmap.insert(parts[0].trim().to_string(), parts[1].trim().to_string());
+        if parts.len() > 1 {
+            hashmap.insert(parts[0].trim().to_string(), parts[1].trim().to_string());
+        }
     }
 
     hashmap
