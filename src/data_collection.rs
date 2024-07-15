@@ -31,7 +31,9 @@ pub fn process_document(
     payload.event_type = EventType::Page;
 
     let user_id = String::from(edgee_cookie.id);
-    payload.identify.user_id = user_id.clone();
+    if payload.identify.user_id.is_empty() {
+        payload.identify.user_id = user_id.clone();
+    }
 
     let mut user_session = Session {
         session_id: edgee_cookie.ss.timestamp().to_string(),
@@ -257,11 +259,12 @@ fn process_sec_ch_ua(header: &str) -> String {
     output
 }
 
-#[derive(Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct Payload {
     pub uuid: String,
     pub timestamp: DateTime<Utc>,
+    #[serde(rename = "type")]
     pub event_type: EventType,
     pub page: Page,
     pub identify: Identify,
@@ -269,12 +272,28 @@ pub struct Payload {
     pub client: Client,
     pub campaign: Campaign,
     pub session: Session,
+    pub destinations: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Deserialize)]
+// impl Payload {
+//     pub fn update(&mut self, headers: &HeaderMap) {}
+
+//     fn extract_header(headers: &HeaderMap, key: impl AsHeaderName) -> String {
+//         headers
+//             .get(key)
+//             .and_then(|h| h.to_str().ok())
+//             .map(String::from)
+//             .unwrap_or_default()
+//     }
+// }
+
+#[derive(Clone, Debug, Deserialize)]
 pub enum EventType {
+    #[serde(rename = "page")]
     Page,
+    #[serde(rename = "identify")]
     Identify,
+    #[serde(rename = "track")]
     Track,
 }
 
@@ -284,7 +303,7 @@ impl Default for EventType {
     }
 }
 
-#[derive(Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct Page {
     pub name: String,
@@ -298,23 +317,26 @@ pub struct Page {
     pub properties: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct Identify {
+    #[serde(rename = "userId")]
     pub user_id: String,
+    #[serde(rename = "anonymousId")]
     pub anonymous_id: String,
+    #[serde(rename = "edgeeId")]
     pub edgee_id: String,
     pub properties: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct Track {
     pub name: String,
     pub properties: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct Campaign {
     pub name: String,
@@ -322,31 +344,45 @@ pub struct Campaign {
     pub medium: String,
     pub term: String,
     pub content: String,
+    #[serde(rename = "creativeFormat")]
     pub creative_format: String,
+    #[serde(rename = "marketingTactic")]
     pub marketing_tactic: String,
 }
 
-#[derive(Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct Client {
     pub ip: String,
+    #[serde(rename = "xForwardedFor")]
     pub x_forwarded_for: String,
     pub locale: String,
     pub timezone: String,
+    #[serde(rename = "userAgent")]
     pub user_agent: String,
+    #[serde(rename = "uaa")]
     pub user_agent_architecture: String,
+    #[serde(rename = "uab")]
     pub user_agent_bitness: String,
+    #[serde(rename = "uafvl")]
     pub user_agent_full_version_list: String,
+    #[serde(rename = "uamb")]
     pub user_agent_mobile: String,
+    #[serde(rename = "uam")]
     pub user_agent_model: String,
+    #[serde(rename = "osName")]
     pub os_name: String,
+    #[serde(rename = "osVersion")]
     pub os_version: String,
+    #[serde(rename = "screenWidth")]
     pub screen_width: i32,
+    #[serde(rename = "screenHeight")]
     pub screen_height: i32,
+    #[serde(rename = "screenDensity")]
     pub screen_density: i32,
 }
 
-#[derive(Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct Session {
     pub session_id: String,

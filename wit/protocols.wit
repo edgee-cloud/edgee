@@ -10,10 +10,10 @@ world data-collection {
             uuid: string,
             timestamp: string,
             event-type: event-type,
-            page: option<page-event>,
-            identify: option<identify-event>,
-            track: option<track-event>,
-            campaign: option<campaign>,
+            page: page-event,
+            identify: identify-event,
+            track: track-event,
+            campaign: campaign,
             client: client,
             session: session,
         }
@@ -73,7 +73,7 @@ world data-collection {
         record session {
             session-id: string,
             previous-session-id: string,
-            session-count: s32,
+            session-count: u32,
             session-start: bool,
             first-seen: string,
             last-seen: string,
@@ -88,8 +88,8 @@ world data-collection {
 
         enum http-method { GET, PUT, POST, DELETE }
 
-        page: func(p: payload, cred: dict) -> result<http-request>;
-        track: func(p: payload, cred: dict) -> result<http-request>;
-        identify: func(p: payload, cred:dict) -> result<http-request>;
+        page: func(p: payload, cred: dict) -> result<http-request, string>;
+        track: func(p: payload, cred: dict) -> result<http-request, string>;
+        identify: func(p: payload, cred:dict) -> result<http-request, string>;
     }
 }

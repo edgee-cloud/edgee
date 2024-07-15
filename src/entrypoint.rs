@@ -24,7 +24,7 @@ use tracing::{debug, error, warn};
 
 use crate::{
     cookie,
-    data_collection::{self, Identify, Session},
+    data_collection::{self, Session},
     destinations, path, real_ip,
 };
 use crate::{data_collection::Payload, html};
@@ -106,7 +106,6 @@ async fn handle_request(
                 payload.timestamp = chrono::Utc::now();
 
                 let user_id = edgee_cookie.id.to_string();
-                payload.identify = Identify::default();
                 payload.identify.edgee_id = user_id.clone();
                 payload.session = Session {
                     session_id: edgee_cookie.ss.timestamp().to_string(),
@@ -217,7 +216,7 @@ async fn handle_request(
                     .map(String::from)
                     .unwrap_or_default();
 
-                if let Err(err) = destinations::send_data_collection(&payload).await {
+                if let Err(err) = destinations::send_data_collection(payload).await {
                     warn!(?err, "failed to process data collection");
                 }
 
@@ -511,8 +510,9 @@ async fn handle_request(
                     remote_addr,
                 );
 
-                match destinations::send_data_collection(&payload).await {
-                    Ok(_) => document.trace_uuid = payload.uuid,
+                let uuid = payload.uuid.clone();
+                match destinations::send_data_collection(payload).await {
+                    Ok(_) => document.trace_uuid = uuid,
                     Err(e) => return Err(e),
                 }
             }
