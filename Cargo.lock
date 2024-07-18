@@ -836,14 +836,14 @@ dependencies = [
  "log",
  "rand",
  "regex",
- "rustls 0.23.10",
+ "rustls",
  "rustls-pemfile",
  "rustls-pki-types",
  "serde",
  "serde_json",
  "simple_logger",
  "tokio",
- "tokio-rustls 0.26.0",
+ "tokio-rustls",
  "toml",
  "tracing",
  "tracing-subscriber",
@@ -851,7 +851,6 @@ dependencies = [
  "uuid",
  "wasmtime",
  "wasmtime-wasi",
- "wasmtime-wasi-http",
 ]
 
 [[package]]
@@ -1226,11 +1225,11 @@ dependencies = [
  "hyper",
  "hyper-util",
  "log",
- "rustls 0.23.10",
+ "rustls",
  "rustls-native-certs",
  "rustls-pki-types",
  "tokio",
- "tokio-rustls 0.26.0",
+ "tokio-rustls",
  "tower-service",
 ]
 
@@ -1995,20 +1994,6 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.22.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf4ef73721ac7bcd79b2b315da7779d8fc09718c6b3d2d1b2d94850eb8c18432"
-dependencies = [
- "log",
- "ring",
- "rustls-pki-types",
- "rustls-webpki",
- "subtle",
- "zeroize",
-]
-
-[[package]]
-name = "rustls"
 version = "0.23.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05cff451f60db80f490f3c182b77c35260baace73209e9cdbbe526bfe3a4d402"
@@ -2417,22 +2402,11 @@ dependencies = [
 
 [[package]]
 name = "tokio-rustls"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "775e0c0f0adb3a2f22a00c4745d728b479985fc15ee7ca6a2608388c5569860f"
-dependencies = [
- "rustls 0.22.4",
- "rustls-pki-types",
- "tokio",
-]
-
-[[package]]
-name = "tokio-rustls"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c7bc40d0e5a97695bb96e27995cd3a08538541b0a846f65bba7a359f36700d4"
 dependencies = [
- "rustls 0.23.10",
+ "rustls",
  "rustls-pki-types",
  "tokio",
 ]
@@ -3048,29 +3022,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasmtime-wasi-http"
-version = "22.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "315cadc284b808cfbd6be9295da4009144c106723f09b421ce6c6d89275cfdb7"
-dependencies = [
- "anyhow",
- "async-trait",
- "bytes",
- "futures",
- "http",
- "http-body",
- "http-body-util",
- "hyper",
- "rustls 0.22.4",
- "tokio",
- "tokio-rustls 0.25.0",
- "tracing",
- "wasmtime",
- "wasmtime-wasi",
- "webpki-roots",
-]
-
-[[package]]
 name = "wasmtime-winch"
 version = "22.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3128,15 +3079,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5be77619385eca699d204399d2ffc9b1dfda1df3320266773d2d664ecb06cf3e"
 dependencies = [
  "wast 213.0.0",
-]
-
-[[package]]
-name = "webpki-roots"
-version = "0.26.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd7c23921eeb1713a4e851530e9b9756e4fb0e89978582942612524cf09f01cd"
-dependencies = [
- "rustls-pki-types",
 ]
 
 [[package]]

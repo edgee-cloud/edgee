@@ -22,7 +22,6 @@ pub fn init() {
     let engine = wasmtime::Engine::new(&runtime_conf).unwrap();
     let mut linker = wasmtime::component::Linker::<HostView>::new(&engine);
     wasmtime_wasi::add_to_linker_sync(&mut linker).unwrap();
-    wasmtime_wasi_http::proxy::add_only_http_to_linker(&mut linker).unwrap();
 
     let mut components: HashMap<&str, Component> = HashMap::new();
     for cfg in &config::get().destinations.data_collection {
@@ -60,7 +59,7 @@ pub fn send_data_collection(p: Payload) -> anyhow::Result<()> {
 
         let payload = provider::Payload {
             uuid: p.uuid,
-            timestamp: p.timestamp.to_string(),
+            timestamp: p.timestamp.timestamp(),
             event_type: match p.event_type {
                 EventType::Page => provider::EventType::Page,
                 EventType::Identify => provider::EventType::Identify,
@@ -84,7 +83,7 @@ pub fn send_data_collection(p: Payload) -> anyhow::Result<()> {
             },
             identify: provider::IdentifyEvent {
                 user_id: p.identify.user_id,
-                ananymous_id: p.identify.anonymous_id,
+                anonymous_id: p.identify.anonymous_id,
                 edgee_id: p.identify.edgee_id,
                 properties: p
                     .identify
@@ -130,6 +129,11 @@ pub fn send_data_collection(p: Payload) -> anyhow::Result<()> {
                 screen_width: p.client.screen_width,
                 screen_height: p.client.screen_height,
                 screen_density: p.client.screen_density,
+                continent: String::new(),
+                country_code: String::new(),
+                country_name: String::new(),
+                region: String::new(),
+                city: String::new(),
             },
             session: provider::Session {
                 session_id: p.session.session_id,
@@ -139,6 +143,7 @@ pub fn send_data_collection(p: Payload) -> anyhow::Result<()> {
                 first_seen: p.session.first_seen.to_string(),
                 last_seen: p.session.last_seen.to_string(),
             },
+            destinations: Vec::new(),
         };
 
         let request = match p.event_type {
@@ -147,12 +152,9 @@ pub fn send_data_collection(p: Payload) -> anyhow::Result<()> {
             EventType::Identify => provider.call_identify(&mut store, &payload, &credentials),
         };
 
-        match request {
-            Ok(res) => match res {
-                Ok(req) => println!("{:#?}", req),
-                Err(err) => eprint!("INNER ERROR: {:?}", err),
-            },
-            Err(err) => eprint!("OUTER ERROR: {:?}", err),
+        match request.map(|r| r.ok()) {
+            Ok(req) => println!("{:#?}", req.unwrap()),
+            Err(err) => eprint!("ERROR: {:?}", err),
         }
     }
 
@@ -162,15 +164,13 @@ pub fn send_data_collection(p: Payload) -> anyhow::Result<()> {
 struct HostView {
     table: wasmtime::component::ResourceTable,
     wasi: wasmtime_wasi::WasiCtx,
-    http: wasmtime_wasi_http::WasiHttpCtx,
 }
 
 impl HostView {
     fn new() -> Self {
         let table = wasmtime_wasi::ResourceTable::new();
         let wasi = wasmtime_wasi::WasiCtxBuilder::new().build();
-        let http = wasmtime_wasi_http::WasiHttpCtx::new();
-        Self { table, wasi, http }
+        Self { table, wasi }
     }
 }
 
@@ -181,15 +181,5 @@ impl wasmtime_wasi::WasiView for HostView {
 
     fn ctx(&mut self) -> &mut wasmtime_wasi::WasiCtx {
         &mut self.wasi
-    }
-}
-
-impl wasmtime_wasi_http::WasiHttpView for HostView {
-    fn ctx(&mut self) -> &mut wasmtime_wasi_http::WasiHttpCtx {
-        &mut self.http
-    }
-
-    fn table(&mut self) -> &mut wasmtime_wasi::ResourceTable {
-        &mut self.table
     }
 }

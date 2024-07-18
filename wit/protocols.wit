@@ -8,7 +8,7 @@ world data-collection {
 
         record payload {
             uuid: string,
-            timestamp: string,
+            timestamp: s64,
             event-type: event-type,
             page: page-event,
             identify: identify-event,
@@ -16,6 +16,7 @@ world data-collection {
             campaign: campaign,
             client: client,
             session: session,
+            destinations: list<tuple<string, bool>>,
         }
 
         record page-event {
@@ -32,7 +33,7 @@ world data-collection {
 
         record identify-event {
             user-id: string,
-            ananymous-id: string,
+            anonymous-id: string,
             edgee-id: string,
             properties: dict,
         }
@@ -58,6 +59,11 @@ world data-collection {
             screen-width: s32,
             screen-height: s32,
             screen-density: s32,
+            continent: string,
+            country-code: string,
+            country-name: string,
+            region: string,
+            city: string,
         }
 
         record campaign {
@@ -79,17 +85,17 @@ world data-collection {
             last-seen: string,
         }
 
-        record http-request {
+        record edgee-request {
             method: http-method,
             url: string,
             headers: dict,
-            body: dict,
+            body: string,
         }
 
         enum http-method { GET, PUT, POST, DELETE }
 
-        page: func(p: payload, cred: dict) -> result<http-request, string>;
-        track: func(p: payload, cred: dict) -> result<http-request, string>;
-        identify: func(p: payload, cred:dict) -> result<http-request, string>;
+        page: func(p: payload, cred: dict) -> result<edgee-request, string>;
+        track: func(p: payload, cred: dict) -> result<edgee-request, string>;
+        identify: func(p: payload, cred:dict) -> result<edgee-request, string>;
     }
 }
