@@ -216,12 +216,9 @@ async fn handle_request(
                     .map(String::from)
                     .unwrap_or_default();
 
-                tokio::task::spawn_blocking(move || {
-                    if let Err(err) = destinations::send_data_collection(payload) {
-                        warn!(?err, "failed to process data collection");
-                    }
-                })
-                .await?;
+                if let Err(err) = destinations::send_data_collection(payload).await {
+                    warn!(?err, "failed to process data collection");
+                }
 
                 Ok(res)
             }
@@ -514,12 +511,9 @@ async fn handle_request(
                 );
 
                 let uuid = payload.uuid.clone();
-                tokio::task::spawn_blocking(move || {
-                    if let Err(err) = destinations::send_data_collection(payload) {
-                        warn!(?err, "failed to send data collection payload");
-                    }
-                })
-                .await?;
+                if let Err(err) = destinations::send_data_collection(payload).await {
+                    warn!(?err, "failed to send data collection payload");
+                }
                 document.trace_uuid = uuid;
             }
 

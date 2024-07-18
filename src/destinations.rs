@@ -4,11 +4,12 @@ static WASM_LINKER: OnceCell<wasmtime::component::Linker<HostView>> = OnceCell::
 static WASM_ENGINE: OnceCell<wasmtime::Engine> = OnceCell::const_new();
 static WASM_COMPONENTS: OnceCell<HashMap<&str, Component>> = OnceCell::const_new();
 
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use exports::provider;
+use http::{HeaderMap, HeaderName, HeaderValue};
 use tokio::sync::OnceCell;
-use tracing::error;
+use tracing::{error, info};
 use wasmtime::component::Component;
 
 use crate::{
@@ -43,7 +44,7 @@ pub fn init() {
     }
 }
 
-pub fn send_data_collection(p: Payload) -> anyhow::Result<()> {
+pub async fn send_data_collection(p: Payload) -> anyhow::Result<()> {
     let engine = WASM_ENGINE.get().unwrap();
     let linker = WASM_LINKER.get().unwrap();
     let mut store = wasmtime::Store::new(engine, HostView::new());
@@ -155,23 +156,65 @@ pub fn send_data_collection(p: Payload) -> anyhow::Result<()> {
 
         match request {
             Ok(res) => match res {
-                Ok(req) => match req.method {
-                    provider::HttpMethod::Get => {
-                        println!("GET: {:?}", req.url);
+                Ok(req) => {
+                    let mut headers = HeaderMap::new();
+                    for (key, value) in req.headers {
+                        headers.insert(
+                            HeaderName::from_str(&key).unwrap(),
+                            HeaderValue::from_str(&value).unwrap(),
+                        );
                     }
-                    provider::HttpMethod::Put => {
-                        println!("PUT: {:?}", req.url);
+                    let client = reqwest::Client::new();
+                    let res = match req.method {
+                        provider::HttpMethod::Get => {
+                            client.get(req.url).headers(headers).send().await
+                        }
+                        provider::HttpMethod::Put => {
+                            client
+                                .put(req.url)
+                                .headers(headers)
+                                .body(req.body)
+                                .send()
+                                .await
+                        }
+                        provider::HttpMethod::Post => {
+                            client
+                                .post(req.url)
+                                .headers(headers)
+                                .body(req.body)
+                                .send()
+                                .await
+                        }
+                        provider::HttpMethod::Delete => {
+                            client.delete(req.url).headers(headers).send().await
+                        }
+                    };
+
+                    match res {
+                        Ok(res) => {
+                            if res.status().is_success() {
+                                info!(
+                                    provider = cfg.name,
+                                    event = ?payload.event_type,
+                                    "request sent successfully"
+                                );
+                            } else {
+                                error!(provider = cfg.name, event = ?payload.event_type,"request failed with status: {}", res.status());
+                                println!("{:?}", res.text().await);
+                            }
+                        }
+                        Err(err) => {
+                            error!(?err, provider = cfg.name, event = ?payload.event_type, "failed to send request")
+                        }
                     }
-                    provider::HttpMethod::Post => {
-                        println!("POST: {:?}", req.url);
-                    }
-                    provider::HttpMethod::Delete => {
-                        println!("DELETE: {:?}", req.url);
-                    }
-                },
-                Err(err) => error!(?err, "failed to handle payload"),
+                }
+                Err(err) => {
+                    error!(?err, provider = cfg.name, event = ?payload.event_type, "failed to handle payload")
+                }
             },
-            Err(err) => error!(?err, "failed to call wasm component"),
+            Err(err) => {
+                error!(?err, provider = cfg.name, event = ?payload.event_type, "failed to call wasm component")
+            }
         }
     }
 
