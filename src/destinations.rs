@@ -8,6 +8,7 @@ use std::collections::HashMap;
 
 use exports::provider;
 use tokio::sync::OnceCell;
+use tracing::error;
 use wasmtime::component::Component;
 
 use crate::{
@@ -152,9 +153,25 @@ pub fn send_data_collection(p: Payload) -> anyhow::Result<()> {
             EventType::Identify => provider.call_identify(&mut store, &payload, &credentials),
         };
 
-        match request.map(|r| r.ok()) {
-            Ok(req) => println!("{:#?}", req.unwrap()),
-            Err(err) => eprint!("ERROR: {:?}", err),
+        match request {
+            Ok(res) => match res {
+                Ok(req) => match req.method {
+                    provider::HttpMethod::Get => {
+                        println!("GET: {:?}", req.url);
+                    }
+                    provider::HttpMethod::Put => {
+                        println!("PUT: {:?}", req.url);
+                    }
+                    provider::HttpMethod::Post => {
+                        println!("POST: {:?}", req.url);
+                    }
+                    provider::HttpMethod::Delete => {
+                        println!("DELETE: {:?}", req.url);
+                    }
+                },
+                Err(err) => error!(?err, "failed to handle payload"),
+            },
+            Err(err) => error!(?err, "failed to call wasm component"),
         }
     }
 
