@@ -32,6 +32,7 @@ libflate = "2.1.0"
 log = "0.4"
 rand = "0.8.5"
 regex = "1.10.4"
+reqwest = "0.12.5"
 rustls = { version = "0.23.5", features = ["ring"] }
 rustls-pemfile = "2.1.2"
 rustls-pki-types = "1.7.0"
@@ -45,3 +46,5 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
 url = "2.5.2"
 uuid = { version = "1.9.1", features = ["v4", "serde"] }
+wasmtime = "22.0.0"
+wasmtime-wasi = "22.0.0"

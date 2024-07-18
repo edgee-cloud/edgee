@@ -1,9 +1,10 @@
 use tracing::error;
 
-mod analytics;
 mod config;
 mod cookie;
 mod crypto;
+mod data_collection;
+mod destinations;
 mod entrypoint;
 mod html;
 mod logger;
@@ -15,6 +16,7 @@ mod real_ip;
 async fn main() {
     config::init();
     logger::init();
+    destinations::init();
 
     // FIXME: Add gracefull shutdown
     tokio::select! {

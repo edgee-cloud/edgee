@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::Deserialize;
 use tokio::sync::OnceCell;
 
@@ -13,6 +15,8 @@ pub struct StaticConfiguration {
     pub routing: Vec<RoutingConfiguration>,
     #[serde(skip)]
     pub security: SecurityConfiguration,
+    #[serde(default)]
+    pub destinations: DestinationConfiguration,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -58,6 +62,20 @@ pub struct RoutingRulesConfiguration {
     pub max_decompressed_body_size: Option<u64>,
 }
 
+impl Default for RoutingRulesConfiguration {
+    fn default() -> Self {
+        Self {
+            path: Default::default(),
+            path_prefix: Some(String::from("/")),
+            path_regexp: Default::default(),
+            rewrite: Default::default(),
+            backend: Default::default(),
+            max_compressed_body_size: Default::default(),
+            max_decompressed_body_size: Default::default(),
+        }
+    }
+}
+
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct BackendConfiguration {
     pub name: String,
@@ -65,6 +83,18 @@ pub struct BackendConfiguration {
     pub default: bool,
     pub address: String,
     pub enable_ssl: bool,
+}
+
+#[derive(Deserialize, Debug, Default, Clone)]
+pub struct DestinationConfiguration {
+    pub data_collection: Vec<DataCollectionConfiguration>,
+}
+
+#[derive(Deserialize, Debug, Default, Clone)]
+pub struct DataCollectionConfiguration {
+    pub name: String,
+    pub component: String,
+    pub credentials: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone)]

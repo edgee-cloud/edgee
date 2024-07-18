@@ -1,0 +1,101 @@
+package edgee:protocols@0.1.0;
+
+world data-collection {
+    export provider: interface {
+        type dict = list<tuple<string,string>>;
+
+        enum event-type { page, track, identify }
+
+        record payload {
+            uuid: string,
+            timestamp: s64,
+            event-type: event-type,
+            page: page-event,
+            identify: identify-event,
+            track: track-event,
+            campaign: campaign,
+            client: client,
+            session: session,
+            destinations: list<tuple<string, bool>>,
+        }
+
+        record page-event {
+            name: string,
+            category: string,
+            keywords: list<string>,
+            title: string,
+            url: string,
+            path: string,
+            search: string,
+            referrer: string,
+            properties: dict,
+        }
+
+        record identify-event {
+            user-id: string,
+            anonymous-id: string,
+            edgee-id: string,
+            properties: dict,
+        }
+
+        record track-event {
+            name: string,
+            properties: dict,
+        }
+
+        record client {
+            ip: string,
+            x-forward-for: string,
+            locale: string,
+            timezone: string,
+            user-agent: string,
+            user-agent-architecture: string,
+            user-agent-bitness: string,
+            user-agent-full-version-list: string,
+            user-agent-mobile: string,
+            user-agent-model: string,
+            os-name: string,
+            os-version: string,
+            screen-width: s32,
+            screen-height: s32,
+            screen-density: s32,
+            continent: string,
+            country-code: string,
+            country-name: string,
+            region: string,
+            city: string,
+        }
+
+        record campaign {
+            name: string,
+            source: string,
+            medium: string,
+            term: string,
+            content: string,
+            creative-format: string,
+            marketing-tactic: string,
+        }
+
+        record session {
+            session-id: string,
+            previous-session-id: string,
+            session-count: u32,
+            session-start: bool,
+            first-seen: string,
+            last-seen: string,
+        }
+
+        record edgee-request {
+            method: http-method,
+            url: string,
+            headers: dict,
+            body: string,
+        }
+
+        enum http-method { GET, PUT, POST, DELETE }
+
+        page: func(p: payload, cred: dict) -> result<edgee-request, string>;
+        track: func(p: payload, cred: dict) -> result<edgee-request, string>;
+        identify: func(p: payload, cred:dict) -> result<edgee-request, string>;
+    }
+}
