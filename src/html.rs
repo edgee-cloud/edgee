@@ -304,6 +304,7 @@ fn get_sdk_from_url(url: &str) -> Result<String, &'static str> {
     // Retrieve the SDK content based on the extracted version.
     let sdk_content = match captures.unwrap()[1].to_string().as_str() {
         "v1.0.0" => include_str!("../public/edgee.v1.0.0.js"),
+        "v1.0.1" => include_str!("../public/edgee.v1.0.1.js"),
         // Add more versions as needed
         _ => return Err("Failed to read the JS SDK file"),
     };
