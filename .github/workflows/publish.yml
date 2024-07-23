@@ -30,7 +30,7 @@ jobs:
           override: true
       - run: cargo fetch
       - name: cargo publish
-        run: cargo publish 
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
   docker:
     name: "Publish to Docker Hub"
     runs-on: "ubuntu-latest"
