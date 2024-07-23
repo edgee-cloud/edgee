@@ -20,7 +20,7 @@ jobs:
           name: "edgee-cloud/edgee"
           tag: "${{ github.ref_name }}"
   cratesio:
-    name: Publish Check
+    name: Publish to Crates.io
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,8 +29,8 @@ jobs:
           toolchain: stable
           override: true
       - run: cargo fetch
-      - name: cargo publish check
-        run: cargo publish --dry-run
+      - name: cargo publish
+        run: cargo publish 
   docker:
     name: "Publish to Docker Hub"
     runs-on: "ubuntu-latest"
