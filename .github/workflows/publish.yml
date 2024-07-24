@@ -47,3 +47,4 @@ jobs:
           password: "${{ secrets.DOCKER_PASSWORD }}"
       - run: "docker build -t edgeecloud/edgee:${{ github.ref_name }} ."
       - run: "docker push edgeecloud/edgee:${{ github.ref_name }}"
+      - run: "docker push edgeecloud/edgee:latest"

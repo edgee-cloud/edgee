@@ -5,7 +5,7 @@ COPY . .
 RUN cargo build --release
 
 FROM debian:bookworm
+RUN apt-get update && apt-get install -y libssl-dev
 WORKDIR /app
 COPY --from=builder /app/target/release/edgee .
-EXPOSE 80 443
 ENTRYPOINT ["./edgee"]

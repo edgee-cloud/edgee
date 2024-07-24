@@ -31,6 +31,10 @@
         version = "0.2.0";
         buildInputs = with pkgs; [ 
           rustToolchain 
+        ] ++ lib.optionals stdenv.isDarwin [
+          libiconv
+          darwin.apple_sdk.frameworks.Security
+          darwin.apple_sdk.frameworks.SystemConfiguration
         ];
         src = ./.;
         cargoLock = { lockFile = ./Cargo.lock; };
@@ -40,7 +44,6 @@
     devShells = forAllSystems ({pkgs}: {
       default = pkgs.mkShell {
         packages = with pkgs; [
-          darwin.apple_sdk.frameworks.Security
           rustToolchain
           cargo-deny
           cargo-edit
@@ -50,6 +53,10 @@
           rustfmt
 
           gh
+        ] ++ lib.optionals stdenv.isDarwin [
+          libiconv
+          darwin.apple_sdk.frameworks.Security
+          darwin.apple_sdk.frameworks.SystemConfiguration
         ];
       };
     });
