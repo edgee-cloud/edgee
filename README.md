@@ -32,6 +32,8 @@
 - [Twitter](https://x.com/edgee_cloud)
 - [Slack](https://www.edgee.cloud/slack)
 
+Make sure you've read [the official docs](https://docs.edgee.cloud) if you want to understand the main concepts and the architecture of Edgee.
+
 # Running Edgee
 
 The next section will explain how to configure Edgee proxy, for now let's assume you already have a valid configuration
@@ -95,7 +97,6 @@ When installing from Crates.io, make sure to run the server from the same direct
 
 # Configuration
 
-Make sure you've read [the official docs](https://docs.edgee.cloud) if you want to understand the main concepts and the architecture of Edgee.
 
 Edgee proxy is customized through the `edgee.toml` file, which is expected to be present in the same directory where edgee is running from.
 
@@ -199,20 +200,8 @@ Edgee proxy doesn't ship with any builtin components. Here's a list of the curre
 You just need to place the WebAssembly in a know place and point to it in the configuration. You may also build your
 own components for integrations we don't provide yet.
 
-# Usage as a flake
-
-Add edgee to your `flake.nix`:
-
-```nix
-{
-  inputs.edgee.url = "https://flakehub.com/f/edgee-cloud/edgee/*.tar.gz";
-}
-```
-
 ## Contributing
 If you're interested in contributing to Edgee, read our [contribution guidelines](./CONTRIBUTING.md)
-
-<!-- TODO: Add Roadmap section -->
 
 ## Reporting Security Vulnerabilities
 If you've found a vulnerability or potential vulnerability in our code, please let us know at
