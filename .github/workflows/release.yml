@@ -1,15 +1,9 @@
 name: Release
 
-concurrency:
-    group: release
-
 on:
     push:
         tags:
             - "v*.*.*"
-
-permissions:
-    contents: write
 
 jobs:
     build-x86_64-linux: { uses: ./.github/workflows/build-x86_64-linux.yml }
