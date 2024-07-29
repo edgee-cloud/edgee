@@ -1,0 +1,28 @@
+name: Build aarch64-darwin
+
+on:
+    workflow_call:
+        inputs:
+            cache-key:
+                type: string
+                required: false
+                default: "aarch64-darwin-artifact-${{ github.sha }}"
+jobs:
+    build:
+        name: Build aarch64-darwin
+        runs-on: macos-latest
+        concurrency: ${{ inputs.cache-key }}
+        permissions:
+            id-token: write
+            contents: read
+        steps:
+            - uses: actions/checkout@v4
+            - uses: DeterminateSystems/nix-installer-action@main
+            - uses: DeterminateSystems/magic-nix-cache-action@main
+            - name: Build aarch64-darwin
+              run: make ci.aarch64-darwin
+            - name: Create Github cache
+              uses: actions/cache/save@v3
+              with:
+                    path: build
+                    key: ${{ inputs.cache-key }}

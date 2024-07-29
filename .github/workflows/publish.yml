@@ -48,3 +48,4 @@ jobs:
       - run: "docker build -t edgeecloud/edgee:${{ github.ref_name }} ."
       - run: "docker push edgeecloud/edgee:${{ github.ref_name }}"
       - run: "docker push edgeecloud/edgee:latest"
+
