@@ -11,7 +11,7 @@
 </p>
 
 
-**The full-stack edge platform for your edge oriented applications.**
+**The full-stack edge platform for your edge-oriented applications.**
 
 [![Edgee](https://img.shields.io/badge/edgee-open%20source-blueviolet.svg)](https://www.edgee.cloud)
 [![Crates.io](https://img.shields.io/crates/v/edgee.svg?logo=rust)](https://crates.io/crates/edgee)
@@ -32,17 +32,18 @@
 - [Twitter](https://x.com/edgee_cloud)
 - [Slack](https://www.edgee.cloud/slack)
 
-Make sure you've read [the official docs](https://docs.edgee.cloud) if you want to understand the main concepts and the architecture of Edgee.
+Check out [the official docs](https://docs.edgee.cloud) to dive into Edgee's main concepts and architecture.
 
 # Running Edgee
 
-The next section will explain how to configure Edgee proxy, for now let's assume you already have a valid configuration
-file. For all examples we're gonna assume that TLS certificates can be found in `/var/edgee/cert` and WebAssembly
-components in `/var/edgee/wasm`.
+Once you have a valid configuration file (see next section), you can run Edgee in different ways, using Docker, Nix Flakes, or running as a Rust crate.
+
+⚠️ Note: all the examples below assume that TLS certificates and WebAssembly components can be found in `/var/edgee/cert` and  in `/var/edgee/wasm` respectively.
 
 ## Using docker
 
-You can run it using the CLI
+You can run it using the CLI:
+
 ```console
 docker run \
   -v $PWD/edgee.toml:/app/edgee.toml \
@@ -53,7 +54,8 @@ docker run \
   edgeeecloud/edgee
 ```
 
-or as part of a `docker-compose.yml`
+Or as part of a `docker-compose.yml`:
+
 ```yaml
 service:
   edgee:
@@ -69,21 +71,23 @@ service:
 
 ## Using Nix Flakes
 
-You can add Edgee to your nix by importing it from github
+You can add Edgee to your nix by importing it from GitHub:
+
 ```nix
 {
   inputs.edgee.url = "github:edgee-cloud/edgee";
 }
 ```
 
-We're also published on Flakehub
+Or via Flakehub:
+
 ```nix
 {
   inputs.edgee.url = "https://flakehub.com/f/edgee-cloud/edgee/*.tar.gz";
 }
 ```
 
-When running with Nix, make sure to run the server from the same directory as the configuration file.
+⚠️ Note: when running with Nix, remember to run the server from the same directory as the configuration file.
 
 ## Running as a crate
 
@@ -93,15 +97,14 @@ Edgee is built in Rust and can be installed as a crate.
 cargo install edgee
 ```
 
-When installing from Crates.io, make sure to run the server from the same directory as the configuration file.
+⚠️ Note: when installing from Crates.io, remember to run the server from the same directory as the configuration file.
 
 # Configuration
 
 
 Edgee proxy is customized through the `edgee.toml` file, which is expected to be present in the same directory where edgee is running from.
 
-Here's a minimal configuration sample. The configuration sets Edgee to work as a regular reverse proxy. After
-understanding this simple configuration we'll see how to enable edge components.
+Here's a minimal configuration sample that sets Edgee to work as a regular reverse proxy. Later we'll see how to enable edge components.
 
 ```toml
 # edgee.toml
@@ -141,11 +144,10 @@ the popular observability frameworks in the future. For now it only exposts the 
 be used for health checking.
 
 ## Routing
-Our example sets up one backend for this project, called "demo". Since it's the default backend, all traffic 
-directed to `demo.edgee.dev` will be redirected there. Every project can have a number of backends and use 
-routing rules to distribute traffic among them.
+The example above sets up one backend called "demo". As the default backend, it will recenved all traffic directed to `demo.edgee.dev`. Additionaly, projects can have a number of backends and use routing rules to distribute traffic among them.
 
-We can add a second backend called "api" and redirect there all requests to `demo.edgee.dev/api`.
+For example, we could add a second backend called "api" to handle all requests to `demo.edgee.dev/api`:
+
 ```toml
 # edgee.toml
 [[routing.rules]]
@@ -163,7 +165,7 @@ The supported matchers are:
 - *path_prefix*: the path starts with the provided value
 - *path_regexp*: the path matches the provided regexp
 
-In addition to proxying the request it's also possible to rewrite the path:
+In addition to proxying the request, you could also rewrite the path:
 
 ```toml
 # edgee.toml
@@ -176,13 +178,22 @@ backend = "api"
 
 ## Integrating with edgee components
 
-Make sure you check the [official docs](https://docs.edgee.cloud/components/overview) to understand better what
-components are.
+Check out the [official components docs](https://docs.edgee.cloud/components/overview) to dive into the
+components architecture.
 
-In this example we're gonna implement data collection using the [amplitude component](https://github.com/edgee-cloud/amplitude-component).
+The Edgee proxy is designed for performance and extensibility, so you can easily integrate open source components based on the platforms you need. Here's a list of the components we've built so far:
+- [Amplitude](https://github.com/edgee-cloud/amplitude-component)
+- [Google Analytics](https://github.com/edgee-cloud/ga-component)
+- [Segment](https://github.com/edgee-cloud/segment-component)
 
-The only thing you need to do to enable a data collection is to add a new session to your configuration pointing
-to the WebAssembly component that implenebts the data collection protocol.
+You just need point to the WebAssembly implementation in your proxy configuration. You may also build your
+own components for integrations we don't provide yet.
+
+### Example
+
+Let's see how to implement data collection using the [amplitude component](https://github.com/edgee-cloud/amplitude-component).
+
+You simply need to add a new session to your configuration pointing to the WebAssembly component that implements the data collection protocol:
 
 ```toml
 # edgee.toml
@@ -192,13 +203,6 @@ component = "/var/edgee/wasm/amplitude.wasm"
 credentials.amplitude_api_key = "YOUR-API-KEY"
 ```
 
-Edgee proxy doesn't ship with any builtin components. Here's a list of the current open source components we've built:
-- [Amplitude](https://github.com/edgee-cloud/amplitude-component)
-- [Google Analytics](https://github.com/edgee-cloud/ga-component)
-- [Segment](https://github.com/edgee-cloud/segment-component)
-
-You just need to place the WebAssembly in a know place and point to it in the configuration. You may also build your
-own components for integrations we don't provide yet.
 
 ## Contributing
 If you're interested in contributing to Edgee, read our [contribution guidelines](./CONTRIBUTING.md)
