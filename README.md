@@ -144,7 +144,7 @@ the popular observability frameworks in the future. For now it only exposts the 
 be used for health checking.
 
 ## Routing
-The example above sets up one backend called "demo". As the default backend, it will recenved all traffic directed to `demo.edgee.dev`. Additionaly, projects can have a number of backends and use routing rules to distribute traffic among them.
+The example above sets up one backend called "demo". As the default backend, it will receive all traffic directed to `demo.edgee.dev`. Additionaly, projects can have a number of backends and use routing rules to distribute traffic among them.
 
 For example, we could add a second backend called "api" to handle all requests to `demo.edgee.dev/api`:
 
