@@ -70,7 +70,7 @@ async fn force_https(req: http::Request<Incoming>) -> anyhow::Result<Response> {
 
     Ok(http::Response::builder()
         .status(StatusCode::MOVED_PERMANENTLY)
-        .header("localtion", uri)
+        .header("location", uri)
         .body(empty())
         .expect("body should never fail"))
 }
