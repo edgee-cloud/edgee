@@ -102,7 +102,7 @@ cargo install edgee
 # Configuration
 
 
-Edgee proxy is customized through the `edgee.toml` file, which is expected to be present in the same directory where edgee is running from.
+Edgee proxy is customized through the `edgee.toml` file (or `edgee.yaml`), which is expected to be present in the same directory where edgee is running from.
 
 Here's a minimal configuration sample that sets Edgee to work as a regular reverse proxy. Later we'll see how to enable edge components.
 

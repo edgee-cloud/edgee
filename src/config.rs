@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::Path;
 
 use serde::Deserialize;
 use tokio::sync::OnceCell;
@@ -114,15 +115,36 @@ impl Default for SecurityConfiguration {
     }
 }
 
+fn read_config() -> Result<StaticConfiguration, String> {
+    let toml_exists = Path::new("edgee.toml").exists();
+    let yaml_exists = Path::new("edgee.yaml").exists();
+
+    match (toml_exists, yaml_exists) {
+        (true, true) => {
+            Err("both edgee.toml and edgee.yaml exist but only one is expected.".into())
+        }
+        (false, false) => {
+            Err("no configuration file found, either edgee.toml or edgee.yaml is required.".into())
+        }
+        (true, false) => {
+            let config_file =
+                std::fs::read_to_string("edgee.toml").expect("should read edgee.toml");
+            toml::from_str(&config_file).map_err(|_| "should parse config file".into())
+        }
+        (false, true) => {
+            let config_file =
+                std::fs::read_to_string("edgee.yaml").expect("should read edgee.yaml");
+            serde_yml::from_str(&config_file).map_err(|_| "should parse config file".into())
+        }
+    }
+}
+
 // TODO: Read config from CLI arguments
-// TODO: Support YAML
 // TODO: Support dynamic configuration via Redis
 // TODO: Validate configuration (e.g. no two routers should point for the same domain)
 // TODO: Improve error messages for configuration errors
 pub fn init() {
-    let config_file = std::fs::read_to_string("edgee.toml").expect("should read edgee.toml");
-    let mut config: StaticConfiguration =
-        toml::from_str(&config_file).expect("should parse config file");
+    let mut config = read_config().unwrap();
 
     config.security = SecurityConfiguration::default();
 
