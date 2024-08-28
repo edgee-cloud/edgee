@@ -17,7 +17,6 @@ anyhow = "1.0.83"
 bytes = "1.6.0"
 cbc = { version = "0.1.2", features = ["std"] }
 chrono = { version = "0.4.38", features = ["serde"] }
-clap = { version = "^4", features = ["derive"] }
 cookie = "0.18.1"
 hex = "0.4.3"
 html-escape = "0.2.13"
@@ -38,7 +37,6 @@ rustls-pemfile = "2.1.2"
 rustls-pki-types = "1.7.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-simple_logger = "4.3"
 tokio = { version = "1", features = ["full"] }
 tokio-rustls = { version = "0.26.0", features = ["ring"] }
 toml = "0.8.12"
