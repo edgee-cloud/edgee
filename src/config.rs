@@ -1,10 +1,14 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use serde::Deserialize;
 use tokio::sync::OnceCell;
 
 static CONFIG: OnceCell<StaticConfiguration> = OnceCell::const_new();
+
+pub trait Validate {
+    fn validate(&self) -> Result<(), Vec<String>>;
+}
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct StaticConfiguration {
@@ -18,6 +22,45 @@ pub struct StaticConfiguration {
     pub security: SecurityConfiguration,
     #[serde(default)]
     pub destinations: DestinationConfiguration,
+}
+
+impl Validate for StaticConfiguration {
+    fn validate(&self) -> Result<(), Vec<String>> {
+        let validators: Vec<Box<dyn Fn() -> Result<(), String>>> = vec![
+            Box::new(|| self.validate_no_duplicate_domains()),
+            // additional validation rules can be added here
+        ];
+
+        let errors: Vec<String> = validators
+            .iter()
+            .filter_map(|validate| validate().err())
+            .collect();
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+}
+
+impl StaticConfiguration {
+    fn validate_no_duplicate_domains(&self) -> Result<(), String> {
+        let mut seen = HashSet::new();
+        let mut duplicates = HashSet::new();
+
+        for route in &self.routing {
+            if !seen.insert(&route.domain) {
+                duplicates.insert(&route.domain);
+            }
+        }
+
+        if !duplicates.is_empty() {
+            Err(format!("duplicate domains found: {:?}", duplicates))
+        } else {
+            Ok(())
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -141,10 +184,11 @@ fn read_config() -> Result<StaticConfiguration, String> {
 
 // TODO: Read config from CLI arguments
 // TODO: Support dynamic configuration via Redis
-// TODO: Validate configuration (e.g. no two routers should point for the same domain)
+// TODO: Add more configuration validations
 // TODO: Improve error messages for configuration errors
 pub fn init() {
-    let mut config = read_config().unwrap();
+    let mut config: StaticConfiguration = read_config().unwrap();
+    config.validate().unwrap();
 
     config.security = SecurityConfiguration::default();
 
