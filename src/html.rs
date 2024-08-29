@@ -292,13 +292,15 @@ fn extract_content_value(tag: &str) -> Option<String> {
 /// let sdk_content = get_sdk_from_url(url);
 /// assert!(sdk_content.is_ok());
 /// ```
-fn get_sdk_from_url(url: &str) -> Result<String, &'static str> {
+pub fn get_sdk_from_url(url: &str) -> Result<String, &'static str> {
     // Extract the version of the SDK from the URL using a regular expression.
     let regex_pattern = r#"(v[0-9\.]+)\.js$"#;
     let re = Regex::new(&regex_pattern).unwrap();
     let captures = re.captures(url);
     if captures.is_none() {
-        return Ok(include_str!("../public/sdk.js").trim().to_string());
+        if url.ends_with("sdk.js") {
+            return Ok(include_str!("../public/sdk.js").trim().to_string());
+        } else { return Err("Failed to read the JS SDK file"); }
     }
 
     // Retrieve the SDK content based on the extracted version.
