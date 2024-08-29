@@ -74,13 +74,13 @@ async fn handle_request(
     let incoming_path = incoming_ctx.path().clone();
     let incoming_headers = incoming_ctx.headers().clone();
 
-    if incoming_method == Method::GET
-        && (incoming_path == "/_edgee/sdk.js" || incoming_path == "/_edgee/libs/edgee.v.1.0.0.js")
-    {
+    // SDK path
+    if incoming_method == Method::GET && (incoming_path == "/_edgee/sdk.js" || (incoming_path.path().starts_with("/_edgee/libs/edgee.") && incoming_path.path().ends_with(".js"))) {
         debug!(?incoming_path, "serving sdk");
         return serve_sdk(incoming_path.as_str());
     }
 
+    // event path, method POST and content-type application/json
     if incoming_method == Method::POST
         && incoming_path == "/_edgee/event"
         && content_type == "application/json"
@@ -609,16 +609,23 @@ fn empty() -> BoxBody<Bytes, Infallible> {
 }
 
 fn serve_sdk(path: &str) -> anyhow::Result<Response> {
-    static V0: &str = include_str!("../public/sdk.js");
-    static V1: &str = include_str!("../public/edgee.v1.0.0.js");
-    let body = if path == "/_edgee/sdk.js" { V0 } else { V1 };
-    let resp = http::Response::builder()
-        .status(StatusCode::OK)
-        .header(CONTENT_TYPE, "application/javascript")
-        .header(CACHE_CONTROL, "public, max-age=300")
-        .body(Full::from(Bytes::from(body)).boxed())
-        .expect("serving sdk should never fail");
-    Ok(resp)
+    let inlined_sdk = html::get_sdk_from_url(path);
+    if inlined_sdk.is_ok() {
+        let resp = http::Response::builder()
+            .status(StatusCode::OK)
+            .header(CONTENT_TYPE, "application/javascript; charset=utf-8")
+            .header(CACHE_CONTROL, "public, max-age=300")
+            .body(Full::from(Bytes::from(inlined_sdk.unwrap())).boxed())
+            .expect("serving sdk should never fail");
+        Ok(resp)
+    } else {
+        let resp = http::Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .header(CACHE_CONTROL, "public, max-age=300")
+            .body(Full::from(Bytes::from("Not found")).boxed())
+            .expect("serving sdk should never fail");
+        Ok(resp)
+    }
 }
 
 fn build_response(parts: http::response::Parts, body: Bytes) -> Response {
