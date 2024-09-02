@@ -193,7 +193,6 @@ fn read_config() -> Result<StaticConfiguration, String> {
 }
 
 // TODO: Read config from CLI arguments
-// TODO: Support dynamic configuration via Redis
 // TODO: Add more configuration validations
 // TODO: Improve error messages for configuration errors
 pub fn init() {

@@ -7,9 +7,9 @@ who are interested in making great software with us.
 At Edgee, we aspire to empower everyone to create interactive experiences. To do this, 
 we're exploring and pushing the boundaries of new technologies, and sharing our learnings with the open source community.
 
-If you have ideas for collaboration, email us at opensource@edgee.cloud or join our [Discord](https://discord.gg/H2Tch53e)!
+If you have ideas for collaboration, email us at opensource@edgee.cloud or join our [Slack](https://www.edgee.cloud/slack)!
 
-We're also hiring full-time engineers to work with us everywhere! Check out our current job postings [here](https://github.com/edgee-cloud/careers).
+We're also hiring full-time engineers to work with us everywhere! Check out our current job postings [here](https://github.com/edgee-cloud/careers/issues).
 
 ## Issues
 
@@ -44,13 +44,30 @@ You can comment on the issue to let others know you're interested in working on 
 
 1. Fork the repository.
 
-2. Create a new feature branch.
+2. Review the [Development Workflow](#development-workflow) section to understand how to run the project locally.
 
-3. Make your changes. Ensure that there are no build errors by running the project with your changes locally.
+3. Create a new feature [branch](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-and-deleting-branches-within-your-repository).
 
-4. Open a pull request with a name and description of what you did. You can read more about working with pull requests on GitHub [here](https://help.github.com/en/articles/creating-a-pull-request-from-a-fork).
+4. Make your changes on your branch. Ensure that there are no build errors by running the project with your changes locally.
 
-5. A maintainer will review your pull request and may ask you to make changes.
+5. [Submit the branch as a Pull Request](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request-from-a-fork) pointing to the `main` branch of the Edgee repository. A maintainer should comment and/or review your Pull Request within a few days. Although depending on the circumstances, it may take longer.
+
+### Development Workflow
+
+#### Setup and run Edgee
+
+```bash
+cargo run
+```
+
+#### Test
+
+```bash
+cargo test
+```
+
+This command will be triggered to each PR as a requirement for merging it.
+
 
 ## Licensing
 
