@@ -134,16 +134,7 @@ pub fn process_document(
     let realip = Realip::new();
     payload.client.ip = realip.get_from_request(remote_addr, request_headers);
 
-    payload.client.locale = request_headers
-        .get("accept-language")
-        .and_then(|h| h.to_str().ok())
-        .map(|v| v.split(','))
-        .map(|languages| languages.flat_map(|lang| lang.split(';')))
-        .map(|mut lang| match lang.find(|lang| !lang.trim().is_empty()) {
-            Some(lang) => lang.to_string(),
-            None => String::from("en-US"),
-        })
-        .unwrap();
+    payload.client.locale = get_preferred_language(request_headers);
 
     payload.client.x_forwarded_for = request_headers
         .get("x-forwarded-for")
@@ -230,6 +221,22 @@ pub fn process_document(
     }
 
     return payload;
+}
+
+fn get_preferred_language(request_headers: &HeaderMap) -> String {
+    let accept_language_header_option = request_headers.get("accept-language");
+    let accept_language_header = match accept_language_header_option {
+        Some(header) => header.to_str().unwrap_or(""),
+        None => "",
+    };
+    let languages = accept_language_header.split(",");
+    for l in languages {
+        let lang = l.split(";").next().unwrap_or("").trim();
+        if !lang.is_empty() {
+            return lang.to_lowercase();
+        }
+    }
+    "en-us".to_string()
 }
 
 fn process_sec_ch_ua(header: &str) -> String {

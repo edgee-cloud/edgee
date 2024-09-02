@@ -85,7 +85,6 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
     }
 
     // event path, method POST and content-type application/json
-    // todo validate encrypted path
     if incoming_method == Method::POST && content_type == "application/json" {
         if incoming_path == "/_edgee/event" || path::validate(incoming_host.as_str(), incoming_path.as_str()) {
             let mut res = http::Response::builder()
@@ -234,30 +233,6 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
             };
         }
     }
-
-    // todo event path for full client-side integration (Edgee installed like a third party, and use localstorage)
-    if incoming_path.path().starts_with("/_edgee/csevent") {
-        if incoming_method == Method::OPTIONS {
-            return Ok(http::Response::builder()
-                .status(StatusCode::NO_CONTENT)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .header(ACCESS_CONTROL_ALLOW_METHODS, "POST, OPTIONS")
-                .header(ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type")
-                .header(ACCESS_CONTROL_MAX_AGE, "3600")
-                .body(empty())
-                .expect("response builder should never fail"));
-        }
-        if incoming_method == Method::POST && content_type == "application/json" {
-            return Ok(http::Response::builder()
-                .status(StatusCode::OK)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .header(CONTENT_TYPE, "application/json")
-                .header(CACHE_CONTROL, "private, no-store, toto")
-                .body(empty())
-                .expect("response builder should never fail"));
-        }
-    }
-
 
     // define the backend
     let routing_ctx = match RoutingContext::from_request_context(&incoming_ctx) {
