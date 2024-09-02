@@ -313,3 +313,74 @@ pub fn validate(hostname: &str, path: &str) -> bool {
 
     false
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encrypt_string_with_valid_input() {
+        let input = "hello";
+        let encrypted = encrypt_string(input);
+        assert_ne!(input, encrypted);
+    }
+
+    #[test]
+    fn encrypt_string_with_empty_input() {
+        let input = "";
+        let encrypted = encrypt_string(input);
+        assert_eq!(input, encrypted);
+    }
+
+    #[test]
+    fn decrypt_string_with_empty_input() {
+        let input = "";
+        let decrypted = decrypt_string(input, 0);
+        assert_eq!(input, decrypted);
+    }
+
+    #[test]
+    fn guess_path_sizes_with_valid_hostname() {
+        let hostname = "example.com";
+        let sizes = guess_path_sizes(hostname);
+        assert!(!sizes.is_empty());
+    }
+
+    #[test]
+    fn generate_random_string_with_valid_length() {
+        let length = 10;
+        let random_string = generate_random_string(length);
+        assert_eq!(random_string.len(), length);
+    }
+
+    #[test]
+    fn generate_path_with_valid_hostname() {
+        let hostname = "example.com";
+        let path = generate(hostname);
+        assert!(path.starts_with('/'));
+    }
+
+    #[test]
+    fn validate_with_correct_hostname_and_path() {
+        let hostname = "example.com";
+        let path = generate(hostname);
+        let is_valid = validate(hostname, &path);
+        assert!(is_valid);
+    }
+
+    #[test]
+    fn validate_with_incorrect_hostname_and_path() {
+        let hostname = "example.com";
+        let path = generate("different.com");
+        let is_valid = validate(hostname, &path);
+        assert!(!is_valid);
+    }
+
+    #[test]
+    fn validate_with_invalid_path_length() {
+        let hostname = "example.com";
+        let path = "/short";
+        let is_valid = validate(hostname, path);
+        assert!(!is_valid);
+    }
+}
