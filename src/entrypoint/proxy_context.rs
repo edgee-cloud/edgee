@@ -6,9 +6,7 @@ use hyper_util::{
     rt::TokioExecutor,
 };
 use tracing::debug;
-
-use crate::real_ip;
-
+use crate::tools::real_ip::Realip;
 use super::{incoming_context::IncomingContext, routing_context::RoutingContext};
 
 pub struct ProxyContext<'a> {
@@ -30,7 +28,10 @@ impl<'a> ProxyContext<'a> {
         let incoming_method = incoming_context.method().clone();
         let incoming_host = incoming_context.host().clone();
         let incoming_body = incoming_context.incoming_body;
-        let client_ip = real_ip::get(incoming_context.remote_addr, &incoming_headers);
+
+        // client ip
+        let realip = Realip::new();
+        let client_ip = realip.get_from_request(incoming_context.remote_addr, &incoming_headers);
 
         if let Some(forwarded_for) = incoming_headers.get_mut(FORWARDED_FOR) {
             let existing_value = forwarded_for.to_str().unwrap();

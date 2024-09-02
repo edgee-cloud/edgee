@@ -9,12 +9,13 @@ pub struct IncomingContext {
     pub incoming_body: Incoming,
     pub remote_addr: SocketAddr,
     pub is_https: bool,
+    pub is_debug_mode: bool,
     host: String,
     path: PathAndQuery,
 }
 
 impl IncomingContext {
-    pub fn new(request: http::Request<Incoming>, remote_addr: SocketAddr, is_https: bool) -> Self {
+    pub fn new(request: http::Request<Incoming>, remote_addr: SocketAddr, proto: &str) -> Self {
         let (incoming_parts, incoming_body) = request.into_parts();
 
         let host = match (incoming_parts.headers.get(HOST), incoming_parts.uri.host()) {
@@ -33,11 +34,29 @@ impl IncomingContext {
             .unwrap_or(&root_path)
             .to_owned();
 
+        // is_https
+        let mut is_https = proto == "https";
+        // check if the x-forwarded-proto header is set
+        if let Some(forwarded_proto) = incoming_parts.headers.get("x-forwarded-proto") {
+            if let Ok(value) = forwarded_proto.to_str() {
+                if value == "https" {
+                    is_https = true;
+                }
+            }
+        }
+
+        // debug mode
+        let is_debug_mode = match incoming_parts.headers.get("edgee-debug") {
+            Some(_) => true,
+            None => false,
+        };
+
         Self {
             incoming_parts,
             incoming_body,
             remote_addr,
             is_https,
+            is_debug_mode,
             host,
             path,
         }

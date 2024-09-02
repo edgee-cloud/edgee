@@ -1,6 +1,6 @@
-use crate::cookie::EdgeeCookie;
+use crate::tools::edgee_cookie::EdgeeCookie;
+use crate::tools::real_ip::Realip;
 use crate::html::Document;
-use crate::real_ip;
 use chrono::{DateTime, Utc};
 use html_escape;
 use http::uri::PathAndQuery;
@@ -130,7 +130,9 @@ pub fn process_document(
         .unwrap_or("")
         .to_string();
 
-    payload.client.ip = real_ip::get(remote_addr, request_headers);
+    // client ip
+    let realip = Realip::new();
+    payload.client.ip = realip.get_from_request(remote_addr, request_headers);
 
     payload.client.locale = request_headers
         .get("accept-language")

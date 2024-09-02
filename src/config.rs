@@ -15,6 +15,14 @@ pub struct StaticConfiguration {
     pub log: Option<LogConfiguration>,
     pub http: HttpConfiguration,
     pub https: HttpsConfiguration,
+
+    // todo behind_proxy_cache
+    // todo max_decompressed_body_size
+    // todo max_compressed_body_size
+    // todo cookie_name
+    // todo data_collection_address
+    // todo proxy_only
+
     pub monitor: Option<MonitorConfiguration>,
     #[serde(default)]
     pub routing: Vec<RoutingConfiguration>,
@@ -102,7 +110,9 @@ pub struct RoutingRulesConfiguration {
     pub path_regexp: Option<String>,
     pub rewrite: Option<String>,
     pub backend: Option<String>,
+    // todo, remove from here
     pub max_compressed_body_size: Option<u64>,
+    // todo, remove from here
     pub max_decompressed_body_size: Option<u64>,
 }
 
