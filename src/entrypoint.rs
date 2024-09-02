@@ -553,7 +553,10 @@ fn serve_sdk(path: &str) -> anyhow::Result<Response> {
     }
 }
 
-fn build_response(parts: http::response::Parts, body: Bytes) -> Response {
+fn build_response(mut parts: http::response::Parts, body: Bytes) -> Response {
+    // Update Content-Length header to correct size
+    parts.headers.insert("content-length", body.len());
+
     let mut builder = http::Response::builder();
     for (name, value) in parts.headers {
         if name.is_some() {
