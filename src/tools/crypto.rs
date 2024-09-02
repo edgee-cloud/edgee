@@ -73,3 +73,42 @@ pub fn decrypt(text: &str) -> Result<String, &'static str>  {
     }
     Ok(String::from_utf8(res.unwrap()).unwrap())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::init_test_config;
+
+    #[test]
+    fn decrypt_valid_text() {
+        init_test_config();
+        let encrypted_text = encrypt("a text to encrypt and decrypt");
+        assert!(encrypted_text.is_ok());
+        let decrypted_text = decrypt(encrypted_text.unwrap().as_str());
+        assert!(decrypted_text.is_ok());
+
+        assert_eq!(decrypted_text.unwrap().as_str(), "a text to encrypt and decrypt");
+    }
+
+    #[test]
+    fn decrypt_empty_text() {
+        let result = decrypt("");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Empty string");
+    }
+
+    #[test]
+    fn decrypt_invalid_hex() {
+        let result = decrypt("invalid_hex");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Invalid hex");
+    }
+
+    #[test]
+    fn decrypt_failed_decryption() {
+        init_test_config();
+        let result = decrypt("08b64faae3de3b5c6e17b3f2c45be4517030d18a4bfdefbff604e87294bb2d31");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Failed to decrypt");
+    }
+}

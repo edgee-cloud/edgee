@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-
 use serde::Deserialize;
 use tokio::sync::OnceCell;
 
@@ -216,4 +215,22 @@ pub fn get() -> &'static StaticConfiguration {
     CONFIG
         .get()
         .expect("config module should have been initialized")
+}
+
+#[cfg(test)]
+pub fn init_test_config() {
+        let mut config = StaticConfiguration {
+            log: Some(LogConfiguration { level: "debug".to_string() }),
+            http: HttpConfiguration { address: "127.0.0.1:8080".to_string(), force_https: false },
+            https: HttpsConfiguration { address: "127.0.0.1:8443".to_string(), cert: "cert.pem".to_string(), key: "key.pem".to_string() },
+            monitor: Some(MonitorConfiguration { address: "127.0.0.1:9090".to_string() }),
+            routing: vec![],
+            security: SecurityConfiguration::default(),
+            destinations: DestinationConfiguration::default(),
+        };
+        config.security = SecurityConfiguration::default();
+
+        if CONFIG.get().is_none() {
+            CONFIG.set(config).expect("Should initialize config");
+        }
 }

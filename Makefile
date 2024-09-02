@@ -22,4 +22,4 @@ ci.build: ## Build release version
 	cargo build --release
 
 ci.test: ## Run tests
-	cargo test
+	cargo test -- --test-threads 1

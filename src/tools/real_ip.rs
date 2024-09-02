@@ -167,3 +167,111 @@ impl Realip {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use http::HeaderMap;
+    use std::net::SocketAddr;
+
+    #[test]
+    fn new_realip_initializes_with_private_cidrs() {
+        let realip = Realip::new();
+        assert_eq!(realip.cidrs.len(), 8);
+    }
+
+    #[test]
+    fn get_from_request_returns_ip_from_special_headers() {
+        let realip = Realip::new();
+        let mut headers = HeaderMap::new();
+        headers.insert("X-Real-IP", "203.0.113.195".parse().unwrap());
+        let remote_addr: SocketAddr = "192.0.2.1:12345".parse().unwrap();
+        let ip = realip.get_from_request(remote_addr, &headers);
+        assert_eq!(ip, "203.0.113.195");
+    }
+
+    #[test]
+    fn get_from_request_returns_ip_from_forwarded_headers() {
+        let realip = Realip::new();
+        let mut headers = HeaderMap::new();
+        headers.insert("X-Forwarded-For", "203.0.113.195".parse().unwrap());
+        let remote_addr: SocketAddr = "192.0.2.1:12345".parse().unwrap();
+        let ip = realip.get_from_request(remote_addr, &headers);
+        assert_eq!(ip, "203.0.113.195");
+    }
+
+    #[test]
+    fn get_from_request_returns_remote_addr_if_no_headers() {
+        let realip = Realip::new();
+        let headers = HeaderMap::new();
+        let remote_addr: SocketAddr = "192.0.2.1:12345".parse().unwrap();
+        let ip = realip.get_from_request(remote_addr, &headers);
+        assert_eq!(ip, "192.0.2.1:12345");
+    }
+
+    #[test]
+    fn is_private_address_returns_true_for_private_ip() {
+        let realip = Realip::new();
+        let result = realip.is_private_address("192.168.1.1");
+        assert!(result.is_ok());
+        assert!(result.unwrap());
+    }
+
+    #[test]
+    fn is_private_address_returns_false_for_public_ip() {
+        let realip = Realip::new();
+        let result = realip.is_private_address("8.8.8.8");
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
+    }
+
+    #[test]
+    fn is_private_address_returns_error_for_invalid_ip() {
+        let realip = Realip::new();
+        let result = realip.is_private_address("invalid_ip");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "address is not valid");
+    }
+
+    #[test]
+    fn get_from_special_headers_returns_ip_if_present() {
+        let mut headers = HeaderMap::new();
+        headers.insert("X-Real-IP", "203.0.113.195".parse().unwrap());
+        let ip = Realip::get_from_special_headers(&headers);
+        assert_eq!(ip, Some("203.0.113.195".to_string()));
+    }
+
+    #[test]
+    fn get_from_special_headers_returns_none_if_not_present() {
+        let headers = HeaderMap::new();
+        let ip = Realip::get_from_special_headers(&headers);
+        assert_eq!(ip, None);
+    }
+
+    #[test]
+    fn get_from_forwarded_headers_returns_public_ip() {
+        let realip = Realip::new();
+        let mut headers = HeaderMap::new();
+        headers.insert("X-Forwarded-For", "203.0.113.195, 192.168.1.1".parse().unwrap());
+        let ip = realip.get_from_forwarded_headers(&headers);
+        assert_eq!(ip, Some("203.0.113.195".to_string()));
+    }
+
+    #[test]
+    fn get_from_forwarded_headers_skips_private_ip() {
+        let realip = Realip::new();
+        let mut headers = HeaderMap::new();
+        headers.insert("X-Forwarded-For", "192.168.1.1, 203.0.113.195".parse().unwrap());
+        let ip = realip.get_from_forwarded_headers(&headers);
+        assert_eq!(ip, Some("203.0.113.195".to_string()));
+    }
+
+    #[test]
+    fn get_from_forwarded_headers_returns_none_if_all_private() {
+        let realip = Realip::new();
+        let mut headers = HeaderMap::new();
+        headers.insert("X-Forwarded-For", "192.168.1.1, 10.0.0.1".parse().unwrap());
+        let ip = realip.get_from_forwarded_headers(&headers);
+        assert_eq!(ip, None);
+    }
+}
