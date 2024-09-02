@@ -1,16 +1,13 @@
 use tracing::error;
 
 mod config;
-mod cookie;
-mod crypto;
 mod data_collection;
 mod destinations;
 mod entrypoint;
 mod html;
 mod logger;
 mod monitor;
-mod path;
-mod real_ip;
+mod tools;
 
 #[tokio::main]
 async fn main() {
