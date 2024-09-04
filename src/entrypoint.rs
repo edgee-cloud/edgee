@@ -24,6 +24,7 @@ use tracing::{debug, error, warn};
 use crate::{tools::{edgee_cookie, path}, data_collection::{self, Session}, destinations, config};
 use crate::tools::real_ip::Realip;
 use crate::{data_collection::Payload, html};
+use brotli::{Decompressor, CompressorWriter};
 
 mod incoming_context;
 mod proxy_context;
@@ -335,8 +336,18 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
                     decoder.read_to_end(&mut buf)?;
                     String::from_utf8_lossy(&buf).to_string()
                 }
-                // todo: brotli
-                Some(_) | None => String::from_utf8_lossy(&response_body).to_string(),
+                Some("br") => { // handle brotli encoding
+                    let mut decoder = Decompressor::new(cursor, 4096);
+                    let mut buf = Vec::new();
+                    decoder.read_to_end(&mut buf)?;
+                    String::from_utf8_lossy(&buf).to_string()
+                }
+                Some(enc) => { // encoding not supported
+                    set_process_debug_header(&mut response_parts, is_debug_mode, &format!("compute-aborted(encoding-not-supported {})", enc));
+                    set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
+                    return Ok(build_response(response_parts, response_body));
+                }
+                None => String::from_utf8_lossy(&response_body).to_string(),
             };
 
             // interpret what's in the body
@@ -452,7 +463,13 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
                     encoder.write_all(new_body.as_bytes())?;
                     encoder.finish().into_result()?
                 }
-                // todo brotli
+                Some("br") => { // handle brotli encoding
+                    // q: quality (range: 0-11), lgwin: window size (range: 10-24)
+                    let mut encoder  = CompressorWriter::new(Vec::new(), 4096, 11, 24);
+                    encoder.write_all(new_body.as_bytes())?;
+                    encoder.flush()?;
+                    encoder.into_inner()
+                }
                 Some(_) | None => new_body.into(),
             };
 
