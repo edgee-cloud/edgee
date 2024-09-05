@@ -53,7 +53,7 @@ pub async fn start() -> anyhow::Result<()> {
     if enable_http {
         tasks.push(tokio::spawn(async {
             if let Err(err) = web::start().await {
-                error!(?err, "Failed to start HTTP entrypoint")
+                error!(?err, "Failed to start HTTP entrypoint");
             }
         }));
     }
