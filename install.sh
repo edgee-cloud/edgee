@@ -37,7 +37,7 @@ edgee-installer
 The installer for Edgee (https://www.edgee.cloud)
 
 USAGE:
-    edgee-installer [FLAGS]
+    edgee-installer [-h/--help]
 
 FLAGS:
     -h, --help      Print help informations
@@ -113,7 +113,15 @@ download_latest() {
 }
 
 main() {
+    case "${1:-}" in
+        -h|--help)
+            _usage
+            exit 0
+            ;;
+    esac
+
     _header
+
     check_dependencies
     download_latest
 }
