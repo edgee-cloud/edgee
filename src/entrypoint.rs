@@ -32,7 +32,7 @@ mod routing_context;
 mod web;
 mod websecure;
 
-const EDGEE_PROCESS_HEADER: &str = "x-edgee-process";
+const EDGEE_HEADER: &str = "x-edgee";
 const EDGEE_FULL_DURATION_HEADER: &str = "x-edgee-full-duration";
 const EDGEE_COMPUTE_DURATION_HEADER: &str = "x-edgee-compute-duration";
 const EDGEE_PROXY_DURATION_HEADER: &str = "x-edgee-proxy-duration";
@@ -269,38 +269,38 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
 
             // if the request method is HEAD, OPTIONS, TRACE or CONNECT, just return the response
             if incoming_method == Method::HEAD || incoming_method == Method::OPTIONS || incoming_method == Method::TRACE || incoming_method == Method::CONNECT {
-                set_process_debug_header(&mut response_parts, is_debug_mode, "proxy-only(method)");
+                set_edgee_header(&mut response_parts, "proxy-only(method)");
                 set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                 return Ok(build_response(response_parts, response_body));
             }
 
             // if response is informational or redirection, just return the response
             if response_parts.status.is_redirection() {
-                set_process_debug_header(&mut response_parts, is_debug_mode, "proxy-only(3xx)");
+                set_edgee_header(&mut response_parts, "proxy-only(3xx)");
                 set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                 return Ok(build_response(response_parts, response_body));
             }
             if response_parts.status.is_informational() {
-                set_process_debug_header(&mut response_parts, is_debug_mode, "proxy-only(1xx)");
+                set_edgee_header(&mut response_parts, "proxy-only(1xx)");
                 set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                 return Ok(build_response(response_parts, response_body));
             }
 
             // if the response content type is not text/html, just return the response
             if !content_type.unwrap().starts_with("text/html") {
-                set_process_debug_header(&mut response_parts, is_debug_mode, "proxy-only(non-html)");
+                set_edgee_header(&mut response_parts, "proxy-only(non-html)");
                 set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                 return Ok(build_response(response_parts, response_body));
             }
             if content_type.is_none() {
-                set_process_debug_header(&mut response_parts, is_debug_mode, "proxy-only(no-content-type)");
+                set_edgee_header(&mut response_parts, "proxy-only(no-content-type)");
                 set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                 return Ok(build_response(response_parts, response_body));
             }
 
             // if the response hasn't a body, return true
             if response_body.is_empty() {
-                set_process_debug_header(&mut response_parts, is_debug_mode, "proxy-only(no-body)");
+                set_edgee_header(&mut response_parts, "proxy-only(no-body)");
                 set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                 return Ok(build_response(response_parts, response_body));
             }
@@ -311,7 +311,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
                 let size_limit = routing_ctx.rule.max_compressed_body_size.unwrap();
                 if content_length > size_limit {
                     warn!(size = content_length, limit = size_limit, "compressed body too large");
-                    set_process_debug_header(&mut response_parts, is_debug_mode, "compute-aborted(compressed-body-too-large)");
+                    set_edgee_header(&mut response_parts, "compute-aborted(compressed-body-too-large)");
                     set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                     return Ok(build_response(response_parts, response_body));
                 }
@@ -343,7 +343,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
                     String::from_utf8_lossy(&buf).to_string()
                 }
                 Some(enc) => { // encoding not supported
-                    set_process_debug_header(&mut response_parts, is_debug_mode, &format!("compute-aborted(encoding-not-supported {})", enc));
+                    set_edgee_header(&mut response_parts, &format!("compute-aborted(encoding-not-supported {})", enc));
                     set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                     return Ok(build_response(response_parts, response_body));
                 }
@@ -355,14 +355,14 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
                 let size_limit = routing_ctx.rule.max_decompressed_body_size.unwrap() as usize;
                 if decompressed_body.len() > size_limit {
                     warn!(size = decompressed_body.len(), limit = size_limit, "decompressed body too large");
-                    set_process_debug_header(&mut response_parts, is_debug_mode, "compute-aborted(decompressed-body-too-large)");
+                    set_edgee_header(&mut response_parts, "compute-aborted(decompressed-body-too-large)");
                     set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                     return Ok(build_response(response_parts, response_body));
                 }
             }
 
             if !decompressed_body.contains(r#"id="__EDGEE_SDK__""#) {
-                set_process_debug_header(&mut response_parts, is_debug_mode, "compute-aborted(no-sdk)");
+                set_edgee_header(&mut response_parts, "compute-aborted(no-sdk)");
                 set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                 return Ok(build_response(response_parts, response_body));
             }
@@ -379,7 +379,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
                 .and_then(|h| h.to_str().ok())
                 .unwrap_or("");
             if purpose.contains("prefetch") || sec_purpose.contains("prefetch") {
-                set_process_debug_header(&mut response_parts, is_debug_mode, "compute-aborted(prefetch)");
+                set_edgee_header(&mut response_parts, "compute-aborted(prefetch)");
                 set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                 return Ok(build_response(response_parts, response_body));
             }
@@ -387,7 +387,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
             // if the disableEdgeDataCollection query parameter is set, just return the response
             let query = incoming_path.query().unwrap_or("");
             if query.contains("disableEdgeDataCollection") {
-                set_process_debug_header(&mut response_parts, is_debug_mode, "compute-aborted(disableEdgeDataCollection)");
+                set_edgee_header(&mut response_parts, "compute-aborted(disableEdgeDataCollection)");
                 set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                 return Ok(build_response(response_parts, response_body));
             }
@@ -402,7 +402,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
             // if user has no cookie, stop here without processing the payload, else process the payload
             let cookie = edgee_cookie::get(&incoming_headers, &mut HeaderMap::new(), &incoming_host);
             if cookie.is_none() {
-                set_process_debug_header(&mut response_parts, is_debug_mode, "compute-aborted(no-cookie)");
+                set_edgee_header(&mut response_parts, "compute-aborted(no-cookie)");
             } else {
                 let payload = data_collection::process_document(
                     &document,
@@ -419,6 +419,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
                     warn!(?err, "failed to send data collection payload");
                 }
                 document.trace_uuid = uuid;
+                set_edgee_header(&mut response_parts, "compute");
             }
 
             // amend the document & the headers
@@ -518,25 +519,22 @@ fn set_duration_headers(response_parts: &mut Parts, is_debug_mode: bool, full_du
     }
 }
 
-/// Sets the process debug header for the response if debug mode is enabled.
+/// Sets the x-edgee header for the response to know the process.
 ///
 /// # Arguments
 ///
 /// * `response_parts` - A mutable reference to the response parts.
-/// * `is_debug_mode` - A boolean indicating whether debug mode is enabled.
 /// * `process` - A string slice representing the process to be set in the header.
 ///
 /// # Logic
 ///
-/// If debug mode is enabled, the function inserts the process information into the response headers.
+/// The function inserts the process information into the response headers.
 /// The function also logs the process information using the `debug!` macro.
-fn set_process_debug_header(response_parts: &mut Parts, is_debug_mode: bool, process: &str) {
-    if is_debug_mode {
-        response_parts.headers.insert(
-            HeaderName::from_str(EDGEE_PROCESS_HEADER).unwrap(),
-            HeaderValue::from_str(process).unwrap(),
-        );
-    }
+fn set_edgee_header(response_parts: &mut Parts, process: &str) {
+    response_parts.headers.insert(
+        HeaderName::from_str(EDGEE_HEADER).unwrap(),
+        HeaderValue::from_str(process).unwrap(),
+    );
     debug!(process);
 }
 
