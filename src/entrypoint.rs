@@ -311,10 +311,18 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
                 let size_limit = routing_ctx.rule.max_compressed_body_size.unwrap();
                 if content_length > size_limit {
                     warn!(size = content_length, limit = size_limit, "compressed body too large");
-                    set_edgee_header(&mut response_parts, "compute-aborted(compressed-body-too-large)");
+                    set_edgee_header(&mut response_parts, "proxy-only(compressed-body-too-large)");
                     set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                     return Ok(build_response(response_parts, response_body));
                 }
+            }
+
+            // if content-encoding is not supported, return true
+            if !["gzip", "deflate", "identity", "br", ""].contains(&encoding.unwrap()) {
+                warn!("encoding not supported: {}", encoding.unwrap());
+                set_edgee_header(&mut response_parts, "proxy-only(encoding-not-supported)");
+                set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
+                return Ok(build_response(response_parts, response_body));
             }
 
             //** END: Only proxy in some cases
@@ -336,18 +344,13 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
                     decoder.read_to_end(&mut buf)?;
                     String::from_utf8_lossy(&buf).to_string()
                 }
-                Some("br") => { // handle brotli encoding
+                Some("br") => {
                     let mut decoder = Decompressor::new(cursor, 4096);
                     let mut buf = Vec::new();
                     decoder.read_to_end(&mut buf)?;
                     String::from_utf8_lossy(&buf).to_string()
                 }
-                Some(enc) => { // encoding not supported
-                    set_edgee_header(&mut response_parts, &format!("compute-aborted(encoding-not-supported {})", enc));
-                    set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
-                    return Ok(build_response(response_parts, response_body));
-                }
-                None => String::from_utf8_lossy(&response_body).to_string(),
+                Some(_) | None => String::from_utf8_lossy(&response_body).to_string(),
             };
 
             // interpret what's in the body
