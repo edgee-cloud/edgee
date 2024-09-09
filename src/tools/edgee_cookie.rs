@@ -195,7 +195,7 @@ fn set_cookie(value: &str, res_headers: &mut http::HeaderMap, host: &str) {
         .domain(root_domain)
         .path("/")
         .http_only(false)
-        .secure(config::get().http.force_https)
+        .secure(config::get().http.clone().unwrap().force_https)
         .same_site(SameSite::Lax)
         .expires(OffsetDateTime::now_utc() + StdDuration::from_secs(365 * 24 * 60 * 60));
 
