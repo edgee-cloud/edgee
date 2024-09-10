@@ -15,7 +15,7 @@ use crate::config;
 use super::handle_request;
 
 pub async fn start() -> anyhow::Result<()> {
-    let cfg = &config::get().http;
+    let cfg = config::get().http.as_ref().ok_or_else(|| anyhow::anyhow!("HTTP configuration is missing"))?;
 
     info!(
         address = cfg.address,

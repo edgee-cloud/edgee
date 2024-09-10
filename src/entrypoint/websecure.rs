@@ -17,7 +17,7 @@ use crate::config;
 use super::handle_request;
 
 pub async fn start() -> anyhow::Result<()> {
-    let cfg = &config::get().https;
+    let cfg = config::get().https.as_ref().ok_or_else(|| anyhow::anyhow!("HTTPS configuration is missing"))?;
 
     info!(address = cfg.address, "Starting HTTPS entrypoint");
     let addr: SocketAddr = cfg.address.parse()?;
