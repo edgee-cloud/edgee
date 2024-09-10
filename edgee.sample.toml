@@ -1,0 +1,39 @@
+[log]
+level = "info"
+
+[http]
+address = "0.0.0.0:8080"
+force_https = true
+
+[https]
+address = "0.0.0.0:8443"
+cert = "local/cert/edgee.pem"
+key = "local/cert/edgee.key"
+
+[monitor]
+address = "0.0.0.0:8222"
+
+[[destinations.data_collection]]
+component = "local/wasm/amplitude.wasm"
+credentials.amplitude_api_key = "..."
+name = "amplitude"
+
+[[destinations.data_collection]]
+component = "local/wasm/ga.wasm"
+credentials.ga_measurement_id = "..."
+name = "google analytics"
+
+[[destinations.data_collection]]
+component = "local/wasm/segment.wasm"
+credentials.segment_project_id = "..."
+credentials.segment_write_key = "..."
+name = "segment"
+
+[[routing]]
+domain = "demo.edgee.dev"
+
+[[routing.backends]]
+address = "localhost:9000"
+default = true
+enable_ssl = false
+name = "demo"
