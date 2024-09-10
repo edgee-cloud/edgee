@@ -82,7 +82,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
     let incoming_headers = incoming_ctx.headers().clone();
 
     // Check if the request is HTTPS and if we should force HTTPS
-    if !incoming_ctx.is_https && config::get().http.clone().unwrap().force_https {
+    if !incoming_ctx.is_https && config::get().http.is_some() && config::get().http.as_ref().unwrap().force_https {
         return Ok(http::Response::builder()
             .status(StatusCode::MOVED_PERMANENTLY)
             .header(LOCATION, format!("https://{}{}", incoming_host, incoming_path))
