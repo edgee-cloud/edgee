@@ -190,16 +190,17 @@ fn init_and_set_cookie(res_headers: &mut http::HeaderMap, host: &str) -> EdgeeCo
 ///
 /// This function will panic if the `HeaderValue::from_str` function fails to convert the cookie string to a `HeaderValue`.
 fn set_cookie(value: &str, res_headers: &mut http::HeaderMap, host: &str) {
+    let secure = config::get().http.is_some() && config::get().http.as_ref().unwrap().force_https;
     let root_domain = get_root_domain(host);
     let cookie = Cookie::build((&config::get().security.cookie_name, value))
         .domain(root_domain)
         .path("/")
         .http_only(false)
-        .secure(config::get().http.clone().unwrap().force_https)
+        .secure(secure)
         .same_site(SameSite::Lax)
         .expires(OffsetDateTime::now_utc() + StdDuration::from_secs(365 * 24 * 60 * 60));
 
-    res_headers.insert(SET_COOKIE, HeaderValue::from_str(cookie.to_string().as_str()).unwrap());
+        res_headers.insert(SET_COOKIE, HeaderValue::from_str(cookie.to_string().as_str()).unwrap());
 }
 
 /// This function is used to extract the root domain from a given host.
