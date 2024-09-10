@@ -14,26 +14,26 @@ key = "local/cert/edgee.key"
 address = "0.0.0.0:8222"
 
 [[destinations.data_collection]]
+name = "amplitude"
 component = "local/wasm/amplitude.wasm"
 credentials.amplitude_api_key = "..."
-name = "amplitude"
 
 [[destinations.data_collection]]
+name = "google analytics"
 component = "local/wasm/ga.wasm"
 credentials.ga_measurement_id = "..."
-name = "google analytics"
 
 [[destinations.data_collection]]
+name = "segment"
 component = "local/wasm/segment.wasm"
 credentials.segment_project_id = "..."
 credentials.segment_write_key = "..."
-name = "segment"
 
 [[routing]]
 domain = "demo.edgee.dev"
 
 [[routing.backends]]
-address = "localhost:9000"
-default = true
-enable_ssl = false
 name = "demo"
+default = true
+address = "localhost:9000"
+enable_ssl = false
