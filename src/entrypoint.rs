@@ -40,15 +40,27 @@ const EDGEE_PROXY_DURATION_HEADER: &str = "x-edgee-proxy-duration";
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
 pub async fn start() -> anyhow::Result<()> {
+    let config =  config::get();
+    let mut tasks = Vec::new();
+
+    if config.http.is_some() {
+        tasks.push(tokio::spawn(async {
+            if let Err(err) = web::start().await {
+                error!(?err, "Failed to start HTTP entrypoint");
+            }
+        }));
+    }
+
+    if config.https.is_some() {
+        tasks.push(tokio::spawn(async {
+            if let Err(err) = websecure::start().await {
+                error!(?err, "Failed to start HTTPS entrypoint");
+            }
+        }));
+    }
+
     tokio::select! {
-        Err(err) = web::start() => {
-            error!(?err, "Failed to start HTTPS entrypoint");
-            Err(err)
-        }
-        Err(err) = websecure::start() => {
-            error!(?err, "Failed to start HTTPS entrypoint");
-            Err(err)
-        }
+        _ = tasks.pop().unwrap() => Ok(()),
     }
 }
 
