@@ -32,7 +32,7 @@ pub async fn html_handler(
     }
 
     let mut document = parse_html(&body);
-    match do_process_payload(&path, response_headers) {
+    match do_process_payload(&path, request_headers, response_headers) {
         Ok(_) => {
             let cookie = edgee_cookie::get(&request_headers, &mut HeaderMap::new(), &host);
             if cookie.is_none() {
@@ -76,7 +76,7 @@ pub async fn html_handler(
 /// * The `disableEdgeDataCollection` query parameter is present in the URL of the request.
 /// * The response is cacheable.
 /// * The request is for prefetch (indicated by the `Purpose` or `Sec-Purpose` headers).
-fn do_process_payload(path: &PathAndQuery, response_headers: &HeaderMap) -> Result<bool, &'static str> {
+fn do_process_payload(path: &PathAndQuery, request_headers: &HeaderMap, response_headers: &HeaderMap) -> Result<bool, &'static str> {
     // do not process the payload if disableEdgeDataCollection query param is present in the URL
     let query = path.query().unwrap_or("");
     if query.contains("disableEdgeDataCollection") {
@@ -89,8 +89,8 @@ fn do_process_payload(path: &PathAndQuery, response_headers: &HeaderMap) -> Resu
     }
 
     // do not process the payload if the request is for prefetch
-    let purpose = response_headers.get("purpose").and_then(|h| h.to_str().ok()).unwrap_or("");
-    let sec_purpose = response_headers.get("sec-purpose").and_then(|h| h.to_str().ok()).unwrap_or("");
+    let purpose = request_headers.get("purpose").and_then(|h| h.to_str().ok()).unwrap_or("");
+    let sec_purpose = request_headers.get("sec-purpose").and_then(|h| h.to_str().ok()).unwrap_or("");
     if purpose.contains("prefetch") || sec_purpose.contains("prefetch") {
         Err("compute-aborted(prefetch)")?;
     }
