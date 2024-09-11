@@ -90,13 +90,13 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
     }
 
     // SDK path
-    if incoming_method == Method::GET && (incoming_path == "/_edgee/sdk.js" || (incoming_path.path().starts_with("/_edgee/libs/edgee.") && incoming_path.path().ends_with(".js"))) {
+    if incoming_method == Method::GET && (incoming_path.path() == "/_edgee/sdk.js" || (incoming_path.path().starts_with("/_edgee/libs/edgee.") && incoming_path.path().ends_with(".js"))) {
         return serve_sdk(incoming_path.as_str());
     }
 
     // event path, method POST and content-type application/json
     if incoming_method == Method::POST && content_type == "application/json" {
-        if incoming_path == "/_edgee/event" || path::validate(incoming_host.as_str(), incoming_path.as_str()) {
+        if incoming_path.path() == "/_edgee/event" || path::validate(incoming_host.as_str(), incoming_path.path()) {
             let mut res = http::Response::builder()
                 .status(StatusCode::NO_CONTENT)
                 .header(CACHE_CONTROL, "private, no-store")
@@ -243,6 +243,8 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
             };
         }
     }
+
+    // todo: event path for third party integration (Edgee installed like a third party, and use localstorage)
 
     // define the backend
     let routing_ctx = match RoutingContext::from_request_context(&incoming_ctx) {
