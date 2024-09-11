@@ -3,14 +3,13 @@ use std::str::FromStr;
 use http::uri::PathAndQuery;
 use regex::Regex;
 
-use crate::config::{self, BackendConfiguration, RoutingRulesConfiguration};
+use crate::config::{self, BackendConfiguration};
 
 use super::incoming_context::IncomingContext;
 
 pub struct RoutingContext {
     pub backend: BackendConfiguration,
     pub path: PathAndQuery,
-    pub rule: RoutingRulesConfiguration,
 }
 
 impl RoutingContext {
@@ -21,9 +20,7 @@ impl RoutingContext {
 
         let mut upstream_backend: Option<&config::BackendConfiguration> = None;
         let mut upstream_path: Option<PathAndQuery> = None;
-        let mut current_rule = RoutingRulesConfiguration::default();
         for rule in routing.rules {
-            current_rule = rule.clone();
             match (rule.path, rule.path_prefix, rule.path_regexp) {
                 (Some(path), _, _) => {
                     if *ctx.path() == path {
@@ -83,7 +80,6 @@ impl RoutingContext {
         Some(Self {
             backend,
             path,
-            rule: current_rule,
         })
     }
 }

@@ -84,7 +84,7 @@ pub fn get(req_headers: &http::HeaderMap, res_headers: &mut http::HeaderMap, hos
                 map.insert(parts[0].trim().to_string(), parts[1].trim().to_string());
             }
 
-            if let Some(value) = map.get(&config::get().security.cookie_name) {
+            if let Some(value) = map.get(&config::get().compute.cookie_name) {
                 let encrypted_edgee_cookie = value.to_string();
                 let edgee_cookie_result = decrypt_and_update(&encrypted_edgee_cookie);
                 if edgee_cookie_result.is_err() {
@@ -102,7 +102,7 @@ pub fn get(req_headers: &http::HeaderMap, res_headers: &mut http::HeaderMap, hos
         }
         None => None,
     };
-    return edgee_cookie;
+    edgee_cookie
 }
 
 /// Decrypts an encrypted `EdgeeCookie`, updates its fields based on the current time, and returns the updated `EdgeeCookie`.
@@ -192,7 +192,7 @@ fn init_and_set_cookie(res_headers: &mut http::HeaderMap, host: &str) -> EdgeeCo
 fn set_cookie(value: &str, res_headers: &mut http::HeaderMap, host: &str) {
     let secure = config::get().http.is_some() && config::get().http.as_ref().unwrap().force_https;
     let root_domain = get_root_domain(host);
-    let cookie = Cookie::build((&config::get().security.cookie_name, value))
+    let cookie = Cookie::build((&config::get().compute.cookie_name, value))
         .domain(root_domain)
         .path("/")
         .http_only(false)

@@ -9,26 +9,39 @@ pub trait Validate {
     fn validate(&self) -> Result<(), Vec<String>>;
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct StaticConfiguration {
-    pub log: Option<LogConfiguration>,
+    #[serde(default = "default_log_config")]
+    pub log: LogConfiguration,
+
     pub http: Option<HttpConfiguration>,
     pub https: Option<HttpsConfiguration>,
 
-    // todo behind_proxy_cache
-    // todo max_decompressed_body_size
-    // todo max_compressed_body_size
-    // todo cookie_name
-    // todo data_collection_address
-    // todo proxy_only
+    #[serde(default = "default_compute_config")]
+    pub compute: ComputeConfiguration,
 
     pub monitor: Option<MonitorConfiguration>,
+
     #[serde(default)]
     pub routing: Vec<RoutingConfiguration>,
-    #[serde(skip)]
-    pub security: SecurityConfiguration,
+
     #[serde(default)]
     pub destinations: DestinationConfiguration,
+}
+
+fn default_log_config() -> LogConfiguration {
+    LogConfiguration { level: "info".to_string() }
+}
+fn default_compute_config() -> ComputeConfiguration {
+    ComputeConfiguration {
+        cookie_name: default_cookie_name(),
+        aes_key: default_aes_key(),
+        aes_iv: default_aes_iv(),
+        behind_proxy_cache: false,
+        max_decompressed_body_size: default_max_decompressed_body_size(),
+        max_compressed_body_size: default_max_compressed_body_size(),
+        proxy_only: false,
+    }
 }
 
 impl Validate for StaticConfiguration {
@@ -70,7 +83,7 @@ impl StaticConfiguration {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct LogConfiguration {
     pub level: String,
 }
@@ -96,6 +109,7 @@ pub struct MonitorConfiguration {
 
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct RoutingConfiguration {
+    // todo change by host
     pub domain: String,
     #[serde(default)]
     pub rules: Vec<RoutingRulesConfiguration>,
@@ -109,10 +123,6 @@ pub struct RoutingRulesConfiguration {
     pub path_regexp: Option<String>,
     pub rewrite: Option<String>,
     pub backend: Option<String>,
-    // todo, remove from here
-    pub max_compressed_body_size: Option<u64>,
-    // todo, remove from here
-    pub max_decompressed_body_size: Option<u64>,
 }
 
 impl Default for RoutingRulesConfiguration {
@@ -123,8 +133,6 @@ impl Default for RoutingRulesConfiguration {
             path_regexp: Default::default(),
             rewrite: Default::default(),
             backend: Default::default(),
-            max_compressed_body_size: Default::default(),
-            max_decompressed_body_size: Default::default(),
         }
     }
 }
@@ -150,21 +158,38 @@ pub struct DataCollectionConfiguration {
     pub credentials: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone)]
-pub struct SecurityConfiguration {
+#[derive(Deserialize, Debug, Clone, Default)]
+pub struct ComputeConfiguration {
+    #[serde(default = "default_cookie_name")]
     pub cookie_name: String,
+    #[serde(default = "default_aes_key")]
     pub aes_key: String,
+    #[serde(default = "default_aes_iv")]
     pub aes_iv: String,
+    #[serde(default)]
+    pub behind_proxy_cache: bool,
+    #[serde(default = "default_max_decompressed_body_size")]
+    pub max_decompressed_body_size: usize,
+    #[serde(default = "default_max_compressed_body_size")]
+    pub max_compressed_body_size: usize,
+    #[serde(default)]
+    pub proxy_only: bool,
 }
 
-impl Default for SecurityConfiguration {
-    fn default() -> Self {
-        Self {
-            cookie_name: String::from("edgee"),
-            aes_key: String::from("_key.edgee.cloud"),
-            aes_iv: String::from("__iv.edgee.cloud"),
-        }
-    }
+fn default_cookie_name() -> String {
+    "edgee".to_string()
+}
+fn default_aes_key() -> String {
+    "_key.edgee.cloud".to_string()
+}
+fn default_aes_iv() -> String {
+    "__iv.edgee.cloud".to_string()
+}
+fn default_max_decompressed_body_size() -> usize {
+    6000000
+}
+fn default_max_compressed_body_size() -> usize {
+    3000000
 }
 
 fn read_config() -> Result<StaticConfiguration, String> {
@@ -179,14 +204,12 @@ fn read_config() -> Result<StaticConfiguration, String> {
             Err("no configuration file found, either edgee.toml or edgee.yaml is required.".into())
         }
         (true, false) => {
-            let config_file =
-                std::fs::read_to_string("edgee.toml").expect("should read edgee.toml");
-            toml::from_str(&config_file).map_err(|_| "should parse config file".into())
+            let config_file = std::fs::read_to_string("edgee.toml").expect("should read edgee.toml");
+            toml::from_str(&config_file).map_err(|e| format!("should parse config file: {}", e))
         }
         (false, true) => {
-            let config_file =
-                std::fs::read_to_string("edgee.yaml").expect("should read edgee.yaml");
-            serde_yml::from_str(&config_file).map_err(|_| "should parse config file".into())
+            let config_file = std::fs::read_to_string("edgee.yaml").expect("should read edgee.yaml");
+            serde_yml::from_str(&config_file).map_err(|e| format!("should parse config file: {}", e))
         }
     }
 }
@@ -195,18 +218,8 @@ fn read_config() -> Result<StaticConfiguration, String> {
 // TODO: Add more configuration validations
 // TODO: Improve error messages for configuration errors
 pub fn init() {
-    let mut config: StaticConfiguration = read_config().unwrap();
+    let config = read_config().expect("should read config file");
     config.validate().unwrap();
-
-    config.security = SecurityConfiguration::default();
-
-    if let Some(key) = std::env::var("EDGEE_SECURITY_AES_KEY").ok() {
-        config.security.aes_key = key;
-    }
-
-    if let Some(iv) = std::env::var("EDGEE_SECURITY_AES_IV").ok() {
-        config.security.aes_iv = iv;
-    }
 
     CONFIG.set(config).expect("Should initialize config");
 }
@@ -219,16 +232,15 @@ pub fn get() -> &'static StaticConfiguration {
 
 #[cfg(test)]
 pub fn init_test_config() {
-        let mut config = StaticConfiguration {
-            log: Some(LogConfiguration { level: "debug".to_string() }),
+        let config = StaticConfiguration {
+            log: default_log_config(),
             http: Some(HttpConfiguration { address: "127.0.0.1:8080".to_string(), force_https: false }),
             https: Some(HttpsConfiguration { address: "127.0.0.1:8443".to_string(), cert: "cert.pem".to_string(), key: "key.pem".to_string() }),
             monitor: Some(MonitorConfiguration { address: "127.0.0.1:9090".to_string() }),
             routing: vec![],
-            security: SecurityConfiguration::default(),
+            compute: default_compute_config(),
             destinations: DestinationConfiguration::default(),
         };
-        config.security = SecurityConfiguration::default();
 
         if CONFIG.get().is_none() {
             CONFIG.set(config).expect("Should initialize config");

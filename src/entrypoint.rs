@@ -8,8 +8,7 @@ use std::{
 use bytes::{Buf, Bytes};
 use http::{
     header::{
-        ACCEPT_LANGUAGE, CACHE_CONTROL, CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE,
-        REFERER, USER_AGENT, LOCATION
+        ACCEPT_LANGUAGE, CACHE_CONTROL, CONTENT_ENCODING, CONTENT_TYPE, REFERER, USER_AGENT, LOCATION
     },
     HeaderMap, HeaderName, HeaderValue, Method, StatusCode,
 };
@@ -266,81 +265,20 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
         Ok(upstream) => {
             let (mut response_parts, incoming) = upstream.into_parts();
             let response_body = incoming.collect().await?.to_bytes();
-            let response_headers = response_parts.headers.clone();
-            let encoding = response_headers.get(CONTENT_ENCODING).and_then(|h| h.to_str().ok());
-            let content_type = response_headers.get(CONTENT_TYPE).and_then(|h| h.to_str().ok());
-            let content_length = response_headers.get(CONTENT_LENGTH).and_then(|h| h.to_str().ok());
 
-            debug!(
-                ?encoding,
-                ?content_type,
-                ?content_length,
-                "upstream response"
-            );
-
-            //** START: Only proxy in some cases
-
-            // if the request method is HEAD, OPTIONS, TRACE or CONNECT, just return the response
-            if incoming_method == Method::HEAD || incoming_method == Method::OPTIONS || incoming_method == Method::TRACE || incoming_method == Method::CONNECT {
-                set_edgee_header(&mut response_parts, "proxy-only(method)");
-                set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
-                return Ok(build_response(response_parts, response_body));
-            }
-
-            // if response is informational or redirection, just return the response
-            if response_parts.status.is_redirection() {
-                set_edgee_header(&mut response_parts, "proxy-only(3xx)");
-                set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
-                return Ok(build_response(response_parts, response_body));
-            }
-            if response_parts.status.is_informational() {
-                set_edgee_header(&mut response_parts, "proxy-only(1xx)");
-                set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
-                return Ok(build_response(response_parts, response_body));
-            }
-
-            // if the response content type is not text/html, just return the response
-            if !content_type.unwrap().starts_with("text/html") {
-                set_edgee_header(&mut response_parts, "proxy-only(non-html)");
-                set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
-                return Ok(build_response(response_parts, response_body));
-            }
-            if content_type.is_none() {
-                set_edgee_header(&mut response_parts, "proxy-only(no-content-type)");
-                set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
-                return Ok(build_response(response_parts, response_body));
-            }
-
-            // if the response hasn't a body, return true
-            if response_body.is_empty() {
-                set_edgee_header(&mut response_parts, "proxy-only(no-body)");
-                set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
-                return Ok(build_response(response_parts, response_body));
-            }
-
-            // if the response content length is greater than the max compressed body size, return true
-            if content_length.is_some() && routing_ctx.rule.max_compressed_body_size.is_some() {
-                let content_length = content_length.and_then(|s| s.parse::<u64>().ok()).unwrap();
-                let size_limit = routing_ctx.rule.max_compressed_body_size.unwrap();
-                if content_length > size_limit {
-                    warn!(size = content_length, limit = size_limit, "compressed body too large");
-                    set_edgee_header(&mut response_parts, "proxy-only(compressed-body-too-large)");
+            // Only proxy in some cases
+            match do_only_proxy(&incoming_method, &response_body, &response_parts) {
+                Ok(_) => {}
+                Err(reason) => {
+                    set_edgee_header(&mut response_parts, reason);
                     set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
                     return Ok(build_response(response_parts, response_body));
                 }
             }
 
-            // if content-encoding is not supported, return true
-            if !["gzip", "deflate", "identity", "br", ""].contains(&encoding.unwrap()) {
-                warn!("encoding not supported: {}", encoding.unwrap());
-                set_edgee_header(&mut response_parts, "proxy-only(encoding-not-supported)");
-                set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
-                return Ok(build_response(response_parts, response_body));
-            }
-
-            //** END: Only proxy in some cases
-
             let proxy_duration = timer_start.elapsed().as_millis();
+            let response_headers = response_parts.headers.clone();
+            let encoding = response_headers.get(CONTENT_ENCODING).and_then(|h| h.to_str().ok());
 
             // decompress the response body
             let cursor = std::io::Cursor::new(response_body.clone());
@@ -367,14 +305,12 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
             };
 
             // interpret what's in the body
-            if routing_ctx.rule.max_decompressed_body_size.is_some() {
-                let size_limit = routing_ctx.rule.max_decompressed_body_size.unwrap() as usize;
-                if decompressed_body.len() > size_limit {
-                    warn!(size = decompressed_body.len(), limit = size_limit, "decompressed body too large");
-                    set_edgee_header(&mut response_parts, "compute-aborted(decompressed-body-too-large)");
-                    set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
-                    return Ok(build_response(response_parts, response_body));
-                }
+            let size_limit = config::get().compute.max_decompressed_body_size;
+            if decompressed_body.len() > size_limit {
+                warn!(size = decompressed_body.len(), limit = size_limit, "decompressed body too large");
+                set_edgee_header(&mut response_parts, "compute-aborted(decompressed-body-too-large)");
+                set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
+                return Ok(build_response(response_parts, response_body));
             }
 
             if !decompressed_body.contains(r#"id="__EDGEE_SDK__""#) {
@@ -552,6 +488,88 @@ fn set_edgee_header(response_parts: &mut Parts, process: &str) {
         HeaderValue::from_str(process).unwrap(),
     );
     debug!(process);
+}
+
+/// Determines whether to proxy the request based on various conditions.
+///
+/// # Arguments
+///
+/// * `method` - The HTTP method of the request.
+/// * `response_body` - The body of the response.
+/// * `response_parts` - The parts of the response.
+///
+/// # Returns
+///
+/// * `Result<bool, &'static str>` - Returns `Ok(false)` if the request should not be proxied,
+///   otherwise returns an `Err` with a reason.
+///
+/// # Errors
+///
+/// This function returns an error if any of the following conditions are met:
+/// - The `proxy_only` configuration is set to true.
+/// - The request method is HEAD, OPTIONS, TRACE, or CONNECT.
+/// - The response status is redirection (3xx).
+/// - The response status is informational (1xx).
+/// - The response does not have a content type.
+/// - The response content type is not `text/html`.
+/// - The response body is empty.
+/// - The response content encoding is not supported.
+/// - The response content length is greater than the maximum compressed body size.
+fn do_only_proxy(method: &Method, response_body: &Bytes, response_parts: &Parts) -> Result<bool, &'static str> {
+    let response_headers = response_parts.headers.clone();
+    let encoding = response_headers.get(CONTENT_ENCODING).and_then(|h| h.to_str().ok());
+    let content_type = response_headers.get(CONTENT_TYPE).and_then(|h| h.to_str().ok());
+
+    // if conf.proxy_only is true
+    if config::get().compute.proxy_only {
+        Err("proxy-only(conf)")?;
+    }
+
+    // if the request method is HEAD, OPTIONS, TRACE or CONNECT
+    if method == Method::HEAD || method == Method::OPTIONS || method == Method::TRACE || method == Method::CONNECT {
+        Err("proxy-only(method)")?;
+    }
+
+    // if response is redirection
+    if response_parts.status.is_redirection() {
+        Err("proxy-only(3xx)")?;
+    }
+
+    // if response is informational
+    if response_parts.status.is_informational() {
+        Err("proxy-only(1xx)")?;
+    }
+
+    // if the response doesn't have a content type
+    if content_type.is_none() {
+        Err("proxy-only(no-content-type)")?;
+    }
+
+    // if the response content type is not text/html
+    if content_type.is_some() && !content_type.unwrap().to_string().starts_with("text/html") {
+        Err("proxy-only(non-html)")?;
+    }
+
+    // if the response doesn't have a body
+    if response_body.is_empty() {
+        Err("proxy-only(no-body)")?;
+    }
+
+    // if content-encoding is not supported
+    if !["gzip", "deflate", "identity", "br", ""].contains(&encoding.unwrap_or_default()) {
+        warn!("encoding not supported: {}", encoding.unwrap_or_default());
+        Err("proxy-only(encoding-not-supported)")?;
+    }
+
+    // if the response is compressed and if content length is greater than the max_compressed_body_size configuration
+    if ["gzip", "deflate", "br"].contains(&encoding.unwrap_or_default()) {
+        if response_body.len() > config::get().compute.max_compressed_body_size {
+            warn!(size = response_body.len(), limit = config::get().compute.max_compressed_body_size, "compressed body too large");
+            Err("proxy-only(compressed-body-too-large)")?;
+        }
+    }
+
+    Ok(false)
 }
 
 fn error_bad_gateway() -> Response {

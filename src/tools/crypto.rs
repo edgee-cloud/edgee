@@ -29,7 +29,7 @@ pub fn encrypt(text: &str) -> Result<String, &'static str> {
     if text.is_empty() {
         return Err("Empty string".into());
     }
-    let sec = &config::get().security;
+    let sec = &config::get().compute;
     let data = Aes128CbcEnc::new(sec.aes_key.as_bytes().into(), sec.aes_iv.as_bytes().into())
         .encrypt_padded_vec_mut::<Pkcs7>(text.as_bytes());
     Ok(hex::encode(data))
@@ -65,7 +65,7 @@ pub fn decrypt(text: &str) -> Result<String, &'static str>  {
     if hex.is_err() {
         return Err("Invalid hex".into());
     }
-    let sec = &config::get().security;
+    let sec = &config::get().compute;
     let res = Aes128CbcDec::new(sec.aes_key.as_bytes().into(), sec.aes_iv.as_bytes().into())
         .decrypt_padded_vec_mut::<Pkcs7>(&hex.unwrap());
     if res.is_err() {
