@@ -48,17 +48,17 @@ impl EdgeeCookie {
 ///
 /// # Arguments
 ///
-/// * `req_headers` - A reference to the request headers.
-/// * `res_headers` - A mutable reference to the response headers where the cookie will be set.
+/// * `request_headers` - A reference to the request headers.
+/// * `response_headers` - A mutable reference to the response headers where the cookie will be set.
 /// * `host` - A string slice that holds the host for which the cookie is set.
 ///
 /// # Returns
 ///
 /// * `EdgeeCookie` - The `EdgeeCookie` that was retrieved or newly created.
-pub fn get_or_set(req_headers: &http::HeaderMap, res_headers: &mut http::HeaderMap, host: &str) -> EdgeeCookie {
-    let edgee_cookie = get(req_headers, res_headers, host);
+pub fn get_or_set(request_headers: &http::HeaderMap, response_headers: &mut http::HeaderMap, host: &str) -> EdgeeCookie {
+    let edgee_cookie = get(request_headers, response_headers, host);
     if edgee_cookie.is_none() {
-        return init_and_set_cookie(res_headers, host);
+        return init_and_set_cookie(response_headers, host);
     }
     edgee_cookie.unwrap()
 }
@@ -67,15 +67,15 @@ pub fn get_or_set(req_headers: &http::HeaderMap, res_headers: &mut http::HeaderM
 ///
 /// # Arguments
 ///
-/// * `req_headers` - A reference to the request headers.
-/// * `res_headers` - A mutable reference to the response headers where the cookie will be set.
+/// * `request_headers` - A reference to the request headers.
+/// * `response_headers` - A mutable reference to the response headers where the cookie will be set.
 /// * `host` - A string slice that holds the host for which the cookie is set.
 ///
 /// # Returns
 ///
 /// * `Option<EdgeeCookie>` - An `Option` containing the `EdgeeCookie` if it exists and is successfully decrypted and updated, or `None` if the cookie does not exist or decryption fails.
-pub fn get(req_headers: &http::HeaderMap, res_headers: &mut http::HeaderMap, host: &str) -> Option<EdgeeCookie> {
-    let edgee_cookie = match req_headers.get(COOKIE) {
+pub fn get(request_headers: &http::HeaderMap, response_headers: &mut http::HeaderMap, host: &str) -> Option<EdgeeCookie> {
+    let edgee_cookie = match request_headers.get(COOKIE) {
         Some(cookie) => {
             // Put cookies value into a map
             let mut map = HashMap::new();
@@ -88,13 +88,13 @@ pub fn get(req_headers: &http::HeaderMap, res_headers: &mut http::HeaderMap, hos
                 let encrypted_edgee_cookie = value.to_string();
                 let edgee_cookie_result = decrypt_and_update(&encrypted_edgee_cookie);
                 if edgee_cookie_result.is_err() {
-                    return Some(init_and_set_cookie(res_headers, host));
+                    return Some(init_and_set_cookie(response_headers, host));
                 }
                 let edgee_cookie = edgee_cookie_result.unwrap();
 
                 let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
                 let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
-                set_cookie(&edgee_cookie_encrypted, res_headers, host);
+                set_cookie(&edgee_cookie_encrypted, response_headers, host);
 
                 return Some(edgee_cookie);
             }
@@ -162,18 +162,18 @@ pub fn decrypt_and_update(encrypted_edgee_cookie: &str) -> Result<EdgeeCookie, &
 ///
 /// # Arguments
 ///
-/// * `req_headers` - A reference to the request headers.
-/// * `res_headers` - A mutable reference to the response headers where the cookie will be set.
+/// * `request_headers` - A reference to the request headers.
+/// * `response_headers` - A mutable reference to the response headers where the cookie will be set.
 /// * `host` - A string slice that holds the host for which the cookie is set.
 ///
 /// # Returns
 ///
 /// * `EdgeeCookie` - The newly created and encrypted `EdgeeCookie`.
-fn init_and_set_cookie(res_headers: &mut http::HeaderMap, host: &str) -> EdgeeCookie {
+fn init_and_set_cookie(response_headers: &mut http::HeaderMap, host: &str) -> EdgeeCookie {
     let edgee_cookie = EdgeeCookie::new();
     let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
     let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
-    set_cookie(&edgee_cookie_encrypted, res_headers, host);
+    set_cookie(&edgee_cookie_encrypted, response_headers, host);
     edgee_cookie
 }
 
@@ -183,13 +183,13 @@ fn init_and_set_cookie(res_headers: &mut http::HeaderMap, host: &str) -> EdgeeCo
 /// # Arguments
 ///
 /// * `value` - A string slice that holds the value of the cookie.
-/// * `res_headers` - A mutable reference to the response headers where the cookie will be set.
+/// * `response_headers` - A mutable reference to the response headers where the cookie will be set.
 /// * `host` - A string slice that holds the host for which the cookie is set.
 ///
 /// # Panics
 ///
 /// This function will panic if the `HeaderValue::from_str` function fails to convert the cookie string to a `HeaderValue`.
-fn set_cookie(value: &str, res_headers: &mut http::HeaderMap, host: &str) {
+fn set_cookie(value: &str, response_headers: &mut http::HeaderMap, host: &str) {
     let secure = config::get().http.is_some() && config::get().http.as_ref().unwrap().force_https;
     let root_domain = get_root_domain(host);
     let cookie = Cookie::build((&config::get().compute.cookie_name, value))
@@ -200,7 +200,7 @@ fn set_cookie(value: &str, res_headers: &mut http::HeaderMap, host: &str) {
         .same_site(SameSite::Lax)
         .expires(OffsetDateTime::now_utc() + StdDuration::from_secs(365 * 24 * 60 * 60));
 
-        res_headers.insert(SET_COOKIE, HeaderValue::from_str(cookie.to_string().as_str()).unwrap());
+        response_headers.insert(SET_COOKIE, HeaderValue::from_str(cookie.to_string().as_str()).unwrap());
 }
 
 /// This function is used to extract the root domain from a given host.

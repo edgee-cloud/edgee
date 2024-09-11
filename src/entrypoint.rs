@@ -7,9 +7,7 @@ use std::{
 };
 use bytes::{Buf, Bytes};
 use http::{
-    header::{
-        ACCEPT_LANGUAGE, CACHE_CONTROL, CONTENT_ENCODING, CONTENT_TYPE, REFERER, USER_AGENT, LOCATION
-    },
+    header::{ACCEPT_LANGUAGE, CACHE_CONTROL, CONTENT_ENCODING, CONTENT_TYPE, REFERER, USER_AGENT, LOCATION},
     HeaderMap, HeaderName, HeaderValue, Method, StatusCode,
 };
 use http::response::Parts;
@@ -20,7 +18,7 @@ use libflate::{deflate, gzip};
 use proxy_context::ProxyContext;
 use routing_context::RoutingContext;
 use tracing::{debug, error, warn};
-use crate::{tools::{edgee_cookie, path}, data_collection::{self, Session}, destinations, config};
+use crate::{tools::{edgee_cookie, path}, data_collection::{Session}, destinations, config, edge};
 use crate::tools::real_ip::Realip;
 use crate::{data_collection::Payload, html};
 use brotli::{Decompressor, CompressorWriter};
@@ -39,7 +37,7 @@ const EDGEE_PROXY_DURATION_HEADER: &str = "x-edgee-proxy-duration";
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
 pub async fn start() -> anyhow::Result<()> {
-    let config =  config::get();
+    let config = config::get();
     let mut tasks = Vec::new();
 
     if config.http.is_some() {
@@ -79,6 +77,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
     let incoming_host = incoming_ctx.host().clone();
     let incoming_path = incoming_ctx.path().clone();
     let incoming_headers = incoming_ctx.headers().clone();
+    let incoming_proto = if incoming_ctx.is_https { "https" } else { "http" };
 
     // Check if the request is HTTPS and if we should force HTTPS
     if !incoming_ctx.is_https && config::get().http.is_some() && config::get().http.as_ref().unwrap().force_https {
@@ -92,7 +91,6 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
 
     // SDK path
     if incoming_method == Method::GET && (incoming_path == "/_edgee/sdk.js" || (incoming_path.path().starts_with("/_edgee/libs/edgee.") && incoming_path.path().ends_with(".js"))) {
-        debug!(?incoming_path, "serving sdk");
         return serve_sdk(incoming_path.as_str());
     }
 
@@ -108,7 +106,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
             let cookie = edgee_cookie::get_or_set(
                 &incoming_headers,
                 res.headers_mut(),
-                &incoming_host
+                &incoming_host,
             );
 
             let body = incoming_ctx.incoming_body.collect().await?.to_bytes();
@@ -197,7 +195,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
 
                     // client ip
                     let realip = Realip::new();
-                    payload.client.ip = realip.get_from_request(remote_addr, &incoming_headers);
+                    payload.client.ip = realip.get_from_request(&remote_addr, &incoming_headers);
 
                     payload.client.locale = preferred_language(&incoming_headers);
 
@@ -276,13 +274,14 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
                 }
             }
 
+            set_edgee_header(&mut response_parts, "compute");
             let proxy_duration = timer_start.elapsed().as_millis();
             let response_headers = response_parts.headers.clone();
             let encoding = response_headers.get(CONTENT_ENCODING).and_then(|h| h.to_str().ok());
 
             // decompress the response body
             let cursor = std::io::Cursor::new(response_body.clone());
-            let decompressed_body = match encoding {
+            let mut body_str = match encoding {
                 Some("gzip") => {
                     let mut decoder = gzip::Decoder::new(cursor)?;
                     let mut buf = Vec::new();
@@ -305,125 +304,51 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
             };
 
             // interpret what's in the body
-            let size_limit = config::get().compute.max_decompressed_body_size;
-            if decompressed_body.len() > size_limit {
-                warn!(size = decompressed_body.len(), limit = size_limit, "decompressed body too large");
-                set_edgee_header(&mut response_parts, "compute-aborted(decompressed-body-too-large)");
-                set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
-                return Ok(build_response(response_parts, response_body));
-            }
+            _ = match edge::html_handler(&mut body_str, &incoming_host, &incoming_path, &incoming_headers, incoming_proto, &remote_addr, &mut response_parts, &response_headers).await {
+                Ok(document) => {
+                    let mut page_event_param = r#" data-page-event="true""#;
+                    let event_path_param = format!(r#" data-event-path="{}""#, path::generate(&incoming_host.as_str()));
 
-            if !decompressed_body.contains(r#"id="__EDGEE_SDK__""#) {
-                set_edgee_header(&mut response_parts, "compute-aborted(no-sdk)");
-                set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
-                return Ok(build_response(response_parts, response_body));
-            }
+                    if !document.trace_uuid.is_empty() {
+                        response_parts.headers.insert(
+                            HeaderName::from_str("x-edgee-trace")?,
+                            HeaderValue::from_str(&document.trace_uuid)?,
+                        );
+                        page_event_param = r#" data-page-event="false""#;
+                    }
 
-            //** START : Only compute in some cases
-
-            // if the response has a prefetch purpose, just return the response
-            let purpose = response_headers
-                .get("purpose")
-                .and_then(|h| h.to_str().ok())
-                .unwrap_or("");
-            let sec_purpose = response_headers
-                .get("sec-purpose")
-                .and_then(|h| h.to_str().ok())
-                .unwrap_or("");
-            if purpose.contains("prefetch") || sec_purpose.contains("prefetch") {
-                set_edgee_header(&mut response_parts, "compute-aborted(prefetch)");
-                set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
-                return Ok(build_response(response_parts, response_body));
-            }
-
-            // if the disableEdgeDataCollection query parameter is set, just return the response
-            let query = incoming_path.query().unwrap_or("");
-            if query.contains("disableEdgeDataCollection") {
-                set_edgee_header(&mut response_parts, "compute-aborted(disableEdgeDataCollection)");
-                set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
-                return Ok(build_response(response_parts, response_body));
-            }
-
-            // todo if the response is cacheable, just return the response
-
-            //** END : Only compute in some cases
-
-            // process the document
-            let mut document = html::parse_html(&decompressed_body);
-
-            // if user has no cookie, stop here without processing the payload, else process the payload
-            let cookie = edgee_cookie::get(&incoming_headers, &mut HeaderMap::new(), &incoming_host);
-            if cookie.is_none() {
-                set_edgee_header(&mut response_parts, "compute-aborted(no-cookie)");
-            } else {
-                let payload = data_collection::process_document(
-                    &document,
-                    &cookie.unwrap(),
-                    proto,
-                    &incoming_host,
-                    &incoming_path,
-                    &response_headers,
-                    remote_addr,
-                );
-
-                let uuid = payload.uuid.clone();
-                if let Err(err) = destinations::send_data_collection(payload).await {
-                    warn!(?err, "failed to send data collection payload");
+                    if !document.inlined_sdk.is_empty() {
+                        let new_tag = format!(r#"<script{}{}>{}</script>"#, page_event_param, event_path_param, document.inlined_sdk.as_str());
+                        body_str = body_str.replace(document.sdk_full_tag.as_str(), new_tag.as_str());
+                    } else {
+                        let new_tag = format!(r#"<script{}{} async src="{}"></script>"#, page_event_param, event_path_param, document.sdk_src.as_str());
+                        body_str = body_str.replace(document.sdk_full_tag.as_str(), new_tag.as_str());
+                    }
                 }
-                document.trace_uuid = uuid;
-                set_edgee_header(&mut response_parts, "compute");
-            }
-
-            // amend the document & the headers
-            let mut page_event_param = r#" data-page-event="true""#;
-            let event_path = path::generate(incoming_host.as_str());
-            let event_path_param = format!(r#" data-event-path="{}""#, event_path);
-
-            if !document.trace_uuid.is_empty() {
-                response_parts.headers.insert(
-                    HeaderName::from_str("x-edgee-trace").unwrap(),
-                    HeaderValue::from_str(&document.trace_uuid).unwrap(),
-                );
-                page_event_param = r#" data-page-event="false""#;
-            }
-
-            let new_body = if !document.inlined_sdk.is_empty() {
-                let new_tag = format!(
-                    r#"<script{}{}>{}</script>"#,
-                    page_event_param,
-                    event_path_param,
-                    document.inlined_sdk.as_str()
-                );
-                decompressed_body.replace(document.sdk_full_tag.as_str(), new_tag.as_str())
-            } else {
-                let new_tag = format!(
-                    r#"<script{}{} async src="{}"></script>"#,
-                    page_event_param,
-                    event_path_param,
-                    document.sdk_src.as_str()
-                );
-                decompressed_body.replace(document.sdk_full_tag.as_str(), new_tag.as_str())
+                Err(reason) => {
+                    set_edgee_header(&mut response_parts, reason);
+                }
             };
 
             let data = match encoding {
                 Some("gzip") => {
                     let mut encoder = gzip::Encoder::new(Vec::new())?;
-                    encoder.write_all(new_body.as_bytes())?;
+                    encoder.write_all(body_str.as_bytes())?;
                     encoder.finish().into_result()?
                 }
                 Some("deflate") => {
                     let mut encoder = deflate::Encoder::new(Vec::new());
-                    encoder.write_all(new_body.as_bytes())?;
+                    encoder.write_all(body_str.as_bytes())?;
                     encoder.finish().into_result()?
                 }
                 Some("br") => { // handle brotli encoding
                     // q: quality (range: 0-11), lgwin: window size (range: 10-24)
-                    let mut encoder  = CompressorWriter::new(Vec::new(), 4096, 11, 24);
-                    encoder.write_all(new_body.as_bytes())?;
+                    let mut encoder = CompressorWriter::new(Vec::new(), 4096, 11, 24);
+                    encoder.write_all(body_str.as_bytes())?;
                     encoder.flush()?;
                     encoder.into_inner()
                 }
-                Some(_) | None => new_body.into(),
+                Some(_) | None => body_str.into(),
             };
 
             let full_duration = timer_start.elapsed().as_millis();
@@ -482,7 +407,7 @@ fn set_duration_headers(response_parts: &mut Parts, is_debug_mode: bool, full_du
 ///
 /// The function inserts the process information into the response headers.
 /// The function also logs the process information using the `debug!` macro.
-fn set_edgee_header(response_parts: &mut Parts, process: &str) {
+pub fn set_edgee_header(response_parts: &mut Parts, process: &str) {
     response_parts.headers.insert(
         HeaderName::from_str(EDGEE_HEADER).unwrap(),
         HeaderValue::from_str(process).unwrap(),
@@ -564,7 +489,7 @@ fn do_only_proxy(method: &Method, response_body: &Bytes, response_parts: &Parts)
     // if the response is compressed and if content length is greater than the max_compressed_body_size configuration
     if ["gzip", "deflate", "br"].contains(&encoding.unwrap_or_default()) {
         if response_body.len() > config::get().compute.max_compressed_body_size {
-            warn!(size = response_body.len(), limit = config::get().compute.max_compressed_body_size, "compressed body too large");
+            warn!("compressed body too large: {} > {}", response_body.len(), config::get().compute.max_compressed_body_size);
             Err("proxy-only(compressed-body-too-large)")?;
         }
     }
