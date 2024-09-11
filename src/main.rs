@@ -8,6 +8,7 @@ mod html;
 mod logger;
 mod monitor;
 mod tools;
+mod edge;
 
 #[tokio::main]
 async fn main() {

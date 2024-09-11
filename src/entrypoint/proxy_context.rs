@@ -31,7 +31,7 @@ impl<'a> ProxyContext<'a> {
 
         // client ip
         let realip = Realip::new();
-        let client_ip = realip.get_from_request(incoming_context.remote_addr, &incoming_headers);
+        let client_ip = realip.get_from_request(&incoming_context.remote_addr, &incoming_headers);
 
         if let Some(forwarded_for) = incoming_headers.get_mut(FORWARDED_FOR) {
             let existing_value = forwarded_for.to_str().unwrap();

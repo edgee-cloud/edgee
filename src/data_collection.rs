@@ -11,15 +11,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 use std::net::SocketAddr;
 
-pub fn process_document(
-    document: &Document,
-    edgee_cookie: &EdgeeCookie,
-    proto: &str,
-    host: &str,
-    requested_path: &PathAndQuery,
-    request_headers: &HeaderMap,
-    remote_addr: SocketAddr,
-) -> Payload {
+pub fn process_document(document: &Document, edgee_cookie: &EdgeeCookie, proto: &str, host: &str, requested_path: &PathAndQuery, request_headers: &HeaderMap, remote_addr: &SocketAddr) -> Payload {
     let context = document.context.clone();
     let context = StripComments::new(context.as_bytes());
     let mut payload = serde_json::from_reader(context)
@@ -132,7 +124,7 @@ pub fn process_document(
 
     // client ip
     let realip = Realip::new();
-    payload.client.ip = realip.get_from_request(remote_addr, request_headers);
+    payload.client.ip = realip.get_from_request(&remote_addr, request_headers);
 
     payload.client.locale = get_preferred_language(request_headers);
 
@@ -220,7 +212,7 @@ pub fn process_document(
         payload.campaign.marketing_tactic = map.get("utm_marketing_tactic").unwrap().to_string();
     }
 
-    return payload;
+    payload
 }
 
 fn get_preferred_language(request_headers: &HeaderMap) -> String {

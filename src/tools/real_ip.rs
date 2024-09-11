@@ -51,8 +51,8 @@ impl Realip {
     /// # Returns
     ///
     /// * `String` - The client's real IP address as a string. If no special or forwarded headers are found, the remote address is returned.
-    pub fn get_from_request(&self, remote_addr: SocketAddr, request_headers: &HeaderMap) -> String {
-        if let Some(ip) = Self::get_from_special_headers(request_headers) {
+    pub fn get_from_request(&self, remote_addr: &SocketAddr, request_headers: &HeaderMap) -> String {
+        if let Some(ip) = self.get_from_special_headers(request_headers) {
             return ip;
         }
 
@@ -109,7 +109,7 @@ impl Realip {
     /// The function defines a list of headers that may contain the client's real IP address.
     /// It iterates over these headers and checks if any of them are present in the request headers.
     /// If a header is found, the function attempts to convert its value to a string and returns it.
-    fn get_from_special_headers(request_headers: &HeaderMap) -> Option<String> {
+    fn get_from_special_headers(&self, request_headers: &HeaderMap) -> Option<String> {
         let headers = [
             "X-Client-IP",
             "CF-Connecting-IP",
@@ -186,7 +186,7 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert("X-Real-IP", "203.0.113.195".parse().unwrap());
         let remote_addr: SocketAddr = "192.0.2.1:12345".parse().unwrap();
-        let ip = realip.get_from_request(remote_addr, &headers);
+        let ip = realip.get_from_request(&remote_addr, &headers);
         assert_eq!(ip, "203.0.113.195");
     }
 
@@ -196,7 +196,7 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert("X-Forwarded-For", "203.0.113.195".parse().unwrap());
         let remote_addr: SocketAddr = "192.0.2.1:12345".parse().unwrap();
-        let ip = realip.get_from_request(remote_addr, &headers);
+        let ip = realip.get_from_request(&remote_addr, &headers);
         assert_eq!(ip, "203.0.113.195");
     }
 
@@ -205,7 +205,7 @@ mod tests {
         let realip = Realip::new();
         let headers = HeaderMap::new();
         let remote_addr: SocketAddr = "192.0.2.1:12345".parse().unwrap();
-        let ip = realip.get_from_request(remote_addr, &headers);
+        let ip = realip.get_from_request(&remote_addr, &headers);
         assert_eq!(ip, "192.0.2.1:12345");
     }
 
@@ -235,16 +235,18 @@ mod tests {
 
     #[test]
     fn get_from_special_headers_returns_ip_if_present() {
+        let realip = Realip::new();
         let mut headers = HeaderMap::new();
         headers.insert("X-Real-IP", "203.0.113.195".parse().unwrap());
-        let ip = Realip::get_from_special_headers(&headers);
+        let ip = realip.get_from_special_headers(&headers);
         assert_eq!(ip, Some("203.0.113.195".to_string()));
     }
 
     #[test]
     fn get_from_special_headers_returns_none_if_not_present() {
+        let realip = Realip::new();
         let headers = HeaderMap::new();
-        let ip = Realip::get_from_special_headers(&headers);
+        let ip = realip.get_from_special_headers(&headers);
         assert_eq!(ip, None);
     }
 
