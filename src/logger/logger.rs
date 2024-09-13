@@ -1,7 +1,6 @@
+use crate::config::config;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, registry, EnvFilter};
-
-use crate::config;
 
 const ACCEPTED_LEVELS: [&str; 6] = ["trace", "debug", "info", "warn", "error", "fatal"];
 

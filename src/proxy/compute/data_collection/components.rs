@@ -6,16 +6,13 @@ static WASM_COMPONENTS: OnceCell<HashMap<&str, Component>> = OnceCell::const_new
 
 use std::{collections::HashMap, str::FromStr};
 
+use crate::config::config;
+use crate::proxy::compute::data_collection::data_collection::{EventType, Payload};
 use exports::provider;
 use http::{HeaderMap, HeaderName, HeaderValue};
 use tokio::sync::OnceCell;
 use tracing::{error, info};
 use wasmtime::component::Component;
-
-use crate::{
-    config,
-    data_collection::{EventType, Payload},
-};
 
 pub fn init() {
     let mut runtime_conf = wasmtime::Config::default();

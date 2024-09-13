@@ -1,7 +1,7 @@
-use std::net::SocketAddr;
-use ipnetwork::IpNetwork;
-use std::str::FromStr;
 use http::HeaderMap;
+use ipnetwork::IpNetwork;
+use std::net::SocketAddr;
+use std::str::FromStr;
 
 pub struct Realip {
     cidrs: Vec<IpNetwork>,

@@ -1,13 +1,10 @@
+use super::{incoming::IncomingContext, routing::RoutingContext};
+use crate::tools::real_ip::Realip;
 use http::{HeaderMap, HeaderValue, Uri};
 use hyper::body::Incoming;
 use hyper_rustls::ConfigBuilderExt;
-use hyper_util::{
-    client::legacy::{connect::HttpConnector, Client},
-    rt::TokioExecutor,
-};
+use hyper_util::{client::legacy::{connect::HttpConnector, Client}, rt::TokioExecutor};
 use tracing::debug;
-use crate::tools::real_ip::Realip;
-use super::{incoming_context::IncomingContext, routing_context::RoutingContext};
 
 pub struct ProxyContext<'a> {
     incoming_headers: HeaderMap,

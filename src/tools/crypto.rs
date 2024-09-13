@@ -1,5 +1,5 @@
+use crate::config::config;
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
-use crate::config;
 
 type Aes128CbcEnc = cbc::Encryptor<aes::Aes128>;
 type Aes128CbcDec = cbc::Decryptor<aes::Aes128>;
@@ -77,7 +77,7 @@ pub fn decrypt(text: &str) -> Result<String, &'static str>  {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::init_test_config;
+    use crate::config::config::init_test_config;
 
     #[test]
     fn decrypt_valid_text() {

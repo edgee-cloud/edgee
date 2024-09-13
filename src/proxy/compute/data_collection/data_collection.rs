@@ -1,6 +1,6 @@
+use crate::proxy::compute::html::Document;
 use crate::tools::edgee_cookie::EdgeeCookie;
 use crate::tools::real_ip::Realip;
-use crate::html::Document;
 use chrono::{DateTime, Utc};
 use html_escape;
 use http::uri::PathAndQuery;
@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 use std::net::SocketAddr;
 
-pub fn process_document(document: &Document, edgee_cookie: &EdgeeCookie, proto: &str, host: &str, requested_path: &PathAndQuery, request_headers: &HeaderMap, remote_addr: &SocketAddr) -> Payload {
+pub fn process_from_html(document: &Document, edgee_cookie: &EdgeeCookie, proto: &str, host: &str, requested_path: &PathAndQuery, request_headers: &HeaderMap, remote_addr: &SocketAddr) -> Payload {
     let context = document.context.clone();
     let context = StripComments::new(context.as_bytes());
     let mut payload = serde_json::from_reader(context)
