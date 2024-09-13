@@ -20,6 +20,12 @@
 
 </div>
 
+⚠️ Edgee OSS Edition (v0.3.0) is in Development
+
+Edgee OSS is currently in version 0.3.X and is considered unstable as we continue to enhance and refine the platform. 
+We're actively working towards a stable v1.0.0 release, which will be available in the coming months. 
+We welcome feedback and contributions during this development phase, and appreciate your patience as we work hard to bring you a robust edge computing solution.
+
 <!-- TODO: Add FAQ -->
 <!-- TODO: Add Video introduction -->
 ## Documentation
