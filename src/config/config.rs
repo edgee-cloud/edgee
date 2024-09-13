@@ -232,17 +232,17 @@ pub fn get() -> &'static StaticConfiguration {
 
 #[cfg(test)]
 pub fn init_test_config() {
-        let config = StaticConfiguration {
-            log: default_log_config(),
-            http: Some(HttpConfiguration { address: "127.0.0.1:8080".to_string(), force_https: false }),
-            https: Some(HttpsConfiguration { address: "127.0.0.1:8443".to_string(), cert: "cert.pem".to_string(), key: "key.pem".to_string() }),
-            monitor: Some(MonitorConfiguration { address: "127.0.0.1:9090".to_string() }),
-            routing: vec![],
-            compute: default_compute_config(),
-            destinations: DestinationConfiguration::default(),
-        };
+    let config = StaticConfiguration {
+        log: default_log_config(),
+        http: Some(HttpConfiguration { address: "127.0.0.1:8080".to_string(), force_https: false }),
+        https: Some(HttpsConfiguration { address: "127.0.0.1:8443".to_string(), cert: "cert.pem".to_string(), key: "key.pem".to_string() }),
+        monitor: Some(MonitorConfiguration { address: "127.0.0.1:9090".to_string() }),
+        routing: vec![],
+        compute: default_compute_config(),
+        destinations: DestinationConfiguration::default(),
+    };
 
-        if CONFIG.get().is_none() {
-            CONFIG.set(config).expect("Should initialize config");
-        }
+    if CONFIG.get().is_none() {
+        CONFIG.set(config).expect("Should initialize config");
+    }
 }

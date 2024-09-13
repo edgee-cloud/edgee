@@ -1,28 +1,75 @@
-use std::{convert::Infallible, fs, future::Future, io, net::SocketAddr, pin::Pin, sync::Arc};
+use crate::config::config;
+use crate::{proxy};
 use bytes::Bytes;
-use http_body_util::combinators::BoxBody;
+use http_body_util::{combinators::BoxBody};
 use hyper::body::Incoming;
-use hyper_util::{
-    rt::{TokioExecutor, TokioIo},
-    server::conn::auto::Builder,
-};
+use hyper_util::rt::{TokioExecutor, TokioIo};
+use hyper_util::server::conn::auto::Builder;
+use proxy::proxy::handle_request;
 use rustls::ServerConfig;
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::{convert::Infallible, fs, io, net::SocketAddr};
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
 use tracing::{error, info};
 
-use crate::config;
-
-use super::handle_request;
-
 pub async fn start() -> anyhow::Result<()> {
+    let config = config::get();
+    let mut tasks = Vec::new();
+
+    if config.http.is_some() {
+        tasks.push(tokio::spawn(async {
+            if let Err(err) = http().await {
+                error!(?err, "Failed to start HTTP entrypoint");
+            }
+        }));
+    }
+
+    if config.https.is_some() {
+        tasks.push(tokio::spawn(async {
+            if let Err(err) = https().await {
+                error!(?err, "Failed to start HTTPS entrypoint");
+            }
+        }));
+    }
+
+    tokio::select! {
+        _ = tasks.pop().unwrap() => Ok(()),
+    }
+}
+
+async fn http() -> anyhow::Result<()> {
+    let cfg = config::get().http.as_ref().ok_or_else(|| anyhow::anyhow!("HTTP configuration is missing"))?;
+
+    info!(address = cfg.address, force_https = cfg.force_https, "Starting HTTP entrypoint");
+
+    let addr: SocketAddr = cfg.address.parse()?;
+    let listener = TcpListener::bind(addr).await?;
+    loop {
+        let (stream, remote_addr) = listener.accept().await?;
+        let io = TokioIo::new(stream);
+        let service = RequestManager::new(remote_addr, "http".to_string());
+        tokio::spawn(async move {
+            if let Err(err) = Builder::new(TokioExecutor::new())
+                .serve_connection_with_upgrades(io, service)
+                .await
+            {
+                error!(?err, ?remote_addr, "failed to serve connections");
+            }
+        });
+    }
+}
+
+async fn https() -> anyhow::Result<()> {
     let cfg = config::get().https.as_ref().ok_or_else(|| anyhow::anyhow!("HTTPS configuration is missing"))?;
 
     info!(address = cfg.address, "Starting HTTPS entrypoint");
+
     let addr: SocketAddr = cfg.address.parse()?;
     let listener = TcpListener::bind(addr).await?;
-
     fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer<'static>>> {
         let certfile = fs::File::open(filename).unwrap();
         let mut reader = io::BufReader::new(certfile);
@@ -57,7 +104,7 @@ pub async fn start() -> anyhow::Result<()> {
                 }
             };
             let io = TokioIo::new(tls_stream);
-            let service = RequestManager::new(remote_addr);
+            let service = RequestManager::new(remote_addr, "https".to_string());
             if let Err(err) = Builder::new(TokioExecutor::new())
                 .serve_connection_with_upgrades(io, service)
                 .await
@@ -70,13 +117,14 @@ pub async fn start() -> anyhow::Result<()> {
 
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send + 'static>>;
 
-struct RequestManager {
+pub struct RequestManager {
     remote_addr: SocketAddr,
+    proto: String,
 }
 
 impl RequestManager {
-    fn new(addr: SocketAddr) -> Self {
-        Self { remote_addr: addr }
+    pub fn new(addr: SocketAddr, proto: String) -> Self {
+        Self { remote_addr: addr, proto }
     }
 }
 
@@ -86,6 +134,10 @@ impl hyper::service::Service<http::Request<Incoming>> for RequestManager {
     type Future = BoxFuture<anyhow::Result<Self::Response>>;
 
     fn call(&self, req: http::Request<Incoming>) -> Self::Future {
-        Box::pin(handle_request(req, self.remote_addr, "https"))
+        if self.proto == "https" {
+            Box::pin(handle_request(req, self.remote_addr, "https"))
+        } else {
+            Box::pin(handle_request(req, self.remote_addr, "http"))
+        }
     }
 }

@@ -1,33 +1,19 @@
-use std::{
-    collections::HashMap,
-    convert::Infallible,
-    io::{Read, Write},
-    net::SocketAddr,
-    str::FromStr,
-};
-use bytes::{Buf, Bytes};
-use http::{
-    header::{ACCEPT_LANGUAGE, CACHE_CONTROL, CONTENT_ENCODING, CONTENT_TYPE, REFERER, USER_AGENT, LOCATION},
-    HeaderMap, HeaderName, HeaderValue, Method, StatusCode,
-};
+use crate::config::config;
+use crate::proxy::compute::compute;
+use crate::proxy::context::incoming::IncomingContext;
+use crate::proxy::context::proxy::ProxyContext;
+use crate::proxy::context::routing::RoutingContext;
+use crate::proxy::controller::controller;
+use crate::tools::path;
+use brotli::{CompressorWriter, Decompressor};
+use bytes::Bytes;
 use http::response::Parts;
-use http_body_util::{combinators::BoxBody, BodyExt, Empty, Full};
+use http::{header, HeaderName, HeaderValue, Method};
+use http_body_util::{combinators::BoxBody, BodyExt, Full};
 use hyper::body::Incoming;
-use incoming_context::IncomingContext;
 use libflate::{deflate, gzip};
-use proxy_context::ProxyContext;
-use routing_context::RoutingContext;
+use std::{convert::Infallible, io::{Read, Write}, net::SocketAddr, str::FromStr};
 use tracing::{debug, error, warn};
-use crate::{tools::{edgee_cookie, path}, data_collection::{Session}, destinations, config, edge};
-use crate::tools::real_ip::Realip;
-use crate::{data_collection::Payload, html};
-use brotli::{Decompressor, CompressorWriter};
-
-mod incoming_context;
-mod proxy_context;
-mod routing_context;
-mod web;
-mod websecure;
 
 const EDGEE_HEADER: &str = "x-edgee";
 const EDGEE_FULL_DURATION_HEADER: &str = "x-edgee-full-duration";
@@ -36,33 +22,7 @@ const EDGEE_PROXY_DURATION_HEADER: &str = "x-edgee-proxy-duration";
 
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
-pub async fn start() -> anyhow::Result<()> {
-    let config = config::get();
-    let mut tasks = Vec::new();
-
-    if config.http.is_some() {
-        tasks.push(tokio::spawn(async {
-            if let Err(err) = web::start().await {
-                error!(?err, "Failed to start HTTP entrypoint");
-            }
-        }));
-    }
-
-    if config.https.is_some() {
-        tasks.push(tokio::spawn(async {
-            if let Err(err) = websecure::start().await {
-                error!(?err, "Failed to start HTTPS entrypoint");
-            }
-        }));
-    }
-
-    tokio::select! {
-        _ = tasks.pop().unwrap() => Ok(()),
-    }
-}
-
-
-async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAddr, proto: &str) -> anyhow::Result<Response> {
+pub async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAddr, proto: &str) -> anyhow::Result<Response> {
 
     // timer
     let timer_start = std::time::Instant::now();
@@ -72,7 +32,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
 
     // set several variables
     let is_debug_mode = incoming_ctx.is_debug_mode;
-    let content_type = incoming_ctx.header(CONTENT_TYPE).unwrap_or(String::new());
+    let content_type = incoming_ctx.header(header::CONTENT_TYPE).unwrap_or(String::new());
     let incoming_method = incoming_ctx.method().clone();
     let incoming_host = incoming_ctx.host().clone();
     let incoming_path = incoming_ctx.path().clone();
@@ -81,174 +41,34 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
 
     // Check if the request is HTTPS and if we should force HTTPS
     if !incoming_ctx.is_https && config::get().http.is_some() && config::get().http.as_ref().unwrap().force_https {
-        return Ok(http::Response::builder()
-            .status(StatusCode::MOVED_PERMANENTLY)
-            .header(LOCATION, format!("https://{}{}", incoming_host, incoming_path))
-            .header(CONTENT_TYPE, "text/plain")
-            .body(empty())
-            .expect("response builder should never fail"));
+        return controller::redirect_to_https(incoming_host, incoming_path);
     }
 
     // SDK path
     if incoming_method == Method::GET && (incoming_path.path() == "/_edgee/sdk.js" || (incoming_path.path().starts_with("/_edgee/libs/edgee.") && incoming_path.path().ends_with(".js"))) {
-        return serve_sdk(incoming_path.as_str());
+        return controller::sdk(incoming_path.as_str());
     }
 
     // event path, method POST and content-type application/json
     if incoming_method == Method::POST && content_type == "application/json" {
         if incoming_path.path() == "/_edgee/event" || path::validate(incoming_host.as_str(), incoming_path.path()) {
-            let mut res = http::Response::builder()
-                .status(StatusCode::NO_CONTENT)
-                .header(CACHE_CONTROL, "private, no-store")
-                .body(empty())
-                .unwrap();
-
-            let cookie = edgee_cookie::get_or_set(
-                &incoming_headers,
-                res.headers_mut(),
-                &incoming_host,
-            );
-
-            let body = incoming_ctx.incoming_body.collect().await?.to_bytes();
-            let result: Result<Payload, _> = serde_json::from_reader(body.reader());
-            return match result {
-                Ok(mut payload) => {
-                    payload.uuid = uuid::Uuid::new_v4().to_string();
-                    payload.timestamp = chrono::Utc::now();
-
-                    let user_id = cookie.id.to_string();
-                    payload.identify.edgee_id = user_id.clone();
-                    payload.session = Session {
-                        session_id: cookie.ss.timestamp().to_string(),
-                        previous_session_id: cookie
-                            .ps
-                            .map(|t| t.timestamp().to_string())
-                            .unwrap_or_default(),
-                        session_count: cookie.sc,
-                        session_start: cookie.ss == cookie.ls,
-                        first_seen: cookie.fs,
-                        last_seen: cookie.ls,
-                    };
-
-                    if payload.page.referrer.is_empty() {
-                        let referrer = incoming_headers
-                            .get(REFERER)
-                            .and_then(|h| h.to_str().ok())
-                            .map(String::from)
-                            .unwrap_or_default();
-                        payload.page.referrer = referrer;
-                    }
-
-                    payload.client.user_agent = incoming_headers
-                        .get(USER_AGENT)
-                        .and_then(|h| h.to_str().ok())
-                        .map(String::from)
-                        .unwrap_or_default();
-
-                    payload.client.x_forwarded_for = incoming_headers
-                        .get("x-forwarded-for")
-                        .and_then(|h| h.to_str().ok())
-                        .map(String::from)
-                        .unwrap_or_default();
-
-                    payload.client.user_agent_architecture = incoming_headers
-                        .get("sec-ch-ua-arch")
-                        .and_then(|h| h.to_str().ok())
-                        .map(String::from)
-                        .unwrap_or_default();
-
-                    payload.client.user_agent_bitness = incoming_headers
-                        .get("sec-ch-ua-bitness")
-                        .and_then(|h| h.to_str().ok())
-                        .map(String::from)
-                        .unwrap_or_default();
-
-                    payload.client.user_agent_full_version_list = incoming_headers
-                        .get("sec-ch-ua")
-                        .and_then(|h| h.to_str().ok())
-                        .map(String::from)
-                        .unwrap_or_default();
-
-                    payload.client.user_agent_mobile = incoming_headers
-                        .get("sec-ch-ua-mobile")
-                        .and_then(|h| h.to_str().ok())
-                        .map(String::from)
-                        .unwrap_or_default();
-
-                    payload.client.user_agent_model = incoming_headers
-                        .get("sec-ch-ua-model")
-                        .and_then(|h| h.to_str().ok())
-                        .map(String::from)
-                        .unwrap_or_default();
-
-                    payload.client.os_name = incoming_headers
-                        .get("sec-ch-ua-platform")
-                        .and_then(|h| h.to_str().ok())
-                        .map(String::from)
-                        .unwrap_or_default();
-
-                    payload.client.os_version = incoming_headers
-                        .get("sec-ch-ua-platform-version")
-                        .and_then(|h| h.to_str().ok())
-                        .map(String::from)
-                        .unwrap_or_default();
-
-                    // client ip
-                    let realip = Realip::new();
-                    payload.client.ip = realip.get_from_request(&remote_addr, &incoming_headers);
-
-                    payload.client.locale = preferred_language(&incoming_headers);
-
-                    let map: HashMap<String, String> =
-                        url::form_urlencoded::parse(incoming_path.query().unwrap_or("").as_bytes())
-                            .into_owned()
-                            .collect();
-
-                    payload.campaign.name = map
-                        .get("utm_campaign")
-                        .map(String::from)
-                        .unwrap_or_default();
-
-                    payload.campaign.source =
-                        map.get("utm_source").map(String::from).unwrap_or_default();
-
-                    payload.campaign.medium =
-                        map.get("utm_medium").map(String::from).unwrap_or_default();
-
-                    payload.campaign.term = map.get("utm_term").map(String::from).unwrap_or_default();
-
-                    payload.campaign.content =
-                        map.get("utm_content").map(String::from).unwrap_or_default();
-
-                    payload.campaign.creative_format = map
-                        .get("utm_creative_format")
-                        .map(String::from)
-                        .unwrap_or_default();
-
-                    payload.campaign.marketing_tactic = map
-                        .get("utm_marketing_tactic")
-                        .map(String::from)
-                        .unwrap_or_default();
-
-                    if let Err(err) = destinations::send_data_collection(payload).await {
-                        warn!(?err, "failed to process data collection");
-                    }
-
-                    Ok(res)
-                }
-                Err(err) => {
-                    warn!(?err, "failed to parse json payload");
-                    Ok(res)
-                }
-            };
+            return controller::edgee_client_event(incoming_ctx, &incoming_host, &incoming_path, &incoming_headers, &remote_addr).await;
         }
     }
 
-    // todo: event path for third party integration (Edgee installed like a third party, and use localstorage)
+    // event path for third party integration (Edgee installed like a third party, and use localstorage)
+    if incoming_path.path() == "/_edgee/csevent" {
+        if incoming_method == Method::OPTIONS {
+            return controller::options("POST, OPTIONS");
+        }
+        if incoming_method == Method::POST && content_type == "application/json" {
+            return controller::edgee_client_event_from_third_party_sdk().await;
+        }
+    }
 
     // define the backend
     let routing_ctx = match RoutingContext::from_request_context(&incoming_ctx) {
-        None => return Ok(error_bad_gateway()),
+        None => return controller::bad_gateway_error(),
         Some(r) => r,
     };
 
@@ -260,7 +80,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
     match res {
         Err(err) => {
             error!(?err, "backend request failed");
-            Ok(error_bad_gateway())
+            controller::bad_gateway_error()
         }
         Ok(upstream) => {
             let (mut response_parts, incoming) = upstream.into_parts();
@@ -279,7 +99,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
             set_edgee_header(&mut response_parts, "compute");
             let proxy_duration = timer_start.elapsed().as_millis();
             let response_headers = response_parts.headers.clone();
-            let encoding = response_headers.get(CONTENT_ENCODING).and_then(|h| h.to_str().ok());
+            let encoding = response_headers.get(header::CONTENT_ENCODING).and_then(|h| h.to_str().ok());
 
             // decompress the response body
             let cursor = std::io::Cursor::new(response_body.clone());
@@ -306,7 +126,7 @@ async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAdd
             };
 
             // interpret what's in the body
-            _ = match edge::html_handler(&mut body_str, &incoming_host, &incoming_path, &incoming_headers, incoming_proto, &remote_addr, &mut response_parts, &response_headers).await {
+            _ = match compute::html_handler(&mut body_str, &incoming_host, &incoming_path, &incoming_headers, incoming_proto, &remote_addr, &mut response_parts, &response_headers).await {
                 Ok(document) => {
                     let mut page_event_param = r#" data-page-event="true""#;
                     let event_path_param = format!(r#" data-event-path="{}""#, path::generate(&incoming_host.as_str()));
@@ -444,8 +264,8 @@ pub fn set_edgee_header(response_parts: &mut Parts, process: &str) {
 /// - The response content length is greater than the maximum compressed body size.
 fn do_only_proxy(method: &Method, response_body: &Bytes, response_parts: &Parts) -> Result<bool, &'static str> {
     let response_headers = response_parts.headers.clone();
-    let encoding = response_headers.get(CONTENT_ENCODING).and_then(|h| h.to_str().ok());
-    let content_type = response_headers.get(CONTENT_TYPE).and_then(|h| h.to_str().ok());
+    let encoding = response_headers.get(header::CONTENT_ENCODING).and_then(|h| h.to_str().ok());
+    let content_type = response_headers.get(header::CONTENT_TYPE).and_then(|h| h.to_str().ok());
 
     // if conf.proxy_only is true
     if config::get().compute.proxy_only {
@@ -499,36 +319,6 @@ fn do_only_proxy(method: &Method, response_body: &Bytes, response_parts: &Parts)
     Ok(false)
 }
 
-fn error_bad_gateway() -> Response {
-    static HTML: &str = include_str!("../public/502.html");
-    http::Response::builder()
-        .status(StatusCode::BAD_GATEWAY)
-        .body(Full::from(Bytes::from(HTML)).boxed())
-        .expect("response builder should never fail")
-}
-
-fn empty() -> BoxBody<Bytes, Infallible> {
-    Empty::<Bytes>::new().boxed()
-}
-
-fn serve_sdk(path: &str) -> anyhow::Result<Response> {
-    let inlined_sdk = html::get_sdk_from_url(path);
-    if inlined_sdk.is_ok() {
-        Ok(http::Response::builder()
-            .status(StatusCode::OK)
-            .header(CONTENT_TYPE, "application/javascript; charset=utf-8")
-            .header(CACHE_CONTROL, "public, max-age=300")
-            .body(Full::from(Bytes::from(inlined_sdk.unwrap())).boxed())
-            .expect("serving sdk should never fail"))
-    } else {
-        Ok(http::Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .header(CACHE_CONTROL, "public, max-age=300")
-            .body(Full::from(Bytes::from("Not found")).boxed())
-            .expect("serving sdk should never fail"))
-    }
-}
-
 fn build_response(mut parts: http::response::Parts, body: Bytes) -> Response {
     // Update Content-Length header to correct size
     parts.headers.insert("content-length", body.len().into());
@@ -545,20 +335,4 @@ fn build_response(mut parts: http::response::Parts, body: Bytes) -> Response {
         .extension(parts.extensions)
         .body(Full::from(body).boxed())
         .unwrap()
-}
-
-fn preferred_language(headers: &HeaderMap) -> String {
-    let accept_language_header = headers
-        .get(ACCEPT_LANGUAGE)
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or_default();
-    let languages = accept_language_header.split(",");
-    let lang = "en-us".to_string();
-    for l in languages {
-        let lang = l.split(";").next().unwrap_or("").trim();
-        if !lang.is_empty() {
-            return lang.to_lowercase();
-        }
-    }
-    lang
 }

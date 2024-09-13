@@ -1,24 +1,20 @@
 use tracing::error;
 
 mod config;
-mod data_collection;
-mod destinations;
-mod entrypoint;
-mod html;
 mod logger;
-mod monitor;
+mod proxy;
 mod tools;
-mod edge;
+mod server;
+mod monitor;
 
 #[tokio::main]
 async fn main() {
-    config::init();
-    logger::init();
-    destinations::init();
+    config::config::init();
+    logger::logger::init();
+    proxy::compute::data_collection::components::init();
 
-    // FIXME: Add gracefull shutdown
     tokio::select! {
         Err(err) = monitor::start() => error!(?err, "Monitor failed"),
-        Err(err) = entrypoint::start() => error!(?err, "Entrypoint failed"),
+        Err(err) = server::start() => error!(?err, "Server failed to start"),
     }
 }

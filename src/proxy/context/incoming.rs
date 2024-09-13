@@ -1,8 +1,7 @@
-use std::{net::SocketAddr, str::FromStr};
-
 use anyhow::Context;
 use http::{header::HOST, request::Parts, uri::PathAndQuery, HeaderMap};
 use hyper::body::Incoming;
+use std::{net::SocketAddr, str::FromStr};
 
 pub struct IncomingContext {
     pub incoming_parts: Parts,

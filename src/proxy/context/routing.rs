@@ -1,14 +1,11 @@
-use std::str::FromStr;
-
+use super::incoming::IncomingContext;
+use crate::config::config;
 use http::uri::PathAndQuery;
 use regex::Regex;
-
-use crate::config::{self, BackendConfiguration};
-
-use super::incoming_context::IncomingContext;
+use std::str::FromStr;
 
 pub struct RoutingContext {
-    pub backend: BackendConfiguration,
+    pub backend: config::BackendConfiguration,
     pub path: PathAndQuery,
 }
 

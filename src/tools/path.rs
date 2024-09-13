@@ -1,5 +1,5 @@
 use rand::prelude::SliceRandom;
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 
 const SIZES: [i32; 24] =
     [23, 37, 52, 65, 72, 88, 92, 101, 134, 141, 144, 167, 168, 181, 195, 204, 231, 235, 256, 283, 301, 303, 310, 322];

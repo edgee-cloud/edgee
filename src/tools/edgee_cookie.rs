@@ -1,16 +1,16 @@
-use crate::config;
+use crate::config::config;
 use crate::tools::crypto::{decrypt, encrypt};
+use chrono::{DateTime, Duration, Utc};
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, SameSite};
-use std::collections::HashMap;
-use std::time::Duration as StdDuration;
-use std::io::Read;
-use uuid::Uuid;
-use chrono::{DateTime, Utc, Duration};
 use http::header::{COOKIE, SET_COOKIE};
 use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
+use std::collections::HashMap;
+use std::io::Read;
+use std::time::Duration as StdDuration;
+use uuid::Uuid;
 
 static SESSION_DURATION: Duration = Duration::minutes(30);
 

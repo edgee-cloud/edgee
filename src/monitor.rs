@@ -1,5 +1,4 @@
-use std::{convert::Infallible, net::SocketAddr};
-
+use crate::config::config;
 use bytes::Bytes;
 use http::{Request, Response, StatusCode};
 use http_body_util::{combinators::BoxBody, BodyExt, Empty};
@@ -8,10 +7,9 @@ use hyper_util::{
     rt::{TokioExecutor, TokioIo},
     server::conn::auto::Builder,
 };
+use std::{convert::Infallible, net::SocketAddr};
 use tokio::net::TcpListener;
 use tracing::{debug, error, info};
-
-use crate::config;
 
 pub async fn start() -> anyhow::Result<()> {
     match &config::get().monitor {
@@ -43,9 +41,7 @@ pub async fn start() -> anyhow::Result<()> {
     }
 }
 
-async fn handle_request(
-    req: Request<Incoming>,
-) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible> {
+async fn handle_request(req: Request<Incoming>) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible> {
     match req.uri().path() {
         "/healthz" => {
             let res = Response::builder()
