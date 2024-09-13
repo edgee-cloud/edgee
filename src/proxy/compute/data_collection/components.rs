@@ -7,7 +7,7 @@ static WASM_COMPONENTS: OnceCell<HashMap<&str, Component>> = OnceCell::const_new
 use std::{collections::HashMap, str::FromStr};
 
 use crate::config::config;
-use crate::proxy::compute::data_collection::data_collection::{EventType, Payload};
+use crate::proxy::compute::data_collection::payload::{EventType, Payload};
 use exports::provider;
 use http::{HeaderMap, HeaderName, HeaderValue};
 use tokio::sync::OnceCell;
@@ -23,7 +23,7 @@ pub fn init() {
     wasmtime_wasi::add_to_linker_sync(&mut linker).unwrap();
 
     let mut components: HashMap<&str, Component> = HashMap::new();
-    for cfg in &config::get().destinations.data_collection {
+    for cfg in &config::get().components.data_collection {
         let component = Component::from_file(&engine, &cfg.component).unwrap();
         components.insert(&cfg.name, component);
     }
@@ -41,18 +41,19 @@ pub fn init() {
     }
 }
 
-pub async fn send_data_collection(p: Payload) -> anyhow::Result<()> {
+
+pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
     let engine = WASM_ENGINE.get().unwrap();
     let linker = WASM_LINKER.get().unwrap();
     let mut store = wasmtime::Store::new(engine, HostView::new());
-    for cfg in &config::get().destinations.data_collection {
+    for cfg in &config::get().components.data_collection {
         let p = p.clone();
         let component = WASM_COMPONENTS
             .get()
             .unwrap()
             .get(cfg.name.as_str())
             .unwrap();
-        let (instance, _) = DataCollection::instantiate(&mut store, &component, linker).unwrap();
+        let (instance, _) = DataCollection::instantiate(&mut store, &component, linker)?;
         let provider = instance.provider();
         let credentials: Vec<(String, String)> = cfg.credentials.clone().into_iter().collect();
 
@@ -60,74 +61,57 @@ pub async fn send_data_collection(p: Payload) -> anyhow::Result<()> {
             uuid: p.uuid,
             timestamp: p.timestamp.timestamp(),
             event_type: match p.event_type {
-                EventType::Page => provider::EventType::Page,
-                EventType::Identify => provider::EventType::Identify,
-                EventType::Track => provider::EventType::Track,
+                Some(EventType::Page) => provider::EventType::Page,
+                Some(EventType::Identify) => provider::EventType::Identify,
+                Some(EventType::Track) => provider::EventType::Track,
+                _ => provider::EventType::Page
             },
             page: provider::PageEvent {
-                name: p.page.name,
-                category: p.page.category,
-                keywords: p.page.keywords,
-                title: p.page.title,
-                url: p.page.url,
-                path: p.page.path,
-                search: p.page.search,
-                referrer: p.page.referrer,
-                properties: p
-                    .page
-                    .properties
-                    .into_iter()
-                    .map(|(key, value)| (key, value.to_string()))
-                    .collect(),
+                name: p.page.clone().unwrap().name.unwrap(),
+                category: p.page.clone().unwrap().category.unwrap(),
+                keywords: p.page.clone().unwrap().keywords.unwrap(),
+                title: p.page.clone().unwrap().title.unwrap(),
+                url: p.page.clone().unwrap().url.unwrap(),
+                path: p.page.clone().unwrap().path.unwrap(),
+                search: p.page.clone().unwrap().search.unwrap(),
+                referrer: p.page.clone().unwrap().referrer.unwrap(),
+                properties: p.page.clone().unwrap().properties.unwrap().into_iter().map(|(key, value)| (key, value.to_string())).collect(),
             },
             identify: provider::IdentifyEvent {
-                user_id: p.identify.user_id,
-                anonymous_id: p.identify.anonymous_id,
-                edgee_id: p.identify.edgee_id,
-                properties: p
-                    .identify
-                    .properties
-                    .into_iter()
-                    .map(|(key, value)| (key, value.to_string()))
-                    .collect(),
+                user_id: p.identify.clone().unwrap().user_id.unwrap(),
+                anonymous_id: p.identify.clone().unwrap().anonymous_id.unwrap(),
+                edgee_id: p.identify.clone().unwrap().edgee_id,
+                properties: p.identify.clone().unwrap().properties.unwrap().into_iter().map(|(key, value)| (key, value.to_string())).collect(),
             },
             track: provider::TrackEvent {
-                name: p.track.clone().map(|t| t.name).unwrap_or_default(),
-                properties: p
-                    .track
-                    .map(|t| {
-                        t.properties
-                            .into_iter()
-                            .map(|(key, value)| (key, value.to_string()))
-                            .collect()
-                    })
-                    .unwrap_or_default(),
+                name: p.track.clone().unwrap().name.unwrap(),
+                properties: p.track.clone().unwrap().properties.unwrap().into_iter().map(|(key, value)| (key, value.to_string())).collect(),
             },
             campaign: provider::Campaign {
-                name: p.campaign.name,
-                source: p.campaign.source,
-                medium: p.campaign.medium,
-                term: p.campaign.term,
-                content: p.campaign.content,
-                creative_format: p.campaign.creative_format,
-                marketing_tactic: p.campaign.marketing_tactic,
+                name: p.campaign.clone().unwrap().name.unwrap(),
+                source: p.campaign.clone().unwrap().source.unwrap(),
+                medium: p.campaign.clone().unwrap().medium.unwrap(),
+                term: p.campaign.clone().unwrap().term.unwrap(),
+                content: p.campaign.clone().unwrap().content.unwrap(),
+                creative_format: p.campaign.clone().unwrap().creative_format.unwrap(),
+                marketing_tactic: p.campaign.clone().unwrap().marketing_tactic.unwrap(),
             },
             client: provider::Client {
-                ip: p.client.ip,
-                x_forward_for: p.client.x_forwarded_for,
-                locale: p.client.locale,
-                timezone: p.client.timezone.to_string(),
-                user_agent: p.client.user_agent,
-                user_agent_architecture: p.client.user_agent_architecture,
-                user_agent_bitness: p.client.user_agent_bitness,
-                user_agent_full_version_list: p.client.user_agent_full_version_list,
-                user_agent_mobile: p.client.user_agent_mobile,
-                user_agent_model: p.client.user_agent_model,
-                os_name: p.client.os_name,
-                os_version: p.client.os_version,
-                screen_width: p.client.screen_width,
-                screen_height: p.client.screen_height,
-                screen_density: p.client.screen_density,
+                ip: p.client.clone().unwrap().ip.unwrap(),
+                x_forwarded_for: p.client.clone().unwrap().x_forwarded_for.unwrap(),
+                locale: p.client.clone().unwrap().locale.unwrap(),
+                timezone: p.client.clone().unwrap().timezone.unwrap(),
+                user_agent: p.client.clone().unwrap().user_agent.unwrap(),
+                user_agent_architecture: p.client.clone().unwrap().user_agent_architecture.unwrap(),
+                user_agent_bitness: p.client.clone().unwrap().user_agent_bitness.unwrap(),
+                user_agent_full_version_list: p.client.clone().unwrap().user_agent_full_version_list.unwrap(),
+                user_agent_mobile: p.client.clone().unwrap().user_agent_mobile.unwrap(),
+                user_agent_model: p.client.clone().unwrap().user_agent_model.unwrap(),
+                os_name: p.client.clone().unwrap().os_name.unwrap(),
+                os_version: p.client.clone().unwrap().os_version.unwrap(),
+                screen_width: p.client.clone().unwrap().screen_width.unwrap(),
+                screen_height: p.client.clone().unwrap().screen_height.unwrap(),
+                screen_density: p.client.clone().unwrap().screen_density.unwrap(),
                 continent: String::new(),
                 country_code: String::new(),
                 country_name: String::new(),
@@ -135,20 +119,21 @@ pub async fn send_data_collection(p: Payload) -> anyhow::Result<()> {
                 city: String::new(),
             },
             session: provider::Session {
-                session_id: p.session.session_id,
-                previous_session_id: p.session.previous_session_id,
-                session_count: p.session.session_count,
-                session_start: p.session.session_start,
-                first_seen: p.session.first_seen.to_string(),
-                last_seen: p.session.last_seen.to_string(),
+                session_id: p.session.clone().unwrap().session_id,
+                previous_session_id: p.session.clone().unwrap().previous_session_id.unwrap(),
+                session_count: p.session.clone().unwrap().session_count,
+                session_start: p.session.clone().unwrap().session_start,
+                first_seen: p.session.clone().unwrap().first_seen.to_string(),
+                last_seen: p.session.clone().unwrap().last_seen.to_string(),
             },
             destinations: Vec::new(),
         };
 
         let request = match p.event_type {
-            EventType::Page => provider.call_page(&mut store, &payload, &credentials),
-            EventType::Track => provider.call_track(&mut store, &payload, &credentials),
-            EventType::Identify => provider.call_identify(&mut store, &payload, &credentials),
+            Some(EventType::Page) => provider.call_page(&mut store, &payload, &credentials),
+            Some(EventType::Track) => provider.call_track(&mut store, &payload, &credentials),
+            Some(EventType::Identify) => provider.call_identify(&mut store, &payload, &credentials),
+            _ => Err(anyhow::anyhow!("invalid event type")),
         };
 
         match request {

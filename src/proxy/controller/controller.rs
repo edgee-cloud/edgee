@@ -1,19 +1,21 @@
+use std::collections::HashMap;
 use std::convert::Infallible;
-use std::net::SocketAddr;
-use bytes::{Buf, Bytes};
+use bytes::Bytes;
 use http::uri::PathAndQuery;
 use http_body_util::combinators::BoxBody;
 use http::{header, HeaderMap, StatusCode};
 use http_body_util::{Empty, Full};
 use http_body_util::BodyExt;
-use log::warn;
 use crate::proxy::compute::html;
 use crate::proxy::compute::compute;
 use crate::proxy::context::incoming::IncomingContext;
+use crate::tools::crypto::encrypt;
+use crate::tools::edgee_cookie;
+use crate::tools::edgee_cookie::EdgeeCookie;
 
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
-pub async fn edgee_client_event(incoming_ctx: IncomingContext, host: &String, path: &PathAndQuery, request_headers: &HeaderMap, remote_addr: &SocketAddr) -> anyhow::Result<Response> {
+pub async fn edgee_client_event(incoming_ctx: IncomingContext, host: &String, path: &PathAndQuery, request_headers: &HeaderMap, client_ip: &String) -> anyhow::Result<Response> {
     let mut res = http::Response::builder()
         .status(StatusCode::NO_CONTENT)
         .header(header::CONTENT_TYPE, "application/json")
@@ -21,19 +23,44 @@ pub async fn edgee_client_event(incoming_ctx: IncomingContext, host: &String, pa
         .body(empty())?;
 
     let response_headers = res.headers_mut();
+    let cookie = edgee_cookie::get_or_set(&request_headers, response_headers, &host);
+
     let body = incoming_ctx.incoming_body.collect().await?.to_bytes();
-    if let Ok(mut payload) = serde_json::from_reader(body.reader()) {
-        compute::json_handler(&mut payload, host, path, request_headers, remote_addr, response_headers).await;
+    if body.len() > 0 {
+        compute::json_handler(&body, &cookie, path, request_headers, client_ip).await;
     }
     Ok(res)
 }
 
-pub async fn edgee_client_event_from_third_party_sdk() -> anyhow::Result<Response> {
-    warn!("edgee_client_event_from_third_party_sdk is not implemented");
+pub async fn edgee_client_event_from_third_party_sdk(incoming_ctx: IncomingContext, path: &PathAndQuery, request_headers: &HeaderMap, client_ip: &String) -> anyhow::Result<Response> {
+    let body = incoming_ctx.incoming_body.collect().await?.to_bytes();
+
+    let cookie: EdgeeCookie;
+
+    // get "e" from query string
+    let map: HashMap<String, String> = path.query().unwrap_or("").split('&').map(|s| s.split('=').collect::<Vec<&str>>()).filter(|v| v.len() == 2).map(|v| (v[0].to_string(), v[1].to_string())).collect();
+    let e = map.get("e");
+    if e.is_none() {
+        // user has no id, set a new cookie
+        cookie = EdgeeCookie::new();
+    } else {
+        // user has an id, decrypt it. if decryption fails, set a new cookie
+        cookie = edgee_cookie::decrypt_and_update(e.unwrap()).unwrap_or_else(|_| EdgeeCookie::new());
+    }
+    let cookie_str = serde_json::to_string(&cookie).unwrap();
+    let cookie_encrypted = encrypt(&cookie_str).unwrap();
+
+    if body.len() > 0 {
+        compute::json_handler(&body, &cookie, path, request_headers, client_ip).await;
+    }
+
     Ok(http::Response::builder()
-        .status(StatusCode::NOT_IMPLEMENTED)
-        .body(empty())
-        .expect("response builder should never fail"))
+        .status(StatusCode::OK)
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::CACHE_CONTROL, "private, no-store")
+        .body(Full::from(Bytes::from(format!(r#"{{"e":"{}"}}"#, cookie_encrypted))).boxed())
+        .expect("serving sdk should never fail"))
 }
 
 pub fn options(allow_methods: &str) -> anyhow::Result<Response> {

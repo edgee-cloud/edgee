@@ -38,6 +38,7 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
     let incoming_path = incoming_ctx.path().clone();
     let incoming_headers = incoming_ctx.headers().clone();
     let incoming_proto = if incoming_ctx.is_https { "https" } else { "http" };
+    let client_ip = incoming_ctx.client_ip.clone();
 
     // Check if the request is HTTPS and if we should force HTTPS
     if !incoming_ctx.is_https && config::get().http.is_some() && config::get().http.as_ref().unwrap().force_https {
@@ -52,7 +53,7 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
     // event path, method POST and content-type application/json
     if incoming_method == Method::POST && content_type == "application/json" {
         if incoming_path.path() == "/_edgee/event" || path::validate(incoming_host.as_str(), incoming_path.path()) {
-            return controller::edgee_client_event(incoming_ctx, &incoming_host, &incoming_path, &incoming_headers, &remote_addr).await;
+            return controller::edgee_client_event(incoming_ctx, &incoming_host, &incoming_path, &incoming_headers, &client_ip).await;
         }
     }
 
@@ -62,7 +63,7 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
             return controller::options("POST, OPTIONS");
         }
         if incoming_method == Method::POST && content_type == "application/json" {
-            return controller::edgee_client_event_from_third_party_sdk().await;
+            return controller::edgee_client_event_from_third_party_sdk(incoming_ctx, &incoming_path, &incoming_headers, &client_ip).await;
         }
     }
 
@@ -79,7 +80,7 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
     let res = proxy_ctx.response().await;
     match res {
         Err(err) => {
-            error!(?err, "backend request failed");
+            error!("backend request failed: {} - {} {}{}", err, incoming_method, incoming_host, incoming_path);
             controller::bad_gateway_error()
         }
         Ok(upstream) => {
@@ -126,7 +127,7 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
             };
 
             // interpret what's in the body
-            _ = match compute::html_handler(&mut body_str, &incoming_host, &incoming_path, &incoming_headers, incoming_proto, &remote_addr, &mut response_parts, &response_headers).await {
+            _ = match compute::html_handler(&mut body_str, &incoming_host, &incoming_path, &incoming_headers, incoming_proto, &client_ip, &mut response_parts, &response_headers).await {
                 Ok(document) => {
                     let mut page_event_param = r#" data-page-event="true""#;
                     let event_path_param = format!(r#" data-event-path="{}""#, path::generate(&incoming_host.as_str()));

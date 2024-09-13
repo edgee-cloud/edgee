@@ -755,6 +755,7 @@ dependencies = [
  "addr",
  "aes",
  "anyhow",
+ "base64 0.22.1",
  "brotli",
  "bytes",
  "cbc",

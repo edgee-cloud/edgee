@@ -170,7 +170,7 @@ You simply need to add a new session to your configuration pointing to the WebAs
 
 ```toml
 # edgee.toml
-[[destinations.data_collection]]
+[[components.data_collection]]
 name = "amplitude"
 component = "/var/edgee/wasm/amplitude.wasm"
 credentials.amplitude_api_key = "YOUR-API-KEY"

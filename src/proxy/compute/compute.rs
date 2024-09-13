@@ -1,17 +1,14 @@
-use std::collections::HashMap;
+use bytes::Bytes;
 use crate::config::config;
 use crate::proxy::compute::html::{parse_html, Document};
 use crate::proxy::proxy::set_edgee_header;
 use crate::tools::edgee_cookie;
-use crate::proxy::compute::data_collection::{data_collection, components};
+use crate::proxy::compute::data_collection::data_collection;
 use http::response::Parts;
 use http::uri::PathAndQuery;
 use http::HeaderMap;
-use log::{debug, warn};
-use std::net::SocketAddr;
-use http::header::{ACCEPT_LANGUAGE, REFERER, USER_AGENT};
-use crate::proxy::compute::data_collection::data_collection::{Payload, Session};
-use crate::tools::real_ip::Realip;
+use log::{warn};
+use crate::tools::edgee_cookie::EdgeeCookie;
 
 pub async fn html_handler(
     body: &String,
@@ -19,7 +16,7 @@ pub async fn html_handler(
     path: &PathAndQuery,
     request_headers: &HeaderMap,
     proto: &str,
-    remote_addr: &SocketAddr,
+    client_ip: &String,
     response_parts: &mut Parts,
     response_headers: &HeaderMap,
 ) -> Result<Document, &'static str>
@@ -42,12 +39,10 @@ pub async fn html_handler(
             if cookie.is_none() {
                 set_edgee_header(response_parts, "compute-aborted(no-cookie)");
             } else {
-                let payload = data_collection::process_from_html(&document, &cookie.unwrap(), proto, &host, &path, &response_headers, remote_addr);
-                let uuid = payload.uuid.clone();
-                if let Err(err) = components::send_data_collection(payload).await {
-                    tracing::warn!(?err, "failed to send data collection payload");
+                let data_collection_trace_uuid = data_collection::process_from_html(&document, &cookie.unwrap(), proto, &host, &path, &request_headers, client_ip).await;
+                if data_collection_trace_uuid.is_some() {
+                    document.trace_uuid = data_collection_trace_uuid.unwrap();
                 }
-                document.trace_uuid = uuid;
             }
         }
         Err(reason) => {
@@ -58,147 +53,8 @@ pub async fn html_handler(
     Ok(document)
 }
 
-pub async fn json_handler(payload: &mut Payload, host: &String, path: &PathAndQuery, request_headers: &HeaderMap, remote_addr: &SocketAddr, response_headers: &mut HeaderMap) {
-    let cookie = edgee_cookie::get_or_set(&request_headers, response_headers, &host);
-
-    payload.uuid = uuid::Uuid::new_v4().to_string();
-    payload.timestamp = chrono::Utc::now();
-
-    let user_id = cookie.id.to_string();
-    payload.identify.edgee_id = user_id.clone();
-    payload.session = Session {
-        session_id: cookie.ss.timestamp().to_string(),
-        previous_session_id: cookie
-            .ps
-            .map(|t| t.timestamp().to_string())
-            .unwrap_or_default(),
-        session_count: cookie.sc,
-        session_start: cookie.ss == cookie.ls,
-        first_seen: cookie.fs,
-        last_seen: cookie.ls,
-    };
-
-    if payload.page.referrer.is_empty() {
-        let referrer = request_headers
-            .get(REFERER)
-            .and_then(|h| h.to_str().ok())
-            .map(String::from)
-            .unwrap_or_default();
-        payload.page.referrer = referrer;
-    }
-
-    payload.client.user_agent = request_headers
-        .get(USER_AGENT)
-        .and_then(|h| h.to_str().ok())
-        .map(String::from)
-        .unwrap_or_default();
-
-    payload.client.x_forwarded_for = request_headers
-        .get("x-forwarded-for")
-        .and_then(|h| h.to_str().ok())
-        .map(String::from)
-        .unwrap_or_default();
-
-    payload.client.user_agent_architecture = request_headers
-        .get("sec-ch-ua-arch")
-        .and_then(|h| h.to_str().ok())
-        .map(String::from)
-        .unwrap_or_default();
-
-    payload.client.user_agent_bitness = request_headers
-        .get("sec-ch-ua-bitness")
-        .and_then(|h| h.to_str().ok())
-        .map(String::from)
-        .unwrap_or_default();
-
-    payload.client.user_agent_full_version_list = request_headers
-        .get("sec-ch-ua")
-        .and_then(|h| h.to_str().ok())
-        .map(String::from)
-        .unwrap_or_default();
-
-    payload.client.user_agent_mobile = request_headers
-        .get("sec-ch-ua-mobile")
-        .and_then(|h| h.to_str().ok())
-        .map(String::from)
-        .unwrap_or_default();
-
-    payload.client.user_agent_model = request_headers
-        .get("sec-ch-ua-model")
-        .and_then(|h| h.to_str().ok())
-        .map(String::from)
-        .unwrap_or_default();
-
-    payload.client.os_name = request_headers
-        .get("sec-ch-ua-platform")
-        .and_then(|h| h.to_str().ok())
-        .map(String::from)
-        .unwrap_or_default();
-
-    payload.client.os_version = request_headers
-        .get("sec-ch-ua-platform-version")
-        .and_then(|h| h.to_str().ok())
-        .map(String::from)
-        .unwrap_or_default();
-
-    // client ip
-    let realip = Realip::new();
-    payload.client.ip = realip.get_from_request(&remote_addr, &request_headers);
-
-    payload.client.locale = preferred_language(&request_headers);
-
-    let map: HashMap<String, String> =
-        url::form_urlencoded::parse(path.query().unwrap_or("").as_bytes())
-            .into_owned()
-            .collect();
-
-    payload.campaign.name = map
-        .get("utm_campaign")
-        .map(String::from)
-        .unwrap_or_default();
-
-    payload.campaign.source =
-        map.get("utm_source").map(String::from).unwrap_or_default();
-
-    payload.campaign.medium =
-        map.get("utm_medium").map(String::from).unwrap_or_default();
-
-    payload.campaign.term = map.get("utm_term").map(String::from).unwrap_or_default();
-
-    payload.campaign.content =
-        map.get("utm_content").map(String::from).unwrap_or_default();
-
-    payload.campaign.creative_format = map
-        .get("utm_creative_format")
-        .map(String::from)
-        .unwrap_or_default();
-
-    payload.campaign.marketing_tactic = map
-        .get("utm_marketing_tactic")
-        .map(String::from)
-        .unwrap_or_default();
-
-    debug!("data collection payload: {:?}", payload);
-    if let Err(err) = components::send_data_collection(payload.clone()).await {
-        warn!("{} {}", err, "failed to process data collection");
-    }
-}
-
-
-fn preferred_language(headers: &HeaderMap) -> String {
-    let accept_language_header = headers
-        .get(ACCEPT_LANGUAGE)
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or_default();
-    let languages = accept_language_header.split(",");
-    let lang = "en-us".to_string();
-    for l in languages {
-        let lang = l.split(";").next().unwrap_or("").trim();
-        if !lang.is_empty() {
-            return lang.to_lowercase();
-        }
-    }
-    lang
+pub async fn json_handler(body: &Bytes, cookie: &EdgeeCookie, path: &PathAndQuery, request_headers: &HeaderMap, client_ip: &String) {
+    data_collection::process_from_json(body, &cookie, &path, &request_headers, client_ip).await;
 }
 
 /// Processes the payload of a request under certain conditions.

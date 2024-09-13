@@ -2,13 +2,14 @@ use anyhow::Context;
 use http::{header::HOST, request::Parts, uri::PathAndQuery, HeaderMap};
 use hyper::body::Incoming;
 use std::{net::SocketAddr, str::FromStr};
+use crate::tools::real_ip::Realip;
 
 pub struct IncomingContext {
     pub incoming_parts: Parts,
     pub incoming_body: Incoming,
-    pub remote_addr: SocketAddr,
     pub is_https: bool,
     pub is_debug_mode: bool,
+    pub client_ip: String,
     host: String,
     path: PathAndQuery,
 }
@@ -50,12 +51,15 @@ impl IncomingContext {
             None => false,
         };
 
+        // client ip
+        let client_ip = Realip::new().get_from_request(&remote_addr, &incoming_parts.headers);
+
         Self {
             incoming_parts,
             incoming_body,
-            remote_addr,
             is_https,
             is_debug_mode,
+            client_ip,
             host,
             path,
         }
