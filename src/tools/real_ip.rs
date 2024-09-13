@@ -60,8 +60,8 @@ impl Realip {
             return ip;
         }
 
-        // if no special headers, use the remote_addr
-        remote_addr.to_string()
+        // if no special headers, use the remote_addr, but remove the port
+        remote_addr.ip().to_string()
     }
 
     /// Checks if the given IP address is a private address.

@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use serde::Deserialize;
+use serde::{Deserialize};
 use tokio::sync::OnceCell;
 
 static CONFIG: OnceCell<StaticConfiguration> = OnceCell::const_new();
@@ -26,7 +26,7 @@ pub struct StaticConfiguration {
     pub routing: Vec<RoutingConfiguration>,
 
     #[serde(default)]
-    pub destinations: DestinationConfiguration,
+    pub components: ComponentsConfiguration,
 }
 
 fn default_log_config() -> LogConfiguration {
@@ -41,6 +41,8 @@ fn default_compute_config() -> ComputeConfiguration {
         max_decompressed_body_size: default_max_decompressed_body_size(),
         max_compressed_body_size: default_max_compressed_body_size(),
         proxy_only: false,
+        data_collection_api_key: None,
+        data_collection_api_url: None,
     }
 }
 
@@ -147,7 +149,7 @@ pub struct BackendConfiguration {
 }
 
 #[derive(Deserialize, Debug, Default, Clone)]
-pub struct DestinationConfiguration {
+pub struct ComponentsConfiguration {
     pub data_collection: Vec<DataCollectionConfiguration>,
 }
 
@@ -174,6 +176,8 @@ pub struct ComputeConfiguration {
     pub max_compressed_body_size: usize,
     #[serde(default)]
     pub proxy_only: bool,
+    pub data_collection_api_key: Option<String>,
+    pub data_collection_api_url: Option<String>,
 }
 
 fn default_cookie_name() -> String {
@@ -239,7 +243,7 @@ pub fn init_test_config() {
         monitor: Some(MonitorConfiguration { address: "127.0.0.1:9090".to_string() }),
         routing: vec![],
         compute: default_compute_config(),
-        destinations: DestinationConfiguration::default(),
+        components: ComponentsConfiguration::default(),
     };
 
     if CONFIG.get().is_none() {

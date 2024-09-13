@@ -13,17 +13,17 @@ key = "local/cert/edgee.key"
 [monitor]
 address = "0.0.0.0:8222"
 
-[[destinations.data_collection]]
+[[components.data_collection]]
 name = "amplitude"
 component = "local/wasm/amplitude.wasm"
 credentials.amplitude_api_key = "..."
 
-[[destinations.data_collection]]
+[[components.data_collection]]
 name = "google analytics"
 component = "local/wasm/ga.wasm"
 credentials.ga_measurement_id = "..."
 
-[[destinations.data_collection]]
+[[components.data_collection]]
 name = "segment"
 component = "local/wasm/segment.wasm"
 credentials.segment_project_id = "..."

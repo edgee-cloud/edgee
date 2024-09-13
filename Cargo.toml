@@ -14,6 +14,7 @@ homepage = "https://www.edgee.cloud"
 addr = "0.15.6"
 aes = "0.8.4"
 anyhow = "1.0.83"
+base64 = "0.22.1"
 brotli = "6.0.0"
 bytes = "1.6.0"
 cbc = { version = "0.1.2", features = ["std"] }

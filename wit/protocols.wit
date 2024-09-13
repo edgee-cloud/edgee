@@ -45,7 +45,7 @@ world data-collection {
 
         record client {
             ip: string,
-            x-forward-for: string,
+            x-forwarded-for: string,
             locale: string,
             timezone: string,
             user-agent: string,

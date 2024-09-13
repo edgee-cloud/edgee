@@ -1,5 +1,4 @@
 use super::{incoming::IncomingContext, routing::RoutingContext};
-use crate::tools::real_ip::Realip;
 use http::{HeaderMap, HeaderValue, Uri};
 use hyper::body::Incoming;
 use hyper_rustls::ConfigBuilderExt;
@@ -25,16 +24,12 @@ impl<'a> ProxyContext<'a> {
         let incoming_method = incoming_context.method().clone();
         let incoming_host = incoming_context.host().clone();
         let incoming_body = incoming_context.incoming_body;
-
-        // client ip
-        let realip = Realip::new();
-        let client_ip = realip.get_from_request(&incoming_context.remote_addr, &incoming_headers);
+        let client_ip = incoming_context.client_ip.clone();
 
         if let Some(forwarded_for) = incoming_headers.get_mut(FORWARDED_FOR) {
             let existing_value = forwarded_for.to_str().unwrap();
             let new_value = format!("{}, {}", existing_value, client_ip);
-            *forwarded_for =
-                HeaderValue::from_str(&new_value).expect("header value should be valid");
+            *forwarded_for = HeaderValue::from_str(&new_value).expect("header value should be valid");
         } else {
             incoming_headers.insert(
                 FORWARDED_FOR,
