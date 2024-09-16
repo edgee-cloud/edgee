@@ -7,7 +7,6 @@ use http::header::{COOKIE, SET_COOKIE};
 use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
-use std::collections::HashMap;
 use std::io::Read;
 use std::time::Duration as StdDuration;
 use uuid::Uuid;
@@ -75,34 +74,26 @@ pub fn get_or_set(request_headers: &http::HeaderMap, response_headers: &mut http
 ///
 /// * `Option<EdgeeCookie>` - An `Option` containing the `EdgeeCookie` if it exists and is successfully decrypted and updated, or `None` if the cookie does not exist or decryption fails.
 pub fn get(request_headers: &http::HeaderMap, response_headers: &mut http::HeaderMap, host: &str) -> Option<EdgeeCookie> {
-    let edgee_cookie = match request_headers.get(COOKIE) {
-        Some(cookie) => {
-            // Put cookies value into a map
-            let mut map = HashMap::new();
-            for item in cookie.to_str().unwrap().split("; ") {
-                let parts: Vec<&str> = item.split('=').collect();
-                map.insert(parts[0].trim().to_string(), parts[1].trim().to_string());
+    let all_cookies = request_headers.get_all(COOKIE);
+    for cookie in all_cookies {
+        let parts: Vec<&str> = cookie.to_str().unwrap().split('=').collect();
+        let name = parts[0].trim();
+        let value = parts[1].trim();
+        if name == config::get().compute.cookie_name.as_str() {
+            let edgee_cookie_result = decrypt_and_update(value);
+            if edgee_cookie_result.is_err() {
+                return Some(init_and_set_cookie(response_headers, host));
             }
+            let edgee_cookie = edgee_cookie_result.unwrap();
 
-            if let Some(value) = map.get(&config::get().compute.cookie_name) {
-                let encrypted_edgee_cookie = value.to_string();
-                let edgee_cookie_result = decrypt_and_update(&encrypted_edgee_cookie);
-                if edgee_cookie_result.is_err() {
-                    return Some(init_and_set_cookie(response_headers, host));
-                }
-                let edgee_cookie = edgee_cookie_result.unwrap();
+            let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
+            let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
+            set_cookie(&edgee_cookie_encrypted, response_headers, host);
 
-                let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
-                let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
-                set_cookie(&edgee_cookie_encrypted, response_headers, host);
-
-                return Some(edgee_cookie);
-            }
-            None
+            return Some(edgee_cookie);
         }
-        None => None,
-    };
-    edgee_cookie
+    }
+    None
 }
 
 /// Decrypts an encrypted `EdgeeCookie`, updates its fields based on the current time, and returns the updated `EdgeeCookie`.
