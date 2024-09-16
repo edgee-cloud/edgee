@@ -3,12 +3,10 @@ use http::{HeaderMap, HeaderValue, Uri};
 use hyper::body::Incoming;
 use hyper_rustls::ConfigBuilderExt;
 use hyper_util::{client::legacy::{connect::HttpConnector, Client}, rt::TokioExecutor};
-use tracing::debug;
 
 pub struct ProxyContext<'a> {
     incoming_headers: HeaderMap,
     incoming_body: Incoming,
-    incoming_uri: http::Uri,
     incoming_method: http::Method,
     routing_context: &'a RoutingContext,
 }
@@ -20,7 +18,6 @@ impl<'a> ProxyContext<'a> {
         const FORWARDED_HOST: &str = "x-forwarded-host";
 
         let mut incoming_headers = incoming_context.headers().clone();
-        let incoming_uri = incoming_context.uri().clone();
         let incoming_method = incoming_context.method().clone();
         let incoming_host = incoming_context.host().clone();
         let incoming_body = incoming_context.incoming_body;
@@ -56,10 +53,29 @@ impl<'a> ProxyContext<'a> {
             );
         }
 
+        // rebuild all the cookies
+        let cookies = incoming_headers.get_all("cookie");
+        let mut str_cookies = String::new();
+        for cookie in cookies {
+            let cookie_str = cookie.to_str().unwrap();
+            let cookie_parts: Vec<&str> = cookie_str.split("; ").collect();
+            for cookie_part in cookie_parts {
+                let parts: Vec<&str> = cookie_part.split('=').collect();
+                let name = parts[0].trim();
+                let value = parts[1].trim();
+                str_cookies.push_str(&format!("{}={}; ", name, value));
+            }
+        }
+        if !str_cookies.is_empty() {
+            incoming_headers.insert(
+                "cookie",
+                HeaderValue::from_str(&str_cookies).expect("header value should be valid"),
+            );
+        }
+
         Self {
             incoming_headers,
             incoming_body,
-            incoming_uri,
             incoming_method,
             routing_context,
         }
@@ -79,8 +95,6 @@ impl<'a> ProxyContext<'a> {
         let uri: Uri = format!("http://{}{}", &backend.address, path)
             .parse()
             .expect("uri should be valid");
-
-        debug!(origin=?self.incoming_uri,?uri, "Forwarding HTTP request");
 
         let mut req = http::Request::builder()
             .uri(uri)
