@@ -7,7 +7,7 @@ use crate::proxy::compute::data_collection::data_collection;
 use http::response::Parts;
 use http::uri::PathAndQuery;
 use http::HeaderMap;
-use log::{warn};
+use tracing::{warn};
 use crate::tools::edgee_cookie::EdgeeCookie;
 
 pub async fn html_handler(

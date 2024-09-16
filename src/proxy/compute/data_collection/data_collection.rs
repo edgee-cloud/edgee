@@ -7,7 +7,6 @@ use html_escape;
 use http::uri::PathAndQuery;
 use http::{header, HeaderMap};
 use json_comments::StripComments;
-use log::{warn, debug};
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::io::Read;
@@ -16,6 +15,7 @@ use base64::alphabet::STANDARD;
 use base64::engine::general_purpose::PAD;
 use base64::engine::GeneralPurpose;
 use bytes::Bytes;
+use tracing::{info, warn};
 
 pub async fn process_from_html(
     document: &Document,
@@ -63,7 +63,7 @@ pub async fn process_from_html(
         let api_key = config::get().compute.data_collection_api_key.as_ref()?;
         let api_url = config::get().compute.data_collection_api_url.as_ref()?;
         let payload_json = serde_json::to_string(&payload).unwrap();
-        debug!("Data Collection Payload: {}", payload_json.as_str());
+        info!("Data Collection Payload: {}", payload_json.as_str());
         let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         tokio::spawn(async move {
@@ -106,7 +106,7 @@ pub async fn process_from_json(body: &Bytes, edgee_cookie: &EdgeeCookie, path: &
         let api_key = config::get().compute.data_collection_api_key.as_ref().unwrap();
         let api_url = config::get().compute.data_collection_api_url.as_ref().unwrap();
         let payload_json = serde_json::to_string(&payload).unwrap();
-        debug!("Data Collection Payload: {}", payload_json.as_str());
+        info!("Data Collection Payload: {}", payload_json.as_str());
         let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         tokio::spawn(async move {
