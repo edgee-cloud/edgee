@@ -13,7 +13,7 @@ use http_body_util::{combinators::BoxBody, BodyExt, Full};
 use hyper::body::Incoming;
 use libflate::{deflate, gzip};
 use std::{convert::Infallible, io::{Read, Write}, net::SocketAddr, str::FromStr};
-use tracing::{debug, error, warn};
+use tracing::{error, info, warn};
 
 const EDGEE_HEADER: &str = "x-edgee";
 const EDGEE_FULL_DURATION_HEADER: &str = "x-edgee-full-duration";
@@ -42,17 +42,20 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
 
     // Check if the request is HTTPS and if we should force HTTPS
     if !incoming_ctx.is_https && config::get().http.is_some() && config::get().http.as_ref().unwrap().force_https {
+        info!("301 - {} {}{} - {}ms", incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
         return controller::redirect_to_https(incoming_host, incoming_path);
     }
 
     // SDK path
     if incoming_method == Method::GET && (incoming_path.path() == "/_edgee/sdk.js" || (incoming_path.path().starts_with("/_edgee/libs/edgee.") && incoming_path.path().ends_with(".js"))) {
+        info!("200 - {} {}{} - {}ms", incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
         return controller::sdk(incoming_path.as_str());
     }
 
     // event path, method POST and content-type application/json
     if incoming_method == Method::POST && content_type == "application/json" {
         if incoming_path.path() == "/_edgee/event" || path::validate(incoming_host.as_str(), incoming_path.path()) {
+            info!("204 - {} {}{} - {}ms", incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
             return controller::edgee_client_event(incoming_ctx, &incoming_host, &incoming_path, &incoming_headers, &client_ip).await;
         }
     }
@@ -60,16 +63,22 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
     // event path for third party integration (Edgee installed like a third party, and use localstorage)
     if incoming_path.path() == "/_edgee/csevent" {
         if incoming_method == Method::OPTIONS {
+            info!("200 - {} {}{} - {}ms",  incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
             return controller::options("POST, OPTIONS");
         }
         if incoming_method == Method::POST && content_type == "application/json" {
+            info!("200 - {} {}{} - {}ms", incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
             return controller::edgee_client_event_from_third_party_sdk(incoming_ctx, &incoming_path, &incoming_headers, &client_ip).await;
         }
     }
 
     // define the backend
     let routing_ctx = match RoutingContext::from_request_context(&incoming_ctx) {
-        None => return controller::bad_gateway_error(),
+        None => {
+            error!("backend not found");
+            info!("502 - {} {}{} - {}ms", incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
+            return controller::bad_gateway_error()
+        },
         Some(r) => r,
     };
 
@@ -80,12 +89,14 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
     let res = proxy_ctx.response().await;
     match res {
         Err(err) => {
-            error!("backend request failed: {} - {} {}{}", err, incoming_method, incoming_host, incoming_path);
+            error!("backend request failed: {}", err);
+            info!("502 - {} {}{} - {}ms", incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
             controller::bad_gateway_error()
         }
         Ok(upstream) => {
             let (mut response_parts, incoming) = upstream.into_parts();
             let response_body = incoming.collect().await?.to_bytes();
+            info!("{} - {} {}{} - {}ms", response_parts.status.as_str(), incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
 
             // Only proxy in some cases
             match do_only_proxy(&incoming_method, &response_body, &response_parts) {
@@ -229,13 +240,11 @@ fn set_duration_headers(response_parts: &mut Parts, is_debug_mode: bool, full_du
 /// # Logic
 ///
 /// The function inserts the process information into the response headers.
-/// The function also logs the process information using the `debug!` macro.
 pub fn set_edgee_header(response_parts: &mut Parts, process: &str) {
     response_parts.headers.insert(
         HeaderName::from_str(EDGEE_HEADER).unwrap(),
         HeaderValue::from_str(process).unwrap(),
     );
-    debug!(process);
 }
 
 /// Determines whether to proxy the request based on various conditions.
