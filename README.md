@@ -189,3 +189,8 @@ If you're interested in contributing to Edgee, read our [contribution guidelines
 ## Reporting Security Vulnerabilities
 If you've found a vulnerability or potential vulnerability in our code, please let us know at
 [edgee-security](mailto:security@edgee.cloud).
+
+## Versioning
+Edgee releases and their associated binaries are available on the project's [releases page](https://github.com/edgee-cloud/edgee/releases).
+
+The binaries are versioned following [SemVer](https://semver.org/) conventions.
