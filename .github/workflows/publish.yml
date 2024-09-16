@@ -3,22 +3,6 @@ on:
   release:
     types: [published]
 jobs:
-  flakehub:
-    name: "Publish to Flakehub"
-    runs-on: "ubuntu-latest"
-    permissions:
-      id-token: "write"
-      contents: "read"
-    steps:
-      - uses: "actions/checkout@v4"
-        with:
-          ref: "${{ github.ref_name }}"
-      - uses: "DeterminateSystems/nix-installer-action@main"
-      - uses: "DeterminateSystems/flakehub-push@main"
-        with:
-          visibility: "public"
-          name: "edgee-cloud/edgee"
-          tag: "${{ github.ref_name }}"
   cratesio:
     name: Publish to Crates.io
     runs-on: ubuntu-latest
