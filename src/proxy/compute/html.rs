@@ -53,25 +53,28 @@ pub(crate) fn parse_html(html: &str) -> Document {
 
     while let Some(c) = chars.next() {
         match c {
-            '<' if chars.peek() == Some(&'!')
-                && chars.peek() == Some(&'-')
-                && chars.peek() == Some(&'-') =>
-            {
-                // Start of a comment
-                while let Some(&next_c) = chars.peek() {
-                    chars.next(); // Consume character
-                    temp.push(next_c);
-                    if next_c == '>' {
-                        if temp.ends_with("-->") {
-                            break;
+            '<' if chars.peek() == Some(&'!') => {
+                chars.next(); // Consume '!'
+                if chars.peek() == Some(&'-') {
+                    chars.next(); // Consume '-'
+                    if chars.peek() == Some(&'-') {
+                        chars.next(); // Consume '-'
+                        // Start of a comment
+
+                        while let Some(&next_c) = chars.peek() {
+                            chars.next(); // Consume character
+                            temp.push(next_c);
+                            if next_c == '>' && temp.ends_with("-->") {
+                                break;
+                            }
                         }
+                        temp.clear(); // Clear temporary storage
                     }
                 }
-                temp.clear(); // Clear temporary storage
             }
             '<' => {
                 let next_chars: String = chars.clone().take(6).collect();
-                if recording == false {
+                if !recording {
                     // if next_chars start with RECORDED_TAGS list
                     for tag in recorded_tags.iter() {
                         if next_chars.starts_with(tag) {
