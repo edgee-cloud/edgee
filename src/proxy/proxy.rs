@@ -151,11 +151,17 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
                         page_event_param = r#" data-page-event="false""#;
                     }
 
+                    // if the context is empty, we need to add an empty context script tag
+                    let mut empty_context = "";
+                    if document.context.is_empty() {
+                        empty_context = r#"<script id="__EDGEE_CONTEXT__" type="application/json">{}</script>"#;
+                    }
+
                     if !document.inlined_sdk.is_empty() {
-                        let new_tag = format!(r#"<script{}{}>{}</script>"#, page_event_param, event_path_param, document.inlined_sdk.as_str());
+                        let new_tag = format!(r#"{}<script{}{}>{}</script>"#, empty_context, page_event_param, event_path_param, document.inlined_sdk.as_str());
                         body_str = body_str.replace(document.sdk_full_tag.as_str(), new_tag.as_str());
                     } else {
-                        let new_tag = format!(r#"<script{}{} async src="{}"></script>"#, page_event_param, event_path_param, document.sdk_src.as_str());
+                        let new_tag = format!(r#"{}<script{}{} async src="{}"></script>"#, empty_context, page_event_param, event_path_param, document.sdk_src.as_str());
                         body_str = body_str.replace(document.sdk_full_tag.as_str(), new_tag.as_str());
                     }
                 }

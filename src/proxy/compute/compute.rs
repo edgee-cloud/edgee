@@ -33,6 +33,12 @@ pub async fn html_handler(
     }
 
     let mut document = parse_html(&body);
+
+    // verify if document.sdk_full_tag is present, otherwise SDK is probably commented in the page
+    if document.sdk_full_tag.is_empty() {
+        Err("compute-aborted(commented-sdk)")?;
+    }
+
     match do_process_payload(&path, request_headers, response_headers) {
         Ok(_) => {
             let cookie = edgee_cookie::get(&request_headers, &mut HeaderMap::new(), &host);
