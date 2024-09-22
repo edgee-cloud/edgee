@@ -6,9 +6,11 @@ use crate::tools;
 use crate::tools::edgee_cookie;
 use crate::tools::edgee_cookie::EdgeeCookie;
 use bytes::Bytes;
+use http::header::CACHE_CONTROL;
 use http::response::Parts;
 use http::uri::PathAndQuery;
-use http::HeaderMap;
+use http::{HeaderMap, HeaderName, HeaderValue};
+use std::str::FromStr;
 use tracing::warn;
 
 pub async fn html_handler(
@@ -38,6 +40,14 @@ pub async fn html_handler(
     // verify if document.sdk_full_tag is present, otherwise SDK is probably commented in the page
     if document.sdk_full_tag.is_empty() {
         Err("compute-aborted(commented-sdk)")?;
+    }
+
+    // enforce_no_store_policy is used to enforce no-store cache-control header in the response for requests that can be computed
+    if config::get().compute.enforce_no_store_policy {
+        response_parts.headers.insert(
+            HeaderName::from_str(CACHE_CONTROL.as_ref()).unwrap(),
+            HeaderValue::from_str("no-store").unwrap(),
+        );
     }
 
     match do_process_payload(&path, request_headers, response_headers) {
@@ -93,11 +103,13 @@ fn do_process_payload(path: &PathAndQuery, request_headers: &HeaderMap, response
         Err("compute-aborted(disableEdgeDataCollection)")?;
     }
 
-    // process the payload, only if response is not cacheable
-    // transform response_headers to HashMap<String, String>
-    let res_headers = response_headers.iter().map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap().to_string())).collect::<std::collections::HashMap<String, String>>();
-    if tools::cacheable::check_cacheability(&res_headers, config::get().compute.behind_proxy_cache) {
-        Err("compute-aborted(cacheable)")?;
+    if !config::get().compute.enforce_no_store_policy {
+        // process the payload, only if response is not cacheable
+        // transform response_headers to HashMap<String, String>
+        let res_headers = response_headers.iter().map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap().to_string())).collect::<std::collections::HashMap<String, String>>();
+        if tools::cacheable::check_cacheability(&res_headers, config::get().compute.behind_proxy_cache) {
+            Err("compute-aborted(cacheable)")?;
+        }
     }
 
     // do not process the payload if the request is for prefetch

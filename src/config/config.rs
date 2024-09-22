@@ -41,6 +41,7 @@ fn default_compute_config() -> ComputeConfiguration {
         max_decompressed_body_size: default_max_decompressed_body_size(),
         max_compressed_body_size: default_max_compressed_body_size(),
         proxy_only: false,
+        enforce_no_store_policy: false,
         data_collection_api_key: None,
         data_collection_api_url: None,
     }
@@ -176,6 +177,8 @@ pub struct ComputeConfiguration {
     pub max_compressed_body_size: usize,
     #[serde(default)]
     pub proxy_only: bool,
+    #[serde(default)]
+    pub enforce_no_store_policy: bool,
     pub data_collection_api_key: Option<String>,
     pub data_collection_api_url: Option<String>,
 }
