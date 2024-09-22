@@ -1,14 +1,15 @@
-use bytes::Bytes;
 use crate::config::config;
+use crate::proxy::compute::data_collection::data_collection;
 use crate::proxy::compute::html::{parse_html, Document};
 use crate::proxy::proxy::set_edgee_header;
+use crate::tools;
 use crate::tools::edgee_cookie;
-use crate::proxy::compute::data_collection::data_collection;
+use crate::tools::edgee_cookie::EdgeeCookie;
+use bytes::Bytes;
 use http::response::Parts;
 use http::uri::PathAndQuery;
 use http::HeaderMap;
-use tracing::{warn};
-use crate::tools::edgee_cookie::EdgeeCookie;
+use tracing::warn;
 
 pub async fn html_handler(
     body: &String,
@@ -93,7 +94,9 @@ fn do_process_payload(path: &PathAndQuery, request_headers: &HeaderMap, response
     }
 
     // process the payload, only if response is not cacheable
-    if is_cacheable(response_headers) {
+    // transform response_headers to HashMap<String, String>
+    let res_headers = response_headers.iter().map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap().to_string())).collect::<std::collections::HashMap<String, String>>();
+    if tools::cacheable::check_cacheability(&res_headers, config::get().compute.behind_proxy_cache) {
         Err("compute-aborted(cacheable)")?;
     }
 
@@ -105,128 +108,4 @@ fn do_process_payload(path: &PathAndQuery, request_headers: &HeaderMap, response
     }
 
     Ok(true)
-}
-
-/// Determines if a response is cacheable based on the configuration and response headers.
-///
-/// This function first checks if the `behind_proxy_cache` configuration is set to true.
-/// If it is, it calls the `is_cacheable_by_cdn_or_browser` function to determine if the response is cacheable.
-/// If the `edgee_behind_proxy_cache` configuration is not set to true, it calls the `is_cacheable_by_browser` function.
-///
-/// # Arguments
-///
-/// * `response_headers` - A reference to the response headers.
-///
-/// # Returns
-///
-/// * `bool` - Returns a boolean indicating if the response is cacheable.
-fn is_cacheable(response_headers: &HeaderMap) -> bool {
-    if config::get().compute.behind_proxy_cache {
-        return is_cacheable_by_cdn_or_browser(response_headers);
-    }
-    is_cacheable_by_browser(response_headers)
-}
-
-/// Determines if a response is cacheable by a browser based on the response headers.
-///
-/// This function checks the `Cache-Control`, `Expires`, `Last-Modified`, and `Etag` headers of the response.
-/// It uses these headers to determine if the response is cacheable by a browser.
-///
-/// # Arguments
-///
-/// * `response_headers` - A reference to the response headers.
-///
-/// # Returns
-///
-/// * `bool` - Returns a boolean indicating if the response is cacheable by a browser.
-///
-/// # Cacheability conditions
-///
-/// The function considers a response cacheable if:
-///
-/// * The `Etag`, `Last-Modified`, or `Expires` headers are not empty.
-/// * The `Cache-Control` header contains `public`, `max-age`, or `no-cache`.
-///
-/// The function considers a response not cacheable if:
-///
-/// * The `Cache-Control` header contains `private` and `no-store`.
-/// * The `Cache-Control` header contains `public` and `max-age=0`.
-fn is_cacheable_by_browser(response_headers: &HeaderMap) -> bool {
-    let cache_control = response_headers.get("Cache-Control").map_or("", |v| v.to_str().unwrap());
-    let expires = response_headers.get("Expires").map_or("", |v| v.to_str().unwrap());
-    let last_modified = response_headers.get("Last-Modified").map_or("", |v| v.to_str().unwrap());
-    let etag = response_headers.get("Etag").map_or("", |v| v.to_str().unwrap());
-
-    if cache_control.contains("private") && cache_control.contains("no-store") {
-        return false;
-    }
-
-    if etag != "" || last_modified != "" || expires != "" {
-        return true;
-    }
-
-    if cache_control.contains("public") && cache_control.contains("max-age=0") {
-        return false;
-    }
-
-    if cache_control.contains("public") || cache_control.contains("max-age") || cache_control.contains("no-cache") {
-        return true;
-    }
-
-    false
-}
-
-/// Determines if a response is cacheable by a CDN or a browser based on the response headers.
-///
-/// This function checks the `Cache-Control`, `Surrogate-Control`, `Expires`, `Last-Modified`, and `Etag` headers of the response.
-/// It uses these headers to determine if the response is cacheable by a CDN or a browser.
-///
-/// # Arguments
-///
-/// * `response_headers` - A reference to the response headers.
-///
-/// # Returns
-///
-/// * `bool` - Returns a boolean indicating if the response is cacheable by a CDN or a browser.
-///
-/// # Cacheability conditions
-///
-/// The function considers a response cacheable if:
-///
-/// * The `Etag`, `Last-Modified`, or `Expires` headers are not empty.
-///
-/// The function considers a response not cacheable if:
-///
-/// * The `Surrogate-Control` header contains `private` and `no-store`.
-/// * The `Cache-Control` header contains `private` and `no-store`.
-/// * The `Cache-Control` header contains `public` and `max-age=0`.
-/// * The `Cache-Control` header contains `private` and `max-age=0`.
-fn is_cacheable_by_cdn_or_browser(response_headers: &HeaderMap) -> bool {
-    let cache_control = response_headers.get("Cache-Control").map_or("", |v| v.to_str().unwrap());
-    let surrogate_control = response_headers.get("Surrogate-Control").map_or("", |v| v.to_str().unwrap());
-    let expires = response_headers.get("Expires").map_or("", |v| v.to_str().unwrap());
-    let last_modified = response_headers.get("Last-Modified").map_or("", |v| v.to_str().unwrap());
-    let etag = response_headers.get("Etag").map_or("", |v| v.to_str().unwrap());
-
-    if surrogate_control.contains("private") && surrogate_control.contains("no-store") {
-        return false;
-    }
-
-    if cache_control.contains("private") && cache_control.contains("no-store") {
-        return false;
-    }
-
-    if etag != "" || last_modified != "" || expires != "" {
-        return true;
-    }
-
-    if cache_control.contains("public") && cache_control.contains("max-age=0") {
-        return false;
-    }
-
-    if cache_control.contains("private") && cache_control.contains("max-age=0") {
-        return false;
-    }
-
-    true
 }
