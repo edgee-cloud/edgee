@@ -1,17 +1,17 @@
-use std::collections::HashMap;
-use std::convert::Infallible;
-use bytes::Bytes;
-use http::uri::PathAndQuery;
-use http_body_util::combinators::BoxBody;
-use http::{header, HeaderMap, StatusCode};
-use http_body_util::{Empty, Full};
-use http_body_util::BodyExt;
-use crate::proxy::compute::html;
 use crate::proxy::compute::compute;
+use crate::proxy::compute::html;
 use crate::proxy::context::incoming::IncomingContext;
 use crate::tools::crypto::encrypt;
 use crate::tools::edgee_cookie;
 use crate::tools::edgee_cookie::EdgeeCookie;
+use bytes::Bytes;
+use http::uri::PathAndQuery;
+use http::{header, HeaderMap, StatusCode};
+use http_body_util::combinators::BoxBody;
+use http_body_util::BodyExt;
+use http_body_util::{Empty, Full};
+use std::collections::HashMap;
+use std::convert::Infallible;
 
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 

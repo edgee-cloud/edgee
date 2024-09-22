@@ -1,7 +1,7 @@
 use crate::config::config;
-use crate::{proxy};
+use crate::proxy;
 use bytes::Bytes;
-use http_body_util::{combinators::BoxBody};
+use http_body_util::combinators::BoxBody;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto::Builder;

@@ -3,6 +3,11 @@ use crate::proxy::compute::data_collection::payload::{EventType, Payload};
 use crate::proxy::compute::data_collection::{components, payload};
 use crate::proxy::compute::html::Document;
 use crate::tools::edgee_cookie::EdgeeCookie;
+use base64::alphabet::STANDARD;
+use base64::engine::general_purpose::PAD;
+use base64::engine::GeneralPurpose;
+use base64::Engine;
+use bytes::Bytes;
 use html_escape;
 use http::uri::PathAndQuery;
 use http::{header, HeaderMap};
@@ -10,11 +15,6 @@ use json_comments::StripComments;
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::io::Read;
-use base64::{Engine};
-use base64::alphabet::STANDARD;
-use base64::engine::general_purpose::PAD;
-use base64::engine::GeneralPurpose;
-use bytes::Bytes;
 use tracing::{info, warn};
 
 pub async fn process_from_html(
