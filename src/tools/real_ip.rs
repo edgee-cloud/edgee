@@ -206,7 +206,7 @@ mod tests {
         let headers = HeaderMap::new();
         let remote_addr: SocketAddr = "192.0.2.1:12345".parse().unwrap();
         let ip = realip.get_from_request(&remote_addr, &headers);
-        assert_eq!(ip, "192.0.2.1:12345");
+        assert_eq!(ip, "192.0.2.1");
     }
 
     #[test]
