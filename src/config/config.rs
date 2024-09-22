@@ -1,6 +1,6 @@
+use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use serde::{Deserialize};
 use tokio::sync::OnceCell;
 
 static CONFIG: OnceCell<StaticConfiguration> = OnceCell::const_new();

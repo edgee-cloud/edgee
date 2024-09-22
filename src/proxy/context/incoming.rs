@@ -1,8 +1,8 @@
+use crate::tools::real_ip::Realip;
 use anyhow::Context;
 use http::{header::HOST, request::Parts, uri::PathAndQuery, HeaderMap};
 use hyper::body::Incoming;
 use std::{net::SocketAddr, str::FromStr};
-use crate::tools::real_ip::Realip;
 
 pub struct IncomingContext {
     pub incoming_parts: Parts,
