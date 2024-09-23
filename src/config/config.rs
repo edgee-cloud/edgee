@@ -1,9 +1,9 @@
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use tokio::sync::OnceCell;
+use std::sync::OnceLock;
 
-static CONFIG: OnceCell<StaticConfiguration> = OnceCell::const_new();
+static CONFIG: OnceLock<StaticConfiguration> = OnceLock::new();
 
 pub trait Validate {
     fn validate(&self) -> Result<(), Vec<String>>;
@@ -249,7 +249,5 @@ pub fn init_test_config() {
         components: ComponentsConfiguration::default(),
     };
 
-    if CONFIG.get().is_none() {
-        CONFIG.set(config).expect("Should initialize config");
-    }
+    CONFIG.get_or_init(|| config);
 }
