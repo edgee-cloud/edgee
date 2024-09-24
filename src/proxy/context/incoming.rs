@@ -73,10 +73,6 @@ impl IncomingContext {
         &self.path
     }
 
-    pub fn uri(&self) -> &http::Uri {
-        &self.incoming_parts.uri
-    }
-
     pub fn host(&self) -> &String {
         &self.host
     }
