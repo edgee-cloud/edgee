@@ -1,62 +1,49 @@
-name: Release
-
+name: Build release
+permissions:
+  contents: write
 on:
-    push:
-        tags:
-            - "v*.*.*"
-
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 jobs:
-    build-x86_64-linux: { uses: ./.github/workflows/build-x86_64-linux.yml }
-    build-x86_64-darwin: { uses: ./.github/workflows/build-x86_64-darwin.yml }
-    build-aarch64-linux: { uses: ./.github/workflows/build-aarch64-linux.yml }
-    build-aarch64-darwin: { uses: ./.github/workflows/build-aarch64-darwin.yml }
-    
-    release:
-        runs-on: ubuntu-latest
-        needs:
-            - build-x86_64-linux
-            - build-x86_64-darwin
-            - build-aarch64-linux
-            - build-aarch64-darwin
-        steps:
-            - uses: actions/checkout@v4
-            - name: Create artifacts directory
-              run: mkdir -p ./artifacts
-    
-            - uses: actions/cache/restore@v3
-              name: Restore x86_64-linux artifacts
-              with:
-                path: build
-                key: x86_64-linux-artifacts-${{ github.sha }}
-            - name: Move x86_64-linux artifacts
-              run: mv ./build ./artifacts/x86_64-linux
-    
-            - uses: actions/cache/restore@v3
-              name: Restore x86_64-darwin artifacts
-              with:
-                path: build
-                key: x86_64-darwin-artifacts-${{ github.sha }}
-            - name: Move x86_64-darwin artifacts
-              run: mv ./build ./artifacts/x86_64-darwin
-    
-            - uses: actions/cache/restore@v3
-              name: Restore aarch64-linux artifacts
-              with:
-                path: build
-                key: aarch64-linux-artifacts-${{ github.sha }}
-            - name: Move aarch64-linux artifacts
-              run: mv ./build ./artifacts/aarch64-linux
-    
-            - uses: actions/cache/restore@v3
-              name: Restore aarch64-darwin artifacts
-              with:
-                path: build
-                key: aarch64-darwin-artifacts-${{ github.sha }}
-
-            - name: Publish Release to GitHub
-              uses: softprops/action-gh-release@v1
-              with:
-                fail_on_unmatched_files: true
-                draft: true
-                files: |
-                    artifacts/**
+  build-release-binaries:
+    strategy:
+      matrix:
+        platform:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            features: bundled
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            features: bundled
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            features: bundled
+    name: Build release binary (${{ matrix.platform.target }} on ${{ matrix.platform.os }})
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup cache
+        uses: Swatinem/rust-cache@v2
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          command: ${{ matrix.platform.command }}
+          target: ${{ matrix.platform.target }}
+          args: '--release --features "${{ matrix.platform.features }}"'
+      - name: Save binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: edgee.${{ matrix.platform.target }}
+          path: target/${{ matrix.platform.target }}/release/edgee
+          retention-days: 3
+      - run: cp target/${{ matrix.platform.target }}/release/edgee edgee.${{ matrix.platform.target }}
+      - name: Publish artifacts and release
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: edgee.${{ matrix.platform.target }}
+          tags: true
