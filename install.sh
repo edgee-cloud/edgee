@@ -81,6 +81,10 @@ get_arch() {
             _cputype=x86_64
             ;;
 
+        aarch64 | arm64)
+            _cputype=aarch64
+            ;;
+
         *)
             err "Unrecognized CPU type: $_cputype"
             ;;
@@ -89,6 +93,10 @@ get_arch() {
     case "$_ostype" in
         Linux)
             _ostype="unknown-linux-gnu"
+            ;;
+
+        Darwin)
+            _ostype="apple-darwin"
             ;;
 
         *)
