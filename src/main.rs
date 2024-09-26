@@ -2,10 +2,10 @@ use tracing::error;
 
 mod config;
 mod logger;
-mod proxy;
-mod tools;
-mod server;
 mod monitor;
+mod proxy;
+mod server;
+mod tools;
 
 #[tokio::main]
 async fn main() {

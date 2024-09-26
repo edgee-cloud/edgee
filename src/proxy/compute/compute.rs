@@ -22,11 +22,14 @@ pub async fn html_handler(
     client_ip: &String,
     response_parts: &mut Parts,
     response_headers: &HeaderMap,
-) -> Result<Document, &'static str>
-{
+) -> Result<Document, &'static str> {
     // if the decompressed body is too large, abort the computation
     if body.len() > config::get().compute.max_decompressed_body_size {
-        warn!("decompressed body too large: {} > {}", body.len(), config::get().compute.max_decompressed_body_size);
+        warn!(
+            "decompressed body too large: {} > {}",
+            body.len(),
+            config::get().compute.max_decompressed_body_size
+        );
         Err("compute-aborted(decompressed-body-too-large)")?;
     }
 
@@ -56,7 +59,16 @@ pub async fn html_handler(
             if cookie.is_none() {
                 set_edgee_header(response_parts, "compute-aborted(no-cookie)");
             } else {
-                let data_collection_trace_uuid = data_collection::process_from_html(&document, &cookie.unwrap(), proto, &host, &path, &request_headers, client_ip).await;
+                let data_collection_trace_uuid = data_collection::process_from_html(
+                    &document,
+                    &cookie.unwrap(),
+                    proto,
+                    &host,
+                    &path,
+                    &request_headers,
+                    client_ip,
+                )
+                .await;
                 if data_collection_trace_uuid.is_some() {
                     document.trace_uuid = data_collection_trace_uuid.unwrap();
                 }
@@ -70,7 +82,13 @@ pub async fn html_handler(
     Ok(document)
 }
 
-pub async fn json_handler(body: &Bytes, cookie: &EdgeeCookie, path: &PathAndQuery, request_headers: &HeaderMap, client_ip: &String) {
+pub async fn json_handler(
+    body: &Bytes,
+    cookie: &EdgeeCookie,
+    path: &PathAndQuery,
+    request_headers: &HeaderMap,
+    client_ip: &String,
+) {
     data_collection::process_from_json(body, &cookie, &path, &request_headers, client_ip).await;
 }
 
@@ -96,7 +114,11 @@ pub async fn json_handler(body: &Bytes, cookie: &EdgeeCookie, path: &PathAndQuer
 /// * The `disableEdgeDataCollection` query parameter is present in the URL of the request.
 /// * The response is cacheable.
 /// * The request is for prefetch (indicated by the `Purpose` or `Sec-Purpose` headers).
-fn do_process_payload(path: &PathAndQuery, request_headers: &HeaderMap, response_headers: &HeaderMap) -> Result<bool, &'static str> {
+fn do_process_payload(
+    path: &PathAndQuery,
+    request_headers: &HeaderMap,
+    response_headers: &HeaderMap,
+) -> Result<bool, &'static str> {
     // do not process the payload if disableEdgeDataCollection query param is present in the URL
     let query = path.query().unwrap_or("");
     if query.contains("disableEdgeDataCollection") {
@@ -106,15 +128,27 @@ fn do_process_payload(path: &PathAndQuery, request_headers: &HeaderMap, response
     if !config::get().compute.enforce_no_store_policy {
         // process the payload, only if response is not cacheable
         // transform response_headers to HashMap<String, String>
-        let res_headers = response_headers.iter().map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap().to_string())).collect::<std::collections::HashMap<String, String>>();
-        if tools::cacheable::check_cacheability(&res_headers, config::get().compute.behind_proxy_cache) {
+        let res_headers = response_headers
+            .iter()
+            .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap().to_string()))
+            .collect::<std::collections::HashMap<String, String>>();
+        if tools::cacheable::check_cacheability(
+            &res_headers,
+            config::get().compute.behind_proxy_cache,
+        ) {
             Err("compute-aborted(cacheable)")?;
         }
     }
 
     // do not process the payload if the request is for prefetch
-    let purpose = request_headers.get("purpose").and_then(|h| h.to_str().ok()).unwrap_or("");
-    let sec_purpose = request_headers.get("sec-purpose").and_then(|h| h.to_str().ok()).unwrap_or("");
+    let purpose = request_headers
+        .get("purpose")
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
+    let sec_purpose = request_headers
+        .get("sec-purpose")
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
     if purpose.contains("prefetch") || sec_purpose.contains("prefetch") {
         Err("compute-aborted(prefetch)")?;
     }

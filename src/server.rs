@@ -42,9 +42,16 @@ pub async fn start() -> anyhow::Result<()> {
 }
 
 async fn http() -> anyhow::Result<()> {
-    let cfg = config::get().http.as_ref().ok_or_else(|| anyhow::anyhow!("HTTP configuration is missing"))?;
+    let cfg = config::get()
+        .http
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("HTTP configuration is missing"))?;
 
-    info!(address = cfg.address, force_https = cfg.force_https, "Starting HTTP entrypoint");
+    info!(
+        address = cfg.address,
+        force_https = cfg.force_https,
+        "Starting HTTP entrypoint"
+    );
 
     let addr: SocketAddr = cfg.address.parse()?;
     let listener = TcpListener::bind(addr).await?;
@@ -64,7 +71,10 @@ async fn http() -> anyhow::Result<()> {
 }
 
 async fn https() -> anyhow::Result<()> {
-    let cfg = config::get().https.as_ref().ok_or_else(|| anyhow::anyhow!("HTTPS configuration is missing"))?;
+    let cfg = config::get()
+        .https
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("HTTPS configuration is missing"))?;
 
     info!(address = cfg.address, "Starting HTTPS entrypoint");
 
@@ -124,7 +134,10 @@ pub struct RequestManager {
 
 impl RequestManager {
     pub fn new(addr: SocketAddr, proto: String) -> Self {
-        Self { remote_addr: addr, proto }
+        Self {
+            remote_addr: addr,
+            proto,
+        }
     }
 }
 

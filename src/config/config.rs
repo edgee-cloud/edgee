@@ -30,7 +30,9 @@ pub struct StaticConfiguration {
 }
 
 fn default_log_config() -> LogConfiguration {
-    LogConfiguration { level: "info".to_string() }
+    LogConfiguration {
+        level: "info".to_string(),
+    }
 }
 fn default_compute_config() -> ComputeConfiguration {
     ComputeConfiguration {
@@ -211,12 +213,15 @@ fn read_config() -> Result<StaticConfiguration, String> {
             Err("no configuration file found, either edgee.toml or edgee.yaml is required.".into())
         }
         (true, false) => {
-            let config_file = std::fs::read_to_string("edgee.toml").expect("should read edgee.toml");
+            let config_file =
+                std::fs::read_to_string("edgee.toml").expect("should read edgee.toml");
             toml::from_str(&config_file).map_err(|e| format!("should parse config file: {}", e))
         }
         (false, true) => {
-            let config_file = std::fs::read_to_string("edgee.yaml").expect("should read edgee.yaml");
-            serde_yml::from_str(&config_file).map_err(|e| format!("should parse config file: {}", e))
+            let config_file =
+                std::fs::read_to_string("edgee.yaml").expect("should read edgee.yaml");
+            serde_yml::from_str(&config_file)
+                .map_err(|e| format!("should parse config file: {}", e))
         }
     }
 }
@@ -241,9 +246,18 @@ pub fn get() -> &'static StaticConfiguration {
 pub fn init_test_config() {
     let config = StaticConfiguration {
         log: default_log_config(),
-        http: Some(HttpConfiguration { address: "127.0.0.1:8080".to_string(), force_https: false }),
-        https: Some(HttpsConfiguration { address: "127.0.0.1:8443".to_string(), cert: "cert.pem".to_string(), key: "key.pem".to_string() }),
-        monitor: Some(MonitorConfiguration { address: "127.0.0.1:9090".to_string() }),
+        http: Some(HttpConfiguration {
+            address: "127.0.0.1:8080".to_string(),
+            force_https: false,
+        }),
+        https: Some(HttpsConfiguration {
+            address: "127.0.0.1:8443".to_string(),
+            cert: "cert.pem".to_string(),
+            key: "key.pem".to_string(),
+        }),
+        monitor: Some(MonitorConfiguration {
+            address: "127.0.0.1:9090".to_string(),
+        }),
         routing: vec![],
         compute: default_compute_config(),
         components: ComponentsConfiguration::default(),

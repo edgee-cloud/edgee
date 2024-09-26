@@ -74,9 +74,6 @@ impl RoutingContext {
         let backend = upstream_backend.unwrap_or(default_backend).to_owned();
         let path = upstream_path.unwrap_or(ctx.path().clone());
 
-        Some(Self {
-            backend,
-            path,
-        })
+        Some(Self { backend, path })
     }
 }

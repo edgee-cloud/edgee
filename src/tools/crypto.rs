@@ -56,7 +56,7 @@ pub fn encrypt(text: &str) -> Result<String, &'static str> {
 /// let decrypted = decrypt("some_encrypted_text").unwrap();
 /// println!("Decrypted text: {}", decrypted);
 /// ```
-pub fn decrypt(text: &str) -> Result<String, &'static str>  {
+pub fn decrypt(text: &str) -> Result<String, &'static str> {
     if text.is_empty() {
         return Err("Empty string".into());
     }
@@ -87,7 +87,10 @@ mod tests {
         let decrypted_text = decrypt(encrypted_text.unwrap().as_str());
         assert!(decrypted_text.is_ok());
 
-        assert_eq!(decrypted_text.unwrap().as_str(), "a text to encrypt and decrypt");
+        assert_eq!(
+            decrypted_text.unwrap().as_str(),
+            "a text to encrypt and decrypt"
+        );
     }
 
     #[test]

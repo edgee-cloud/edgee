@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-pub fn check_cacheability(headers: &HashMap<String, String>, has_shared_cache_before: bool) -> bool {
+pub fn check_cacheability(
+    headers: &HashMap<String, String>,
+    has_shared_cache_before: bool,
+) -> bool {
     if !has_shared_cache_before {
         is_cacheable_by_browser(headers)
     } else {
@@ -9,7 +12,9 @@ pub fn check_cacheability(headers: &HashMap<String, String>, has_shared_cache_be
 }
 
 fn is_cacheable_by_browser(headers: &HashMap<String, String>) -> bool {
-    let cache_control = headers.get("cache-control").map_or("".to_string(), |v| v.to_lowercase());
+    let cache_control = headers
+        .get("cache-control")
+        .map_or("".to_string(), |v| v.to_lowercase());
     let has_no_cache = cache_control.contains("no-cache");
     let must_revalidate = cache_control.contains("must-revalidate");
     let expires = headers.get("expires");
@@ -52,8 +57,12 @@ fn is_cacheable_by_browser(headers: &HashMap<String, String>) -> bool {
 }
 
 fn is_cacheable_by_shared_cache(headers: &HashMap<String, String>) -> bool {
-    let cache_control = headers.get("cache-control").map_or("".to_string(), |v| v.to_lowercase());
-    let surrogate_control = headers.get("surrogate-control").map_or("".to_string(), |v| v.to_lowercase());
+    let cache_control = headers
+        .get("cache-control")
+        .map_or("".to_string(), |v| v.to_lowercase());
+    let surrogate_control = headers
+        .get("surrogate-control")
+        .map_or("".to_string(), |v| v.to_lowercase());
     let is_private = cache_control.contains("private");
     let s_max_age = extract_max_age(&cache_control, "s-maxage");
     let max_age = extract_max_age(&cache_control, "max-age");
@@ -95,18 +104,15 @@ fn is_cacheable_by_shared_cache(headers: &HashMap<String, String>) -> bool {
 
 fn extract_max_age(cache_control: &str, directive: &str) -> Option<i64> {
     let pattern = format!("{}=", directive);
-    cache_control
-        .split(',')
-        .find_map(|part| {
-            let trimmed = part.trim();
-            if trimmed.starts_with(&pattern) {
-                trimmed[pattern.len()..].parse().ok()
-            } else {
-                None
-            }
-        })
+    cache_control.split(',').find_map(|part| {
+        let trimmed = part.trim();
+        if trimmed.starts_with(&pattern) {
+            trimmed[pattern.len()..].parse().ok()
+        } else {
+            None
+        }
+    })
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -114,7 +120,10 @@ mod tests {
     use std::collections::HashMap;
 
     fn create_headers(pairs: Vec<(&str, &str)>) -> HashMap<String, String> {
-        pairs.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+        pairs
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
     }
 
     #[test]
@@ -131,19 +140,28 @@ mod tests {
 
     #[test]
     fn check_cacheability_with_shared_cache_and_cacheable_by_both() {
-        let headers = create_headers(vec![("cache-control", "max-age=3600"), ("surrogate-control", "max-age=3600")]);
+        let headers = create_headers(vec![
+            ("cache-control", "max-age=3600"),
+            ("surrogate-control", "max-age=3600"),
+        ]);
         assert!(check_cacheability(&headers, true));
     }
 
     #[test]
     fn check_cacheability_with_shared_cache_and_not_cacheable_by_shared_cache() {
-        let headers = create_headers(vec![("cache-control", "private"), ("surrogate-control", "no-store")]);
+        let headers = create_headers(vec![
+            ("cache-control", "private"),
+            ("surrogate-control", "no-store"),
+        ]);
         assert!(!check_cacheability(&headers, true));
     }
 
     #[test]
     fn check_cacheability_with_shared_cache_and_not_cacheable_by_browser() {
-        let headers = create_headers(vec![("cache-control", "no-store"), ("surrogate-control", "max-age=3600")]);
+        let headers = create_headers(vec![
+            ("cache-control", "no-store"),
+            ("surrogate-control", "max-age=3600"),
+        ]);
         assert!(check_cacheability(&headers, true));
     }
 

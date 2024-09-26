@@ -46,7 +46,7 @@ pub enum EventType {
     Track,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default,Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Page {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -76,7 +76,7 @@ pub struct Page {
     pub properties: Option<HashMap<String, serde_json::Value>>, // Properties field is free-form
 }
 
-#[derive(Serialize, Deserialize, Debug, Default,Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Identify {
     #[serde(rename = "userId", skip_serializing_if = "Option::is_none")]
     pub user_id: Option<String>,
@@ -91,7 +91,7 @@ pub struct Identify {
     pub properties: Option<HashMap<String, serde_json::Value>>, // Properties field is free-form
 }
 
-#[derive(Serialize, Deserialize, Debug, Default,Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Track {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -99,7 +99,7 @@ pub struct Track {
     pub properties: Option<HashMap<String, serde_json::Value>>, // Properties field is free-form
 }
 
-#[derive(Serialize, Deserialize, Debug, Default,Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Campaign {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -123,12 +123,16 @@ pub struct Campaign {
     pub marketing_tactic: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default,Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Client {
     #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
     pub ip: Option<String>,
 
-    #[serde(rename = "xForwardedFor", skip_serializing_if = "Option::is_none", skip_deserializing)]
+    #[serde(
+        rename = "xForwardedFor",
+        skip_serializing_if = "Option::is_none",
+        skip_deserializing
+    )]
     pub x_forwarded_for: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
@@ -141,23 +145,43 @@ pub struct Client {
     pub user_agent: Option<String>,
 
     // User Agent Architecture. ex: arm
-    #[serde(rename = "uaa", skip_serializing_if = "Option::is_none", skip_deserializing)]
+    #[serde(
+        rename = "uaa",
+        skip_serializing_if = "Option::is_none",
+        skip_deserializing
+    )]
     pub user_agent_architecture: Option<String>,
 
     // The "bitness" of the user-agent's underlying CPU architecture. This is the size in bits of an integer or memory address—typically 64 or 32 bits. ex: 64
-    #[serde(rename = "uab", skip_serializing_if = "Option::is_none", skip_deserializing)]
+    #[serde(
+        rename = "uab",
+        skip_serializing_if = "Option::is_none",
+        skip_deserializing
+    )]
     pub user_agent_bitness: Option<String>,
 
     // The brand and full version information for each brand associated with the browser, in a comma-separated list. ex: Chromium;112.0.5615.49|Google%20Chrome;112.0.5615.49|Not%3AA-Brand;99.0.0.0
-    #[serde(rename = "uafvl", skip_serializing_if = "Option::is_none", skip_deserializing)]
+    #[serde(
+        rename = "uafvl",
+        skip_serializing_if = "Option::is_none",
+        skip_deserializing
+    )]
     pub user_agent_full_version_list: Option<String>,
 
     // Indicates whether the browser is on a mobile device. ex: 0
-    #[serde(rename = "uamb", skip_serializing_if = "Option::is_none", skip_deserializing)]
+    #[serde(
+        rename = "uamb",
+        skip_serializing_if = "Option::is_none",
+        skip_deserializing
+    )]
     pub user_agent_mobile: Option<String>,
 
     // The device model on which the browser is running. Will likely be empty for desktop browsers. ex: Nexus 6
-    #[serde(rename = "uam", skip_serializing_if = "Option::is_none", skip_deserializing)]
+    #[serde(
+        rename = "uam",
+        skip_serializing_if = "Option::is_none",
+        skip_deserializing
+    )]
     pub user_agent_model: Option<String>,
 
     // The platform or operating system on which the user agent is running. Ex: macOS
@@ -193,7 +217,7 @@ pub struct Client {
     pub city: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default,Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Session {
     pub session_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
