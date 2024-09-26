@@ -15,7 +15,13 @@ use std::convert::Infallible;
 
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
-pub async fn edgee_client_event(incoming_ctx: IncomingContext, host: &String, path: &PathAndQuery, request_headers: &HeaderMap, client_ip: &String) -> anyhow::Result<Response> {
+pub async fn edgee_client_event(
+    incoming_ctx: IncomingContext,
+    host: &String,
+    path: &PathAndQuery,
+    request_headers: &HeaderMap,
+    client_ip: &String,
+) -> anyhow::Result<Response> {
     let mut res = http::Response::builder()
         .status(StatusCode::NO_CONTENT)
         .header(header::CONTENT_TYPE, "application/json")
@@ -32,20 +38,33 @@ pub async fn edgee_client_event(incoming_ctx: IncomingContext, host: &String, pa
     Ok(res)
 }
 
-pub async fn edgee_client_event_from_third_party_sdk(incoming_ctx: IncomingContext, path: &PathAndQuery, request_headers: &HeaderMap, client_ip: &String) -> anyhow::Result<Response> {
+pub async fn edgee_client_event_from_third_party_sdk(
+    incoming_ctx: IncomingContext,
+    path: &PathAndQuery,
+    request_headers: &HeaderMap,
+    client_ip: &String,
+) -> anyhow::Result<Response> {
     let body = incoming_ctx.incoming_body.collect().await?.to_bytes();
 
     let cookie: EdgeeCookie;
 
     // get "e" from query string
-    let map: HashMap<String, String> = path.query().unwrap_or("").split('&').map(|s| s.split('=').collect::<Vec<&str>>()).filter(|v| v.len() == 2).map(|v| (v[0].to_string(), v[1].to_string())).collect();
+    let map: HashMap<String, String> = path
+        .query()
+        .unwrap_or("")
+        .split('&')
+        .map(|s| s.split('=').collect::<Vec<&str>>())
+        .filter(|v| v.len() == 2)
+        .map(|v| (v[0].to_string(), v[1].to_string()))
+        .collect();
     let e = map.get("e");
     if e.is_none() {
         // user has no id, set a new cookie
         cookie = EdgeeCookie::new();
     } else {
         // user has an id, decrypt it. if decryption fails, set a new cookie
-        cookie = edgee_cookie::decrypt_and_update(e.unwrap()).unwrap_or_else(|_| EdgeeCookie::new());
+        cookie =
+            edgee_cookie::decrypt_and_update(e.unwrap()).unwrap_or_else(|_| EdgeeCookie::new());
     }
     let cookie_str = serde_json::to_string(&cookie).unwrap();
     let cookie_encrypted = encrypt(&cookie_str).unwrap();
@@ -74,10 +93,16 @@ pub fn options(allow_methods: &str) -> anyhow::Result<Response> {
         .expect("response builder should never fail"))
 }
 
-pub fn redirect_to_https(incoming_host: String, incoming_path: PathAndQuery) -> anyhow::Result<Response> {
+pub fn redirect_to_https(
+    incoming_host: String,
+    incoming_path: PathAndQuery,
+) -> anyhow::Result<Response> {
     Ok(http::Response::builder()
         .status(StatusCode::MOVED_PERMANENTLY)
-        .header(header::LOCATION, format!("https://{}{}", incoming_host, incoming_path))
+        .header(
+            header::LOCATION,
+            format!("https://{}{}", incoming_host, incoming_path),
+        )
         .header(header::CONTENT_TYPE, "text/plain")
         .body(empty())
         .expect("response builder should never fail"))
@@ -88,7 +113,10 @@ pub fn sdk(path: &str) -> anyhow::Result<Response> {
     if inlined_sdk.is_ok() {
         Ok(http::Response::builder()
             .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, "application/javascript; charset=utf-8")
+            .header(
+                header::CONTENT_TYPE,
+                "application/javascript; charset=utf-8",
+            )
             .header(header::CACHE_CONTROL, "public, max-age=300")
             .body(Full::from(Bytes::from(inlined_sdk.unwrap())).boxed())
             .expect("serving sdk should never fail"))

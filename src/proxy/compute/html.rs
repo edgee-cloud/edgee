@@ -59,7 +59,7 @@ pub(crate) fn parse_html(html: &str) -> Document {
                     chars.next(); // Consume '-'
                     if chars.peek() == Some(&'-') {
                         chars.next(); // Consume '-'
-                        // Start of a comment
+                                      // Start of a comment
 
                         while let Some(&next_c) = chars.peek() {
                             chars.next(); // Consume character
@@ -303,7 +303,9 @@ pub fn get_sdk_from_url(url: &str) -> Result<String, &'static str> {
     if captures.is_none() {
         if url.ends_with("sdk.js") {
             return Ok(include_str!("../../../public/sdk.js").trim().to_string());
-        } else { return Err("Failed to read the JS SDK file"); }
+        } else {
+            return Err("Failed to read the JS SDK file");
+        }
     }
 
     // Retrieve the SDK content based on the extracted version.

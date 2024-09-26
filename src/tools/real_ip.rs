@@ -40,7 +40,6 @@ impl Realip {
         Self { cidrs }
     }
 
-
     /// Retrieves the client's real IP address from the request headers or falls back to the remote address.
     ///
     /// # Arguments
@@ -51,7 +50,11 @@ impl Realip {
     /// # Returns
     ///
     /// * `String` - The client's real IP address as a string. If no special or forwarded headers are found, the remote address is returned.
-    pub fn get_from_request(&self, remote_addr: &SocketAddr, request_headers: &HeaderMap) -> String {
+    pub fn get_from_request(
+        &self,
+        remote_addr: &SocketAddr,
+        request_headers: &HeaderMap,
+    ) -> String {
         if let Some(ip) = self.get_from_special_headers(request_headers) {
             return ip;
         }
@@ -93,7 +96,6 @@ impl Realip {
         Ok(false)
     }
 
-
     /// Retrieves the client's real IP address from special headers in the request.
     ///
     /// # Arguments
@@ -119,13 +121,13 @@ impl Realip {
         ];
 
         headers.iter().find_map(|&header| {
-            request_headers.get(header)
+            request_headers
+                .get(header)
                 .and_then(|h| h.to_str().ok())
                 .map(|value| value.to_string())
                 .or(None)
         })
     }
-
 
     /// Retrieves the client's real IP address from forwarded headers in the request.
     ///
@@ -254,7 +256,10 @@ mod tests {
     fn get_from_forwarded_headers_returns_public_ip() {
         let realip = Realip::new();
         let mut headers = HeaderMap::new();
-        headers.insert("X-Forwarded-For", "203.0.113.195, 192.168.1.1".parse().unwrap());
+        headers.insert(
+            "X-Forwarded-For",
+            "203.0.113.195, 192.168.1.1".parse().unwrap(),
+        );
         let ip = realip.get_from_forwarded_headers(&headers);
         assert_eq!(ip, Some("203.0.113.195".to_string()));
     }
@@ -263,7 +268,10 @@ mod tests {
     fn get_from_forwarded_headers_skips_private_ip() {
         let realip = Realip::new();
         let mut headers = HeaderMap::new();
-        headers.insert("X-Forwarded-For", "192.168.1.1, 203.0.113.195".parse().unwrap());
+        headers.insert(
+            "X-Forwarded-For",
+            "192.168.1.1, 203.0.113.195".parse().unwrap(),
+        );
         let ip = realip.get_from_forwarded_headers(&headers);
         assert_eq!(ip, Some("203.0.113.195".to_string()));
     }

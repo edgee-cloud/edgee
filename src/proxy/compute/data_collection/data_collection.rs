@@ -24,9 +24,8 @@ pub async fn process_from_html(
     host: &str,
     path: &PathAndQuery,
     request_headers: &HeaderMap,
-    client_ip: &String
-) -> Option<String>
-{
+    client_ip: &String,
+) -> Option<String> {
     let json_context = document.context.clone();
     let mut payload = Payload::default();
     if !json_context.is_empty() {
@@ -59,7 +58,9 @@ pub async fn process_from_html(
     }
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
-    if config::get().compute.data_collection_api_key.is_some() && config::get().compute.data_collection_api_url.is_some() {
+    if config::get().compute.data_collection_api_key.is_some()
+        && config::get().compute.data_collection_api_url.is_some()
+    {
         let api_key = config::get().compute.data_collection_api_key.as_ref()?;
         let api_url = config::get().compute.data_collection_api_url.as_ref()?;
         let payload_json = serde_json::to_string(&payload).unwrap();
@@ -67,18 +68,26 @@ pub async fn process_from_html(
         let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         tokio::spawn(async move {
-            let _ = reqwest::Client::new().post(api_url)
+            let _ = reqwest::Client::new()
+                .post(api_url)
                 .header("Content-Type", "application/json")
                 .header("Authorization", format!("Basic {}", b64))
                 .body(payload_json)
-                .send().await;
+                .send()
+                .await;
         });
     }
 
     Option::from(payload.uuid)
 }
 
-pub async fn process_from_json(body: &Bytes, edgee_cookie: &EdgeeCookie, path: &PathAndQuery, request_headers: &HeaderMap, client_ip: &String) {
+pub async fn process_from_json(
+    body: &Bytes,
+    edgee_cookie: &EdgeeCookie,
+    path: &PathAndQuery,
+    request_headers: &HeaderMap,
+    client_ip: &String,
+) {
     // populate the edgee payload from the json
     let payload_result = parse_payload(body.as_ref());
     if payload_result.is_err() {
@@ -102,19 +111,31 @@ pub async fn process_from_json(body: &Bytes, edgee_cookie: &EdgeeCookie, path: &
     }
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
-    if config::get().compute.data_collection_api_key.is_some() && config::get().compute.data_collection_api_url.is_some() {
-        let api_key = config::get().compute.data_collection_api_key.as_ref().unwrap();
-        let api_url = config::get().compute.data_collection_api_url.as_ref().unwrap();
+    if config::get().compute.data_collection_api_key.is_some()
+        && config::get().compute.data_collection_api_url.is_some()
+    {
+        let api_key = config::get()
+            .compute
+            .data_collection_api_key
+            .as_ref()
+            .unwrap();
+        let api_url = config::get()
+            .compute
+            .data_collection_api_url
+            .as_ref()
+            .unwrap();
         let payload_json = serde_json::to_string(&payload).unwrap();
         info!("Data Collection Payload: {}", payload_json.as_str());
         let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         tokio::spawn(async move {
-            let _ = reqwest::Client::new().post(api_url)
+            let _ = reqwest::Client::new()
+                .post(api_url)
                 .header("Content-Type", "application/json")
                 .header("Authorization", format!("Basic {}", b64))
                 .body(payload_json)
-                .send().await;
+                .send()
+                .await;
         });
     }
 }
@@ -170,7 +191,13 @@ fn add_session(mut payload: Payload, edgee_cookie: &EdgeeCookie) -> Payload {
 /// # Returns
 /// - `Payload`: The updated `Payload` object with additional information from the HTML document or request.
 
-fn add_more_info_from_html_or_request(document: &Document, mut payload: Payload, proto: &str, host: &str,  incoming_path: &PathAndQuery) -> Payload {
+fn add_more_info_from_html_or_request(
+    document: &Document,
+    mut payload: Payload,
+    proto: &str,
+    host: &str,
+    incoming_path: &PathAndQuery,
+) -> Payload {
     // if payload.page is None, we create it
     if payload.page.is_none() {
         payload.page = Some(Default::default());
@@ -187,30 +214,57 @@ fn add_more_info_from_html_or_request(document: &Document, mut payload: Payload,
     // canonical path
     let mut canonical_path = "".to_string();
     if !canonical_url.is_empty() {
-        canonical_path = url::Url::parse(canonical_url.as_str()).map(|u| u.path().to_string()).unwrap_or("".to_string());
+        canonical_path = url::Url::parse(canonical_url.as_str())
+            .map(|u| u.path().to_string())
+            .unwrap_or("".to_string());
     }
 
     // url: we first try to get it from the payload, then from the canonical, and finally from the request
-    let url = payload.page.as_ref().and_then(|p| p.url.as_ref())
+    let url = payload
+        .page
+        .as_ref()
+        .and_then(|p| p.url.as_ref())
         .map(|u| u.to_string())
         .map(|u| html_escape::decode_html_entities(&u).to_string())
-        .or_else(|| if !canonical_url.is_empty() { Option::from(canonical_url.clone()) } else { None })
-        .unwrap_or_else(|| {format!("{}://{}{}", proto, host, incoming_path.to_string())});
+        .or_else(|| {
+            if !canonical_url.is_empty() {
+                Option::from(canonical_url.clone())
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| format!("{}://{}{}", proto, host, incoming_path.to_string()));
     payload.page.as_mut().unwrap().url = Some(url);
 
-
     // path: we first try to get it from the payload, then from the canonical, and finally from the request
-    let path = payload.page.as_ref().and_then(|p| p.path.as_ref())
+    let path = payload
+        .page
+        .as_ref()
+        .and_then(|p| p.path.as_ref())
         .map(|p| p.to_string())
         .map(|p| html_escape::decode_html_entities(&p).to_string())
-        .or_else(|| if !canonical_path.is_empty() { Option::from(canonical_path.clone()) } else { None })
+        .or_else(|| {
+            if !canonical_path.is_empty() {
+                Option::from(canonical_path.clone())
+            } else {
+                None
+            }
+        })
         .unwrap_or_else(|| incoming_path.path().to_string());
     payload.page.as_mut().unwrap().path = Some(path);
 
-
     // search: we first try to get it from the payload, and finally from the request
-    let search = payload.page.as_ref().and_then(|p| p.search.as_ref())
-        .map(|s| if s.starts_with("?") { s.clone() } else { "?".to_string() + s })
+    let search = payload
+        .page
+        .as_ref()
+        .and_then(|p| p.search.as_ref())
+        .map(|s| {
+            if s.starts_with("?") {
+                s.clone()
+            } else {
+                "?".to_string() + s
+            }
+        })
         .map(|s| html_escape::decode_html_entities(&s).to_string())
         .or_else(|| incoming_path.query().map(|qs| "?".to_string() + qs))
         .unwrap_or_else(|| "".to_string());
@@ -221,26 +275,39 @@ fn add_more_info_from_html_or_request(document: &Document, mut payload: Payload,
         payload.page.as_mut().unwrap().search = Some(search.clone());
     }
 
-
     // title: we first try to get it from the payload, and finally from the title html tag
-    let title = payload.page.as_ref().and_then(|p| p.title.as_ref())
+    let title = payload
+        .page
+        .as_ref()
+        .and_then(|p| p.title.as_ref())
         .map(|t| t.to_string())
         .map(|t| html_escape::decode_html_entities(&t).to_string())
         .or_else(|| {
             let title_from_html = document.title.clone();
-            if !title_from_html.is_empty() { Option::from(title_from_html) } else { None }
+            if !title_from_html.is_empty() {
+                Option::from(title_from_html)
+            } else {
+                None
+            }
         })
         .unwrap_or_else(|| "".to_string());
     payload.page.as_mut().unwrap().title = Some(title.clone());
 
-
     // keywords: we first try to get it from the payload, and finally from the keywords meta tag
-    let keywords = payload.page.as_ref().and_then(|k| k.keywords.as_ref())
+    let keywords = payload
+        .page
+        .as_ref()
+        .and_then(|k| k.keywords.as_ref())
         .map(|k| k.to_vec())
         .or_else(|| {
             let keywords_string = document.keywords.clone();
             if !keywords_string.is_empty() {
-                Option::from(keywords_string.split(",").map(|s| s.trim().to_string()).collect::<Vec<String>>())
+                Option::from(
+                    keywords_string
+                        .split(",")
+                        .map(|s| s.trim().to_string())
+                        .collect::<Vec<String>>(),
+                )
             } else {
                 None
             }
@@ -261,7 +328,12 @@ fn add_more_info_from_html_or_request(document: &Document, mut payload: Payload,
 ///
 /// # Returns
 /// - `Payload`: The updated `Payload` object with additional information from the request headers.
-fn add_more_info_from_request(request_headers: &HeaderMap, mut payload: Payload, path: &PathAndQuery, client_ip: &String) -> Payload {
+fn add_more_info_from_request(
+    request_headers: &HeaderMap,
+    mut payload: Payload,
+    path: &PathAndQuery,
+    client_ip: &String,
+) -> Payload {
     // first, prepare the payload
     if payload.client.is_none() {
         payload.client = Some(Default::default());
@@ -273,16 +345,30 @@ fn add_more_info_from_request(request_headers: &HeaderMap, mut payload: Payload,
 
     // get referer from request if it is not already in the payload
     if payload.page.as_ref().unwrap().referrer.is_none() {
-        let referer = request_headers.get(header::REFERER).and_then(|h| h.to_str().ok()).unwrap_or("");
+        let referer = request_headers
+            .get(header::REFERER)
+            .and_then(|h| h.to_str().ok())
+            .unwrap_or("");
         payload.page.as_mut().unwrap().referrer = Some(referer.to_string());
     }
     // if the referer is empty, we remove it
-    if payload.page.as_ref().unwrap().referrer.as_ref().unwrap().is_empty() {
+    if payload
+        .page
+        .as_ref()
+        .unwrap()
+        .referrer
+        .as_ref()
+        .unwrap()
+        .is_empty()
+    {
         payload.page.as_mut().unwrap().referrer = None;
     }
 
     // user_agent
-    let user_agent = request_headers.get(header::USER_AGENT).and_then(|h| h.to_str().ok()).unwrap_or("");
+    let user_agent = request_headers
+        .get(header::USER_AGENT)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
     payload.client.as_mut().unwrap().user_agent = Some(user_agent.to_string());
 
     // client ip
@@ -293,70 +379,119 @@ fn add_more_info_from_request(request_headers: &HeaderMap, mut payload: Payload,
     payload.client.as_mut().unwrap().locale = Some(locale);
 
     // x_forwarded_for
-    let x_forwarded_for = request_headers.get("X-Forwarded-For").and_then(|h| h.to_str().ok()).unwrap_or("");
+    let x_forwarded_for = request_headers
+        .get("X-Forwarded-For")
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
     payload.client.as_mut().unwrap().x_forwarded_for = Some(x_forwarded_for.to_string());
 
     // sec-ch-ua-arch (user_agent_architecture)
-    if let Some(sec_ch_ua_arch) = request_headers.get("Sec-Ch-Ua-Arch").and_then(|h| h.to_str().ok()) {
-        payload.client.as_mut().unwrap().user_agent_architecture = Some(sec_ch_ua_arch.replace("\"", ""));
+    if let Some(sec_ch_ua_arch) = request_headers
+        .get("Sec-Ch-Ua-Arch")
+        .and_then(|h| h.to_str().ok())
+    {
+        payload.client.as_mut().unwrap().user_agent_architecture =
+            Some(sec_ch_ua_arch.replace("\"", ""));
     }
 
     // sec-ch-ua-bitness (user_agent_bitness)
-    if let Some(sec_ch_ua_bitness) = request_headers.get("Sec-Ch-Ua-Bitness").and_then(|h| h.to_str().ok()) {
-        payload.client.as_mut().unwrap().user_agent_bitness = Some(sec_ch_ua_bitness.replace("\"", ""));
+    if let Some(sec_ch_ua_bitness) = request_headers
+        .get("Sec-Ch-Ua-Bitness")
+        .and_then(|h| h.to_str().ok())
+    {
+        payload.client.as_mut().unwrap().user_agent_bitness =
+            Some(sec_ch_ua_bitness.replace("\"", ""));
     }
 
     // sec-ch-ua (user_agent_full_version_list)
-    if let Some(sec_ch_ua) = request_headers.get("Sec-Ch-Ua").and_then(|h| h.to_str().ok()) {
-        payload.client.as_mut().unwrap().user_agent_full_version_list = Some(process_sec_ch_ua(sec_ch_ua));
+    if let Some(sec_ch_ua) = request_headers
+        .get("Sec-Ch-Ua")
+        .and_then(|h| h.to_str().ok())
+    {
+        payload
+            .client
+            .as_mut()
+            .unwrap()
+            .user_agent_full_version_list = Some(process_sec_ch_ua(sec_ch_ua));
     }
 
     // sec-ch-ua-mobile (user_agent_mobile)
-    if let Some(sec_ch_ua_mobile) = request_headers.get("Sec-Ch-Ua-Mobile").and_then(|h| h.to_str().ok()) {
-        payload.client.as_mut().unwrap().user_agent_mobile = Some(sec_ch_ua_mobile.replace("?", ""));
+    if let Some(sec_ch_ua_mobile) = request_headers
+        .get("Sec-Ch-Ua-Mobile")
+        .and_then(|h| h.to_str().ok())
+    {
+        payload.client.as_mut().unwrap().user_agent_mobile =
+            Some(sec_ch_ua_mobile.replace("?", ""));
     }
 
     // sec-ch-ua-model (user_agent_model)
-    if let Some(sec_ch_ua_model) = request_headers.get("Sec-Ch-Ua-Model").and_then(|h| h.to_str().ok()) {
+    if let Some(sec_ch_ua_model) = request_headers
+        .get("Sec-Ch-Ua-Model")
+        .and_then(|h| h.to_str().ok())
+    {
         payload.client.as_mut().unwrap().user_agent_model = Some(sec_ch_ua_model.replace("\"", ""));
     }
 
     // sec-ch-ua-platform (os_name)
-    if let Some(sec_ch_ua_platform) = request_headers.get("Sec-Ch-Ua-Platform").and_then(|h| h.to_str().ok()) {
+    if let Some(sec_ch_ua_platform) = request_headers
+        .get("Sec-Ch-Ua-Platform")
+        .and_then(|h| h.to_str().ok())
+    {
         payload.client.as_mut().unwrap().os_name = Some(sec_ch_ua_platform.replace("\"", ""));
     }
 
     // sec-ch-ua-platform-version (os_version)
-    if let Some(sec_ch_ua_platform_version) = request_headers.get("Sec-Ch-Ua-Platform-Version").and_then(|h| h.to_str().ok()) {
-        payload.client.as_mut().unwrap().os_version = Some(sec_ch_ua_platform_version.replace("\"", ""));
+    if let Some(sec_ch_ua_platform_version) = request_headers
+        .get("Sec-Ch-Ua-Platform-Version")
+        .and_then(|h| h.to_str().ok())
+    {
+        payload.client.as_mut().unwrap().os_version =
+            Some(sec_ch_ua_platform_version.replace("\"", ""));
     }
 
     // campaign
-    let map: HashMap<String, String> = url::form_urlencoded::parse(path.query().unwrap_or("").as_bytes()).into_owned().collect();
-    let utm_keys = ["utm_campaign", "utm_source", "utm_medium", "utm_term", "utm_content", "utm_creative_format", "utm_marketing_tactic"];
+    let map: HashMap<String, String> =
+        url::form_urlencoded::parse(path.query().unwrap_or("").as_bytes())
+            .into_owned()
+            .collect();
+    let utm_keys = [
+        "utm_campaign",
+        "utm_source",
+        "utm_medium",
+        "utm_term",
+        "utm_content",
+        "utm_creative_format",
+        "utm_marketing_tactic",
+    ];
     if utm_keys.iter().any(|key| map.contains_key(*key)) && payload.campaign.is_none() {
         payload.campaign = Some(Default::default());
     }
     if map.contains_key("utm_campaign") {
-        payload.campaign.as_mut().unwrap().name = Some(map.get("utm_campaign").unwrap().to_string());
+        payload.campaign.as_mut().unwrap().name =
+            Some(map.get("utm_campaign").unwrap().to_string());
     }
     if map.contains_key("utm_source") {
-        payload.campaign.as_mut().unwrap().source = Some(map.get("utm_source").unwrap().to_string());
+        payload.campaign.as_mut().unwrap().source =
+            Some(map.get("utm_source").unwrap().to_string());
     }
     if map.contains_key("utm_medium") {
-        payload.campaign.as_mut().unwrap().medium = Some(map.get("utm_medium").unwrap().to_string());
+        payload.campaign.as_mut().unwrap().medium =
+            Some(map.get("utm_medium").unwrap().to_string());
     }
     if map.contains_key("utm_term") {
         payload.campaign.as_mut().unwrap().term = Some(map.get("utm_term").unwrap().to_string());
     }
     if map.contains_key("utm_content") {
-        payload.campaign.as_mut().unwrap().content = Some(map.get("utm_content").unwrap().to_string());
+        payload.campaign.as_mut().unwrap().content =
+            Some(map.get("utm_content").unwrap().to_string());
     }
     if map.contains_key("utm_creative_format") {
-        payload.campaign.as_mut().unwrap().creative_format = Some(map.get("utm_creative_format").unwrap().to_string());
+        payload.campaign.as_mut().unwrap().creative_format =
+            Some(map.get("utm_creative_format").unwrap().to_string());
     }
     if map.contains_key("utm_marketing_tactic") {
-        payload.campaign.as_mut().unwrap().marketing_tactic = Some(map.get("utm_marketing_tactic").unwrap().to_string());
+        payload.campaign.as_mut().unwrap().marketing_tactic =
+            Some(map.get("utm_marketing_tactic").unwrap().to_string());
     }
 
     payload
@@ -411,7 +546,10 @@ fn process_sec_ch_ua(header: &str) -> String {
 /// # Returns
 /// - `String`: The preferred language extracted from the `accept-language` header, or "en-us" if no valid language is found.
 fn get_preferred_language(request_headers: &HeaderMap) -> String {
-    let accept_language_header = request_headers.get("accept-language").and_then(|header| header.to_str().ok()).unwrap_or("");
+    let accept_language_header = request_headers
+        .get("accept-language")
+        .and_then(|header| header.to_str().ok())
+        .unwrap_or("");
     let languages = accept_language_header.split(",");
     for l in languages {
         let lang = l.split(";").next().unwrap_or("").trim();
@@ -421,7 +559,6 @@ fn get_preferred_language(request_headers: &HeaderMap) -> String {
     }
     "en-us".to_string()
 }
-
 
 /// Parses a JSON payload from a reader and returns a `Result` containing the `Payload` or a `serde_json::Error`.
 ///

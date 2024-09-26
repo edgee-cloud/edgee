@@ -12,7 +12,12 @@ use http::{header, HeaderName, HeaderValue, Method};
 use http_body_util::{combinators::BoxBody, BodyExt, Full};
 use hyper::body::Incoming;
 use libflate::{deflate, gzip};
-use std::{convert::Infallible, io::{Read, Write}, net::SocketAddr, str::FromStr};
+use std::{
+    convert::Infallible,
+    io::{Read, Write},
+    net::SocketAddr,
+    str::FromStr,
+};
 use tracing::{error, info, warn};
 
 const EDGEE_HEADER: &str = "x-edgee";
@@ -22,8 +27,11 @@ const EDGEE_PROXY_DURATION_HEADER: &str = "x-edgee-proxy-duration";
 
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
-pub async fn handle_request(request: http::Request<Incoming>, remote_addr: SocketAddr, proto: &str) -> anyhow::Result<Response> {
-
+pub async fn handle_request(
+    request: http::Request<Incoming>,
+    remote_addr: SocketAddr,
+    proto: &str,
+) -> anyhow::Result<Response> {
     // timer
     let timer_start = std::time::Instant::now();
 
@@ -32,43 +40,101 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
 
     // set several variables
     let is_debug_mode = incoming_ctx.is_debug_mode;
-    let content_type = incoming_ctx.header(header::CONTENT_TYPE).unwrap_or(String::new());
+    let content_type = incoming_ctx
+        .header(header::CONTENT_TYPE)
+        .unwrap_or(String::new());
     let incoming_method = incoming_ctx.method().clone();
     let incoming_host = incoming_ctx.host().clone();
     let incoming_path = incoming_ctx.path().clone();
     let incoming_headers = incoming_ctx.headers().clone();
-    let incoming_proto = if incoming_ctx.is_https { "https" } else { "http" };
+    let incoming_proto = if incoming_ctx.is_https {
+        "https"
+    } else {
+        "http"
+    };
     let client_ip = incoming_ctx.client_ip.clone();
 
     // Check if the request is HTTPS and if we should force HTTPS
-    if !incoming_ctx.is_https && config::get().http.is_some() && config::get().http.as_ref().unwrap().force_https {
-        info!("301 - {} {}{} - {}ms", incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
+    if !incoming_ctx.is_https
+        && config::get().http.is_some()
+        && config::get().http.as_ref().unwrap().force_https
+    {
+        info!(
+            "301 - {} {}{} - {}ms",
+            incoming_method,
+            incoming_host,
+            incoming_path,
+            timer_start.elapsed().as_millis()
+        );
         return controller::redirect_to_https(incoming_host, incoming_path);
     }
 
     // SDK path
-    if incoming_method == Method::GET && (incoming_path.path() == "/_edgee/sdk.js" || (incoming_path.path().starts_with("/_edgee/libs/edgee.") && incoming_path.path().ends_with(".js"))) {
-        info!("200 - {} {}{} - {}ms", incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
+    if incoming_method == Method::GET
+        && (incoming_path.path() == "/_edgee/sdk.js"
+            || (incoming_path.path().starts_with("/_edgee/libs/edgee.")
+                && incoming_path.path().ends_with(".js")))
+    {
+        info!(
+            "200 - {} {}{} - {}ms",
+            incoming_method,
+            incoming_host,
+            incoming_path,
+            timer_start.elapsed().as_millis()
+        );
         return controller::sdk(incoming_path.as_str());
     }
 
     // event path, method POST and content-type application/json
     if incoming_method == Method::POST && content_type == "application/json" {
-        if incoming_path.path() == "/_edgee/event" || path::validate(incoming_host.as_str(), incoming_path.path()) {
-            info!("204 - {} {}{} - {}ms", incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
-            return controller::edgee_client_event(incoming_ctx, &incoming_host, &incoming_path, &incoming_headers, &client_ip).await;
+        if incoming_path.path() == "/_edgee/event"
+            || path::validate(incoming_host.as_str(), incoming_path.path())
+        {
+            info!(
+                "204 - {} {}{} - {}ms",
+                incoming_method,
+                incoming_host,
+                incoming_path,
+                timer_start.elapsed().as_millis()
+            );
+            return controller::edgee_client_event(
+                incoming_ctx,
+                &incoming_host,
+                &incoming_path,
+                &incoming_headers,
+                &client_ip,
+            )
+            .await;
         }
     }
 
     // event path for third party integration (Edgee installed like a third party, and use localstorage)
     if incoming_path.path() == "/_edgee/csevent" {
         if incoming_method == Method::OPTIONS {
-            info!("200 - {} {}{} - {}ms",  incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
+            info!(
+                "200 - {} {}{} - {}ms",
+                incoming_method,
+                incoming_host,
+                incoming_path,
+                timer_start.elapsed().as_millis()
+            );
             return controller::options("POST, OPTIONS");
         }
         if incoming_method == Method::POST && content_type == "application/json" {
-            info!("200 - {} {}{} - {}ms", incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
-            return controller::edgee_client_event_from_third_party_sdk(incoming_ctx, &incoming_path, &incoming_headers, &client_ip).await;
+            info!(
+                "200 - {} {}{} - {}ms",
+                incoming_method,
+                incoming_host,
+                incoming_path,
+                timer_start.elapsed().as_millis()
+            );
+            return controller::edgee_client_event_from_third_party_sdk(
+                incoming_ctx,
+                &incoming_path,
+                &incoming_headers,
+                &client_ip,
+            )
+            .await;
         }
     }
 
@@ -76,9 +142,15 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
     let routing_ctx = match RoutingContext::from_request_context(&incoming_ctx) {
         None => {
             error!("backend not found");
-            info!("502 - {} {}{} - {}ms", incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
-            return controller::bad_gateway_error()
-        },
+            info!(
+                "502 - {} {}{} - {}ms",
+                incoming_method,
+                incoming_host,
+                incoming_path,
+                timer_start.elapsed().as_millis()
+            );
+            return controller::bad_gateway_error();
+        }
         Some(r) => r,
     };
 
@@ -90,20 +162,38 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
     match res {
         Err(err) => {
             error!("backend request failed: {}", err);
-            info!("502 - {} {}{} - {}ms", incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
+            info!(
+                "502 - {} {}{} - {}ms",
+                incoming_method,
+                incoming_host,
+                incoming_path,
+                timer_start.elapsed().as_millis()
+            );
             controller::bad_gateway_error()
         }
         Ok(upstream) => {
             let (mut response_parts, incoming) = upstream.into_parts();
             let response_body = incoming.collect().await?.to_bytes();
-            info!("{} - {} {}{} - {}ms", response_parts.status.as_str(), incoming_method, incoming_host, incoming_path, timer_start.elapsed().as_millis());
+            info!(
+                "{} - {} {}{} - {}ms",
+                response_parts.status.as_str(),
+                incoming_method,
+                incoming_host,
+                incoming_path,
+                timer_start.elapsed().as_millis()
+            );
 
             // Only proxy in some cases
             match do_only_proxy(&incoming_method, &response_body, &response_parts) {
                 Ok(_) => {}
                 Err(reason) => {
                     set_edgee_header(&mut response_parts, reason);
-                    set_duration_headers(&mut response_parts, is_debug_mode, timer_start.elapsed().as_millis(), None);
+                    set_duration_headers(
+                        &mut response_parts,
+                        is_debug_mode,
+                        timer_start.elapsed().as_millis(),
+                        None,
+                    );
                     return Ok(build_response(response_parts, response_body));
                 }
             }
@@ -111,7 +201,9 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
             set_edgee_header(&mut response_parts, "compute");
             let proxy_duration = timer_start.elapsed().as_millis();
             let response_headers = response_parts.headers.clone();
-            let encoding = response_headers.get(header::CONTENT_ENCODING).and_then(|h| h.to_str().ok());
+            let encoding = response_headers
+                .get(header::CONTENT_ENCODING)
+                .and_then(|h| h.to_str().ok());
 
             // decompress the response body
             let cursor = std::io::Cursor::new(response_body.clone());
@@ -138,10 +230,24 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
             };
 
             // interpret what's in the body
-            _ = match compute::html_handler(&mut body_str, &incoming_host, &incoming_path, &incoming_headers, incoming_proto, &client_ip, &mut response_parts, &response_headers).await {
+            _ = match compute::html_handler(
+                &mut body_str,
+                &incoming_host,
+                &incoming_path,
+                &incoming_headers,
+                incoming_proto,
+                &client_ip,
+                &mut response_parts,
+                &response_headers,
+            )
+            .await
+            {
                 Ok(document) => {
                     let mut page_event_param = r#" data-page-event="true""#;
-                    let event_path_param = format!(r#" data-event-path="{}""#, path::generate(&incoming_host.as_str()));
+                    let event_path_param = format!(
+                        r#" data-event-path="{}""#,
+                        path::generate(&incoming_host.as_str())
+                    );
 
                     if !document.trace_uuid.is_empty() {
                         response_parts.headers.insert(
@@ -154,15 +260,30 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
                     // if the context is empty, we need to add an empty context script tag
                     let mut empty_context = "";
                     if document.context.is_empty() {
-                        empty_context = r#"<script id="__EDGEE_CONTEXT__" type="application/json">{}</script>"#;
+                        empty_context =
+                            r#"<script id="__EDGEE_CONTEXT__" type="application/json">{}</script>"#;
                     }
 
                     if !document.inlined_sdk.is_empty() {
-                        let new_tag = format!(r#"{}<script{}{}>{}</script>"#, empty_context, page_event_param, event_path_param, document.inlined_sdk.as_str());
-                        body_str = body_str.replace(document.sdk_full_tag.as_str(), new_tag.as_str());
+                        let new_tag = format!(
+                            r#"{}<script{}{}>{}</script>"#,
+                            empty_context,
+                            page_event_param,
+                            event_path_param,
+                            document.inlined_sdk.as_str()
+                        );
+                        body_str =
+                            body_str.replace(document.sdk_full_tag.as_str(), new_tag.as_str());
                     } else {
-                        let new_tag = format!(r#"{}<script{}{} async src="{}"></script>"#, empty_context, page_event_param, event_path_param, document.sdk_src.as_str());
-                        body_str = body_str.replace(document.sdk_full_tag.as_str(), new_tag.as_str());
+                        let new_tag = format!(
+                            r#"{}<script{}{} async src="{}"></script>"#,
+                            empty_context,
+                            page_event_param,
+                            event_path_param,
+                            document.sdk_src.as_str()
+                        );
+                        body_str =
+                            body_str.replace(document.sdk_full_tag.as_str(), new_tag.as_str());
                     }
                 }
                 Err(reason) => {
@@ -181,7 +302,8 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
                     encoder.write_all(body_str.as_bytes())?;
                     encoder.finish().into_result()?
                 }
-                Some("br") => { // handle brotli encoding
+                Some("br") => {
+                    // handle brotli encoding
                     // q: quality (range: 0-11), lgwin: window size (range: 10-24)
                     let mut encoder = CompressorWriter::new(Vec::new(), 4096, 11, 24);
                     encoder.write_all(body_str.as_bytes())?;
@@ -193,7 +315,12 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
 
             let full_duration = timer_start.elapsed().as_millis();
             let compute_duration = full_duration - proxy_duration;
-            set_duration_headers(&mut response_parts, is_debug_mode, full_duration, Some(compute_duration));
+            set_duration_headers(
+                &mut response_parts,
+                is_debug_mode,
+                full_duration,
+                Some(compute_duration),
+            );
 
             Ok(build_response(response_parts, Bytes::from(data)))
         }
@@ -214,7 +341,12 @@ pub async fn handle_request(request: http::Request<Incoming>, remote_addr: Socke
 /// If debug mode is enabled, the function inserts the full duration into the response headers.
 /// If a compute duration is provided, it is inserted into the response headers.
 /// Additionally, if debug mode is enabled, the function calculates the proxy duration and inserts it into the response headers.
-fn set_duration_headers(response_parts: &mut Parts, is_debug_mode: bool, full_duration: u128, compute_duration: Option<u128>) {
+fn set_duration_headers(
+    response_parts: &mut Parts,
+    is_debug_mode: bool,
+    full_duration: u128,
+    compute_duration: Option<u128>,
+) {
     if is_debug_mode {
         response_parts.headers.insert(
             HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
@@ -278,10 +410,18 @@ pub fn set_edgee_header(response_parts: &mut Parts, process: &str) {
 /// - The response body is empty.
 /// - The response content encoding is not supported.
 /// - The response content length is greater than the maximum compressed body size.
-fn do_only_proxy(method: &Method, response_body: &Bytes, response_parts: &Parts) -> Result<bool, &'static str> {
+fn do_only_proxy(
+    method: &Method,
+    response_body: &Bytes,
+    response_parts: &Parts,
+) -> Result<bool, &'static str> {
     let response_headers = response_parts.headers.clone();
-    let encoding = response_headers.get(header::CONTENT_ENCODING).and_then(|h| h.to_str().ok());
-    let content_type = response_headers.get(header::CONTENT_TYPE).and_then(|h| h.to_str().ok());
+    let encoding = response_headers
+        .get(header::CONTENT_ENCODING)
+        .and_then(|h| h.to_str().ok());
+    let content_type = response_headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|h| h.to_str().ok());
 
     // if conf.proxy_only is true
     if config::get().compute.proxy_only {
@@ -289,7 +429,11 @@ fn do_only_proxy(method: &Method, response_body: &Bytes, response_parts: &Parts)
     }
 
     // if the request method is HEAD, OPTIONS, TRACE or CONNECT
-    if method == Method::HEAD || method == Method::OPTIONS || method == Method::TRACE || method == Method::CONNECT {
+    if method == Method::HEAD
+        || method == Method::OPTIONS
+        || method == Method::TRACE
+        || method == Method::CONNECT
+    {
         Err("proxy-only(method)")?;
     }
 
@@ -327,7 +471,11 @@ fn do_only_proxy(method: &Method, response_body: &Bytes, response_parts: &Parts)
     // if the response is compressed and if content length is greater than the max_compressed_body_size configuration
     if ["gzip", "deflate", "br"].contains(&encoding.unwrap_or_default()) {
         if response_body.len() > config::get().compute.max_compressed_body_size {
-            warn!("compressed body too large: {} > {}", response_body.len(), config::get().compute.max_compressed_body_size);
+            warn!(
+                "compressed body too large: {} > {}",
+                response_body.len(),
+                config::get().compute.max_compressed_body_size
+            );
             Err("proxy-only(compressed-body-too-large)")?;
         }
     }

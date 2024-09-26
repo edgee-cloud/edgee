@@ -41,7 +41,9 @@ pub async fn start() -> anyhow::Result<()> {
     }
 }
 
-async fn handle_request(req: Request<Incoming>) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible> {
+async fn handle_request(
+    req: Request<Incoming>,
+) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible> {
     match req.uri().path() {
         "/healthz" => {
             let res = Response::builder()

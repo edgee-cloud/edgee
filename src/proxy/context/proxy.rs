@@ -2,7 +2,10 @@ use super::{incoming::IncomingContext, routing::RoutingContext};
 use http::{HeaderMap, HeaderValue, Uri};
 use hyper::body::Incoming;
 use hyper_rustls::ConfigBuilderExt;
-use hyper_util::{client::legacy::{connect::HttpConnector, Client}, rt::TokioExecutor};
+use hyper_util::{
+    client::legacy::{connect::HttpConnector, Client},
+    rt::TokioExecutor,
+};
 
 pub struct ProxyContext<'a> {
     incoming_headers: HeaderMap,
@@ -26,7 +29,8 @@ impl<'a> ProxyContext<'a> {
         if let Some(forwarded_for) = incoming_headers.get_mut(FORWARDED_FOR) {
             let existing_value = forwarded_for.to_str().unwrap();
             let new_value = format!("{}, {}", existing_value, client_ip);
-            *forwarded_for = HeaderValue::from_str(&new_value).expect("header value should be valid");
+            *forwarded_for =
+                HeaderValue::from_str(&new_value).expect("header value should be valid");
         } else {
             incoming_headers.insert(
                 FORWARDED_FOR,

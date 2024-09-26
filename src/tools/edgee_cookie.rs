@@ -15,13 +15,13 @@ static SESSION_DURATION: Duration = Duration::minutes(30);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EdgeeCookie {
-    pub id: Uuid, // v4 uuid
+    pub id: Uuid,          // v4 uuid
     pub fs: DateTime<Utc>, //first seen
     pub ls: DateTime<Utc>, // last seen
     pub ss: DateTime<Utc>, // session start (used to create session_id as well)
     #[serde(skip_serializing)]
     pub ps: Option<DateTime<Utc>>, // previous session
-    pub sc: u32, // session count
+    pub sc: u32,           // session count
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sz: Option<String>, // screen size
 }
@@ -41,7 +41,6 @@ impl EdgeeCookie {
     }
 }
 
-
 /// Retrieves an `EdgeeCookie` from the request headers or initializes a new one if it does not exist,
 /// decrypts and updates it, and sets it in the response headers.
 ///
@@ -54,7 +53,11 @@ impl EdgeeCookie {
 /// # Returns
 ///
 /// * `EdgeeCookie` - The `EdgeeCookie` that was retrieved or newly created.
-pub fn get_or_set(request_headers: &http::HeaderMap, response_headers: &mut http::HeaderMap, host: &str) -> EdgeeCookie {
+pub fn get_or_set(
+    request_headers: &http::HeaderMap,
+    response_headers: &mut http::HeaderMap,
+    host: &str,
+) -> EdgeeCookie {
     let edgee_cookie = get(request_headers, response_headers, host);
     if edgee_cookie.is_none() {
         return init_and_set_cookie(response_headers, host);
@@ -73,7 +76,11 @@ pub fn get_or_set(request_headers: &http::HeaderMap, response_headers: &mut http
 /// # Returns
 ///
 /// * `Option<EdgeeCookie>` - An `Option` containing the `EdgeeCookie` if it exists and is successfully decrypted and updated, or `None` if the cookie does not exist or decryption fails.
-pub fn get(request_headers: &http::HeaderMap, response_headers: &mut http::HeaderMap, host: &str) -> Option<EdgeeCookie> {
+pub fn get(
+    request_headers: &http::HeaderMap,
+    response_headers: &mut http::HeaderMap,
+    host: &str,
+) -> Option<EdgeeCookie> {
     let all_cookies = request_headers.get_all(COOKIE);
     for cookie in all_cookies {
         let parts: Vec<&str> = cookie.to_str().unwrap().split('=').collect();
@@ -148,7 +155,6 @@ pub fn decrypt_and_update(encrypted_edgee_cookie: &str) -> Result<EdgeeCookie, &
     Ok(edgee_cookie)
 }
 
-
 /// Initializes a new `EdgeeCookie`, encrypts it, and sets it in the response headers.
 ///
 /// # Arguments
@@ -167,7 +173,6 @@ fn init_and_set_cookie(response_headers: &mut http::HeaderMap, host: &str) -> Ed
     set_cookie(&edgee_cookie_encrypted, response_headers, host);
     edgee_cookie
 }
-
 
 /// Sets a cookie in the response headers.
 ///
@@ -191,7 +196,10 @@ fn set_cookie(value: &str, response_headers: &mut http::HeaderMap, host: &str) {
         .same_site(SameSite::Lax)
         .expires(OffsetDateTime::now_utc() + StdDuration::from_secs(365 * 24 * 60 * 60));
 
-        response_headers.insert(SET_COOKIE, HeaderValue::from_str(cookie.to_string().as_str()).unwrap());
+    response_headers.insert(
+        SET_COOKIE,
+        HeaderValue::from_str(cookie.to_string().as_str()).unwrap(),
+    );
 }
 
 /// This function is used to extract the root domain from a given host.

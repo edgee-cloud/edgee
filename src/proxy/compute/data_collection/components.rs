@@ -41,7 +41,6 @@ pub fn init() {
     }
 }
 
-
 pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
     let engine = WASM_ENGINE.get().unwrap();
     let linker = WASM_LINKER.get().unwrap();
@@ -64,7 +63,7 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
                 Some(EventType::Page) => provider::EventType::Page,
                 Some(EventType::Identify) => provider::EventType::Identify,
                 Some(EventType::Track) => provider::EventType::Track,
-                _ => provider::EventType::Page
+                _ => provider::EventType::Page,
             },
             page: provider::PageEvent {
                 name: p.page.clone().unwrap().name.unwrap(),
@@ -75,17 +74,41 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
                 path: p.page.clone().unwrap().path.unwrap(),
                 search: p.page.clone().unwrap().search.unwrap(),
                 referrer: p.page.clone().unwrap().referrer.unwrap(),
-                properties: p.page.clone().unwrap().properties.unwrap().into_iter().map(|(key, value)| (key, value.to_string())).collect(),
+                properties: p
+                    .page
+                    .clone()
+                    .unwrap()
+                    .properties
+                    .unwrap()
+                    .into_iter()
+                    .map(|(key, value)| (key, value.to_string()))
+                    .collect(),
             },
             identify: provider::IdentifyEvent {
                 user_id: p.identify.clone().unwrap().user_id.unwrap(),
                 anonymous_id: p.identify.clone().unwrap().anonymous_id.unwrap(),
                 edgee_id: p.identify.clone().unwrap().edgee_id,
-                properties: p.identify.clone().unwrap().properties.unwrap().into_iter().map(|(key, value)| (key, value.to_string())).collect(),
+                properties: p
+                    .identify
+                    .clone()
+                    .unwrap()
+                    .properties
+                    .unwrap()
+                    .into_iter()
+                    .map(|(key, value)| (key, value.to_string()))
+                    .collect(),
             },
             track: provider::TrackEvent {
                 name: p.track.clone().unwrap().name.unwrap(),
-                properties: p.track.clone().unwrap().properties.unwrap().into_iter().map(|(key, value)| (key, value.to_string())).collect(),
+                properties: p
+                    .track
+                    .clone()
+                    .unwrap()
+                    .properties
+                    .unwrap()
+                    .into_iter()
+                    .map(|(key, value)| (key, value.to_string()))
+                    .collect(),
             },
             campaign: provider::Campaign {
                 name: p.campaign.clone().unwrap().name.unwrap(),
@@ -104,7 +127,12 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
                 user_agent: p.client.clone().unwrap().user_agent.unwrap(),
                 user_agent_architecture: p.client.clone().unwrap().user_agent_architecture.unwrap(),
                 user_agent_bitness: p.client.clone().unwrap().user_agent_bitness.unwrap(),
-                user_agent_full_version_list: p.client.clone().unwrap().user_agent_full_version_list.unwrap(),
+                user_agent_full_version_list: p
+                    .client
+                    .clone()
+                    .unwrap()
+                    .user_agent_full_version_list
+                    .unwrap(),
                 user_agent_mobile: p.client.clone().unwrap().user_agent_mobile.unwrap(),
                 user_agent_model: p.client.clone().unwrap().user_agent_model.unwrap(),
                 os_name: p.client.clone().unwrap().os_name.unwrap(),
