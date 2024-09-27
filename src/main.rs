@@ -1,3 +1,6 @@
+use std::path::PathBuf;
+
+use clap::Parser;
 use tracing::error;
 
 mod config;
@@ -7,9 +10,18 @@ mod proxy;
 mod server;
 mod tools;
 
+#[derive(Debug, Parser)]
+#[command(about, author, version)]
+struct Options {
+    #[arg(short = 'f', long = "config", env = "EDGEE_CONFIG_PATH")]
+    config_path: Option<PathBuf>,
+}
+
 #[tokio::main]
 async fn main() {
-    config::config::init();
+    let options = Options::parse();
+
+    config::config::init(options.config_path.as_deref());
     logger::logger::init();
     proxy::compute::data_collection::components::init();
 

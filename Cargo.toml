@@ -19,6 +19,7 @@ brotli = "6.0.0"
 bytes = "1.6.0"
 cbc = { version = "0.1.2", features = ["std"] }
 chrono = { version = "0.4.38", features = ["serde"] }
+clap = { version = "4.5.18", features = ["derive", "env"] }
 cookie = "0.18.1"
 hex = "0.4.3"
 html-escape = "0.2.13"
