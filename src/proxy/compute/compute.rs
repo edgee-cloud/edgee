@@ -21,7 +21,6 @@ pub async fn html_handler(
     proto: &str,
     client_ip: &String,
     response_parts: &mut Parts,
-    response_headers: &HeaderMap,
 ) -> Result<Document, &'static str> {
     // if the decompressed body is too large, abort the computation
     if body.len() > config::get().compute.max_decompressed_body_size {
@@ -53,9 +52,9 @@ pub async fn html_handler(
         );
     }
 
-    match do_process_payload(&path, request_headers, response_headers) {
+    match do_process_payload(&path, request_headers, response_parts) {
         Ok(_) => {
-            let cookie = edgee_cookie::get(&request_headers, &mut HeaderMap::new(), &host);
+            let cookie = edgee_cookie::get(&request_headers, response_parts, &host);
             if cookie.is_none() {
                 set_edgee_header(response_parts, "compute-aborted(no-cookie)");
             } else {
@@ -100,7 +99,7 @@ pub async fn json_handler(
 /// # Arguments
 ///
 /// * `path` - A reference to the path
-/// * `response_headers` - A reference to the response headers.
+/// * `response_parts` - A mutable reference to the response parts
 ///
 /// # Returns
 ///
@@ -117,7 +116,7 @@ pub async fn json_handler(
 fn do_process_payload(
     path: &PathAndQuery,
     request_headers: &HeaderMap,
-    response_headers: &HeaderMap,
+    response_parts: &mut Parts,
 ) -> Result<bool, &'static str> {
     // do not process the payload if disableEdgeDataCollection query param is present in the URL
     let query = path.query().unwrap_or("");
@@ -128,7 +127,8 @@ fn do_process_payload(
     if !config::get().compute.enforce_no_store_policy {
         // process the payload, only if response is not cacheable
         // transform response_headers to HashMap<String, String>
-        let res_headers = response_headers
+        let res_headers = response_parts
+            .headers
             .iter()
             .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap().to_string()))
             .collect::<std::collections::HashMap<String, String>>();

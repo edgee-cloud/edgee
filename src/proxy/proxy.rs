@@ -9,7 +9,7 @@ use brotli::{CompressorWriter, Decompressor};
 use bytes::Bytes;
 use http::response::Parts;
 use http::{header, HeaderName, HeaderValue, Method};
-use http_body_util::{combinators::BoxBody, BodyExt, Full};
+use http_body_util::{combinators::BoxBody, BodyExt};
 use hyper::body::Incoming;
 use libflate::{deflate, gzip};
 use std::{
@@ -194,7 +194,7 @@ pub async fn handle_request(
                         timer_start.elapsed().as_millis(),
                         None,
                     );
-                    return Ok(build_response(response_parts, response_body));
+                    return Ok(controller::build_response(response_parts, response_body));
                 }
             }
 
@@ -238,7 +238,6 @@ pub async fn handle_request(
                 incoming_proto,
                 &client_ip,
                 &mut response_parts,
-                &response_headers,
             )
             .await
             {
@@ -322,7 +321,10 @@ pub async fn handle_request(
                 Some(compute_duration),
             );
 
-            Ok(build_response(response_parts, Bytes::from(data)))
+            Ok(controller::build_response(
+                response_parts,
+                Bytes::from(data),
+            ))
         }
     }
 }
@@ -481,22 +483,4 @@ fn do_only_proxy(
     }
 
     Ok(false)
-}
-
-fn build_response(mut parts: http::response::Parts, body: Bytes) -> Response {
-    // Update Content-Length header to correct size
-    parts.headers.insert("content-length", body.len().into());
-
-    let mut builder = http::Response::builder();
-    for (name, value) in parts.headers {
-        if name.is_some() {
-            builder = builder.header(name.unwrap(), value);
-        }
-    }
-    builder
-        .status(parts.status)
-        .version(parts.version)
-        .extension(parts.extensions)
-        .body(Full::from(body).boxed())
-        .unwrap()
 }

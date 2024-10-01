@@ -22,20 +22,20 @@ pub async fn edgee_client_event(
     request_headers: &HeaderMap,
     client_ip: &String,
 ) -> anyhow::Result<Response> {
-    let mut res = http::Response::builder()
+    let res = http::Response::builder()
         .status(StatusCode::NO_CONTENT)
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::CACHE_CONTROL, "private, no-store")
         .body(empty())?;
 
-    let response_headers = res.headers_mut();
-    let cookie = edgee_cookie::get_or_set(&request_headers, response_headers, &host);
+    let (mut response_parts, _incoming) = res.into_parts();
+    let cookie = edgee_cookie::get_or_set(&request_headers, &mut response_parts, &host);
 
     let body = incoming_ctx.incoming_body.collect().await?.to_bytes();
     if body.len() > 0 {
         compute::json_handler(&body, &cookie, path, request_headers, client_ip).await;
     }
-    Ok(res)
+    Ok(build_response(response_parts, Bytes::new()))
 }
 
 pub async fn edgee_client_event_from_third_party_sdk(
@@ -139,4 +139,22 @@ pub fn bad_gateway_error() -> anyhow::Result<Response> {
 
 fn empty() -> BoxBody<Bytes, Infallible> {
     Empty::<Bytes>::new().boxed()
+}
+
+pub fn build_response(mut parts: http::response::Parts, body: Bytes) -> Response {
+    // Update Content-Length header to correct size
+    parts.headers.insert("content-length", body.len().into());
+
+    let mut builder = http::Response::builder();
+    for (name, value) in parts.headers {
+        if name.is_some() {
+            builder = builder.header(name.unwrap(), value);
+        }
+    }
+    builder
+        .status(parts.status)
+        .version(parts.version)
+        .extension(parts.extensions)
+        .body(Full::from(body).boxed())
+        .unwrap()
 }
