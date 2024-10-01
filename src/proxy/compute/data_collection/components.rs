@@ -4,12 +4,13 @@ static WASM_LINKER: OnceCell<wasmtime::component::Linker<HostView>> = OnceCell::
 static WASM_ENGINE: OnceCell<wasmtime::Engine> = OnceCell::const_new();
 static WASM_COMPONENTS: OnceCell<HashMap<&str, Component>> = OnceCell::const_new();
 
-use std::{collections::HashMap, str::FromStr};
-
 use crate::config::config;
 use crate::proxy::compute::data_collection::payload::{EventType, Payload};
 use exports::provider;
 use http::{HeaderMap, HeaderName, HeaderValue};
+use std::net::IpAddr;
+use std::time::Duration;
+use std::{collections::HashMap, str::FromStr};
 use tokio::sync::OnceCell;
 use tracing::{error, info};
 use wasmtime::component::Component;
@@ -45,8 +46,240 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
     let engine = WASM_ENGINE.get().unwrap();
     let linker = WASM_LINKER.get().unwrap();
     let mut store = wasmtime::Store::new(engine, HostView::new());
+
+    // clone the payload to be able to move it to the async thread
+    let p = p.clone();
+    let payload = provider::Payload {
+        uuid: p.uuid,
+        timestamp: p.timestamp.timestamp(),
+        event_type: match p.event_type {
+            Some(EventType::Page) => provider::EventType::Page,
+            Some(EventType::Identify) => provider::EventType::Identify,
+            Some(EventType::Track) => provider::EventType::Track,
+            _ => provider::EventType::Page,
+        },
+        page: provider::PageEvent {
+            name: p.page.clone().unwrap_or_default().name.unwrap_or_default(),
+            category: p
+                .page
+                .clone()
+                .unwrap_or_default()
+                .category
+                .unwrap_or_default(),
+            keywords: p
+                .page
+                .clone()
+                .unwrap_or_default()
+                .keywords
+                .unwrap_or_default(),
+            title: p.page.clone().unwrap_or_default().title.unwrap_or_default(),
+            url: p.page.clone().unwrap_or_default().url.unwrap_or_default(),
+            path: p.page.clone().unwrap_or_default().path.unwrap_or_default(),
+            search: p
+                .page
+                .clone()
+                .unwrap_or_default()
+                .search
+                .unwrap_or_default(),
+            referrer: p
+                .page
+                .clone()
+                .unwrap_or_default()
+                .referrer
+                .unwrap_or_default(),
+            properties: p
+                .page
+                .clone()
+                .unwrap_or_default()
+                .properties
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(key, value)| (key, value.to_string()))
+                .collect(),
+        },
+        identify: provider::IdentifyEvent {
+            user_id: p
+                .identify
+                .clone()
+                .unwrap_or_default()
+                .user_id
+                .unwrap_or_default(),
+            anonymous_id: p
+                .identify
+                .clone()
+                .unwrap_or_default()
+                .anonymous_id
+                .unwrap_or_default(),
+            edgee_id: p.identify.clone().unwrap_or_default().edgee_id,
+            properties: p
+                .identify
+                .clone()
+                .unwrap_or_default()
+                .properties
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(key, value)| (key, value.to_string()))
+                .collect(),
+        },
+        track: provider::TrackEvent {
+            name: p.track.clone().unwrap_or_default().name.unwrap_or_default(),
+            properties: p
+                .track
+                .clone()
+                .unwrap_or_default()
+                .properties
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(key, value)| (key, value.to_string()))
+                .collect(),
+        },
+        campaign: provider::Campaign {
+            name: p
+                .campaign
+                .clone()
+                .unwrap_or_default()
+                .name
+                .unwrap_or_default(),
+            source: p
+                .campaign
+                .clone()
+                .unwrap_or_default()
+                .source
+                .unwrap_or_default(),
+            medium: p
+                .campaign
+                .clone()
+                .unwrap_or_default()
+                .medium
+                .unwrap_or_default(),
+            term: p
+                .campaign
+                .clone()
+                .unwrap_or_default()
+                .term
+                .unwrap_or_default(),
+            content: p
+                .campaign
+                .clone()
+                .unwrap_or_default()
+                .content
+                .unwrap_or_default(),
+            creative_format: p
+                .campaign
+                .clone()
+                .unwrap_or_default()
+                .creative_format
+                .unwrap_or_default(),
+            marketing_tactic: p
+                .campaign
+                .clone()
+                .unwrap_or_default()
+                .marketing_tactic
+                .unwrap_or_default(),
+        },
+        client: provider::Client {
+            ip: anonymize_ip(&p.client.clone().unwrap_or_default().ip.unwrap_or_default()),
+            locale: p
+                .client
+                .clone()
+                .unwrap_or_default()
+                .locale
+                .unwrap_or_default(),
+            timezone: p
+                .client
+                .clone()
+                .unwrap_or_default()
+                .timezone
+                .unwrap_or_default(),
+            user_agent: p
+                .client
+                .clone()
+                .unwrap_or_default()
+                .user_agent
+                .unwrap_or_default(),
+            user_agent_architecture: p
+                .client
+                .clone()
+                .unwrap_or_default()
+                .user_agent_architecture
+                .unwrap_or_default(),
+            user_agent_bitness: p
+                .client
+                .clone()
+                .unwrap_or_default()
+                .user_agent_bitness
+                .unwrap_or_default(),
+            user_agent_full_version_list: p
+                .client
+                .clone()
+                .unwrap_or_default()
+                .user_agent_full_version_list
+                .unwrap_or_default(),
+            user_agent_mobile: p
+                .client
+                .clone()
+                .unwrap_or_default()
+                .user_agent_mobile
+                .unwrap_or_default(),
+            user_agent_model: p
+                .client
+                .clone()
+                .unwrap_or_default()
+                .user_agent_model
+                .unwrap_or_default(),
+            os_name: p
+                .client
+                .clone()
+                .unwrap_or_default()
+                .os_name
+                .unwrap_or_default(),
+            os_version: p
+                .client
+                .clone()
+                .unwrap_or_default()
+                .os_version
+                .unwrap_or_default(),
+            screen_width: p
+                .client
+                .clone()
+                .unwrap_or_default()
+                .screen_width
+                .unwrap_or_default(),
+            screen_height: p
+                .client
+                .clone()
+                .unwrap_or_default()
+                .screen_height
+                .unwrap_or_default(),
+            screen_density: p
+                .client
+                .clone()
+                .unwrap_or_default()
+                .screen_density
+                .unwrap_or_default(),
+            continent: String::new(),
+            country_code: String::new(),
+            country_name: String::new(),
+            region: String::new(),
+            city: String::new(),
+        },
+        session: provider::Session {
+            session_id: p.session.clone().unwrap_or_default().session_id,
+            previous_session_id: p
+                .session
+                .clone()
+                .unwrap_or_default()
+                .previous_session_id
+                .unwrap_or_default(),
+            session_count: p.session.clone().unwrap_or_default().session_count,
+            session_start: p.session.clone().unwrap_or_default().session_start,
+            first_seen: p.session.clone().unwrap_or_default().first_seen.to_string(),
+            last_seen: p.session.clone().unwrap_or_default().last_seen.to_string(),
+        },
+        destinations: Vec::new(),
+    };
+
     for cfg in &config::get().components.data_collection {
-        let p = p.clone();
         let component = WASM_COMPONENTS
             .get()
             .unwrap()
@@ -55,107 +288,6 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
         let (instance, _) = DataCollection::instantiate(&mut store, &component, linker)?;
         let provider = instance.provider();
         let credentials: Vec<(String, String)> = cfg.credentials.clone().into_iter().collect();
-
-        let payload = provider::Payload {
-            uuid: p.uuid,
-            timestamp: p.timestamp.timestamp(),
-            event_type: match p.event_type {
-                Some(EventType::Page) => provider::EventType::Page,
-                Some(EventType::Identify) => provider::EventType::Identify,
-                Some(EventType::Track) => provider::EventType::Track,
-                _ => provider::EventType::Page,
-            },
-            page: provider::PageEvent {
-                name: p.page.clone().unwrap().name.unwrap(),
-                category: p.page.clone().unwrap().category.unwrap(),
-                keywords: p.page.clone().unwrap().keywords.unwrap(),
-                title: p.page.clone().unwrap().title.unwrap(),
-                url: p.page.clone().unwrap().url.unwrap(),
-                path: p.page.clone().unwrap().path.unwrap(),
-                search: p.page.clone().unwrap().search.unwrap(),
-                referrer: p.page.clone().unwrap().referrer.unwrap(),
-                properties: p
-                    .page
-                    .clone()
-                    .unwrap()
-                    .properties
-                    .unwrap()
-                    .into_iter()
-                    .map(|(key, value)| (key, value.to_string()))
-                    .collect(),
-            },
-            identify: provider::IdentifyEvent {
-                user_id: p.identify.clone().unwrap().user_id.unwrap(),
-                anonymous_id: p.identify.clone().unwrap().anonymous_id.unwrap(),
-                edgee_id: p.identify.clone().unwrap().edgee_id,
-                properties: p
-                    .identify
-                    .clone()
-                    .unwrap()
-                    .properties
-                    .unwrap()
-                    .into_iter()
-                    .map(|(key, value)| (key, value.to_string()))
-                    .collect(),
-            },
-            track: provider::TrackEvent {
-                name: p.track.clone().unwrap().name.unwrap(),
-                properties: p
-                    .track
-                    .clone()
-                    .unwrap()
-                    .properties
-                    .unwrap()
-                    .into_iter()
-                    .map(|(key, value)| (key, value.to_string()))
-                    .collect(),
-            },
-            campaign: provider::Campaign {
-                name: p.campaign.clone().unwrap().name.unwrap(),
-                source: p.campaign.clone().unwrap().source.unwrap(),
-                medium: p.campaign.clone().unwrap().medium.unwrap(),
-                term: p.campaign.clone().unwrap().term.unwrap(),
-                content: p.campaign.clone().unwrap().content.unwrap(),
-                creative_format: p.campaign.clone().unwrap().creative_format.unwrap(),
-                marketing_tactic: p.campaign.clone().unwrap().marketing_tactic.unwrap(),
-            },
-            client: provider::Client {
-                ip: p.client.clone().unwrap().ip.unwrap(),
-                x_forwarded_for: p.client.clone().unwrap().x_forwarded_for.unwrap(),
-                locale: p.client.clone().unwrap().locale.unwrap(),
-                timezone: p.client.clone().unwrap().timezone.unwrap(),
-                user_agent: p.client.clone().unwrap().user_agent.unwrap(),
-                user_agent_architecture: p.client.clone().unwrap().user_agent_architecture.unwrap(),
-                user_agent_bitness: p.client.clone().unwrap().user_agent_bitness.unwrap(),
-                user_agent_full_version_list: p
-                    .client
-                    .clone()
-                    .unwrap()
-                    .user_agent_full_version_list
-                    .unwrap(),
-                user_agent_mobile: p.client.clone().unwrap().user_agent_mobile.unwrap(),
-                user_agent_model: p.client.clone().unwrap().user_agent_model.unwrap(),
-                os_name: p.client.clone().unwrap().os_name.unwrap(),
-                os_version: p.client.clone().unwrap().os_version.unwrap(),
-                screen_width: p.client.clone().unwrap().screen_width.unwrap(),
-                screen_height: p.client.clone().unwrap().screen_height.unwrap(),
-                screen_density: p.client.clone().unwrap().screen_density.unwrap(),
-                continent: String::new(),
-                country_code: String::new(),
-                country_name: String::new(),
-                region: String::new(),
-                city: String::new(),
-            },
-            session: provider::Session {
-                session_id: p.session.clone().unwrap().session_id,
-                previous_session_id: p.session.clone().unwrap().previous_session_id.unwrap(),
-                session_count: p.session.clone().unwrap().session_count,
-                session_start: p.session.clone().unwrap().session_start,
-                first_seen: p.session.clone().unwrap().first_seen.to_string(),
-                last_seen: p.session.clone().unwrap().last_seen.to_string(),
-            },
-            destinations: Vec::new(),
-        };
 
         let request = match p.event_type {
             Some(EventType::Page) => provider.call_page(&mut store, &payload, &credentials),
@@ -169,66 +301,144 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
                 Ok(req) => {
                     let mut headers = HeaderMap::new();
                     for (key, value) in req.headers {
-                        headers.insert(
-                            HeaderName::from_str(&key).unwrap(),
-                            HeaderValue::from_str(&value).unwrap(),
-                        );
+                        headers.insert(HeaderName::from_str(&key)?, HeaderValue::from_str(&value)?);
                     }
-                    let client = reqwest::Client::new();
-                    let res = match req.method {
-                        provider::HttpMethod::Get => {
-                            client.get(req.url).headers(headers).send().await
-                        }
-                        provider::HttpMethod::Put => {
-                            client
-                                .put(req.url)
-                                .headers(headers)
-                                .body(req.body)
-                                .send()
-                                .await
-                        }
-                        provider::HttpMethod::Post => {
-                            client
-                                .post(req.url)
-                                .headers(headers)
-                                .body(req.body)
-                                .send()
-                                .await
-                        }
-                        provider::HttpMethod::Delete => {
-                            client.delete(req.url).headers(headers).send().await
-                        }
-                    };
+                    headers.insert(
+                        HeaderName::from_str("x-forwarded-for")?,
+                        HeaderValue::from_str(
+                            p.client
+                                .clone()
+                                .unwrap_or_default()
+                                .ip
+                                .unwrap_or_default()
+                                .as_str(),
+                        )?,
+                    );
+                    headers.insert(
+                        HeaderName::from_str("user-agent")?,
+                        HeaderValue::from_str(
+                            p.client
+                                .clone()
+                                .unwrap_or_default()
+                                .user_agent
+                                .unwrap_or_default()
+                                .as_str(),
+                        )?,
+                    );
 
-                    match res {
-                        Ok(res) => {
-                            if res.status().is_success() {
-                                info!(
-                                    provider = cfg.name,
-                                    event = ?payload.event_type,
-                                    "request sent successfully"
-                                );
-                            } else {
-                                error!(provider = cfg.name, event = ?payload.event_type,"request failed with status: {}", res.status());
-                                println!("{:?}", res.text().await);
+                    let client = reqwest::Client::builder()
+                        .timeout(Duration::from_secs(5))
+                        .build()?;
+
+                    // spawn a separated async thread
+                    tokio::spawn(async move {
+                        info!(
+                            "-> data collection request - provider={}, event={:?}, method={:?}, url={:?}, body={:?}",
+                            cfg.name,
+                            payload.event_type,
+                            req.method,
+                            req.url,
+                            req.body
+                        );
+                        let res = match req.method {
+                            provider::HttpMethod::Get => {
+                                client.get(req.url).headers(headers).send().await
+                            }
+                            provider::HttpMethod::Put => {
+                                client
+                                    .put(req.url)
+                                    .headers(headers)
+                                    .body(req.body)
+                                    .send()
+                                    .await
+                            }
+                            provider::HttpMethod::Post => {
+                                client
+                                    .post(req.url)
+                                    .headers(headers)
+                                    .body(req.body)
+                                    .send()
+                                    .await
+                            }
+                            provider::HttpMethod::Delete => {
+                                client.delete(req.url).headers(headers).send().await
+                            }
+                        };
+
+                        match res {
+                            Ok(res) => {
+                                if res.status().is_success() {
+                                    info!(
+                                        "<- data collection request sent successfully: provider={}, event={:?}, method={:?}, status={:?}",
+                                        cfg.name,
+                                        payload.event_type,
+                                        req.method,
+                                        res.status(),
+                                    );
+                                } else {
+                                    error!(
+                                        "<- data collection request failed: provider={}, event={:?}, method={:?}, status={:?}, response={:?}",
+                                        cfg.name,
+                                        payload.event_type,
+                                        req.method,
+                                        res.status(),
+                                        res.text().await
+                                    );
+                                }
+                            }
+                            Err(err) => {
+                                error!(
+                                    "<- data collection request failed to be sent: provider={}, event={:?}, method={:?}, err={:?}",
+                                    cfg.name,
+                                    payload.event_type,
+                                    req.method,
+                                    err,
+                                )
                             }
                         }
-                        Err(err) => {
-                            error!(?err, provider = cfg.name, event = ?payload.event_type, "failed to send request")
-                        }
-                    }
+                    });
                 }
                 Err(err) => {
-                    error!(?err, provider = cfg.name, event = ?payload.event_type, "failed to handle payload")
+                    error!(
+                        "- failed to handle data collection payload: provider={}, event={:?}, err={:?}",
+                        cfg.name,
+                        payload.event_type,
+                        err
+                    )
                 }
             },
             Err(err) => {
-                error!(?err, provider = cfg.name, event = ?payload.event_type, "failed to call wasm component")
+                error!(
+                    "- failed to call data collection wasm component - provider={}, event={:?}, err={:?}",
+                    cfg.name,
+                    payload.event_type,
+                    err
+                );
             }
         }
     }
 
     Ok(())
+}
+
+fn anonymize_ip(ip: &String) -> String {
+    let mut ip = ip.parse::<IpAddr>().unwrap();
+    const KEEP_IPV4_BYTES: usize = 3;
+    const KEEP_IPV6_BYTES: usize = 6;
+
+    ip = match ip {
+        IpAddr::V4(ip) => {
+            let mut o = ip.octets();
+            o[KEEP_IPV4_BYTES..].copy_from_slice(&[0; 4 - KEEP_IPV4_BYTES]);
+            IpAddr::V4(o.into())
+        }
+        IpAddr::V6(ip) => {
+            let mut o = ip.octets();
+            o[KEEP_IPV6_BYTES..].copy_from_slice(&[0; 16 - KEEP_IPV6_BYTES]);
+            IpAddr::V6(o.into())
+        }
+    };
+    ip.to_string()
 }
 
 struct HostView {
