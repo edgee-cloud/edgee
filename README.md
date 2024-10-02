@@ -55,7 +55,7 @@ docker run \
   -v $PWD/wasm:/var/edgee/wasm \
   -p80:80 \
   -p443:443 \
-  edgeeecloud/edgee
+  edgeecloud/edgee
 ```
 
 Or as part of a `docker-compose.yml`:
