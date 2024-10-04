@@ -54,7 +54,7 @@ pub async fn process_from_html(
 
     // send the payload to the data collection components
     if let Err(err) = components::send_data_collection(&payload).await {
-        tracing::warn!(?err, "failed to send data collection payload");
+        warn!(?err, "failed to send data collection payload");
     }
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
@@ -64,7 +64,7 @@ pub async fn process_from_html(
         let api_key = config::get().compute.data_collection_api_key.as_ref()?;
         let api_url = config::get().compute.data_collection_api_url.as_ref()?;
         let payload_json = serde_json::to_string(&payload).unwrap();
-        info!("Data Collection Payload: {}", payload_json.as_str());
+        info!(target: "data_collection", payload = payload_json.as_str());
         let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         tokio::spawn(async move {
@@ -107,7 +107,7 @@ pub async fn process_from_json(
 
     // send the payload to the data collection components
     if let Err(err) = components::send_data_collection(&payload).await {
-        tracing::warn!(?err, "failed to send data collection payload");
+        warn!(?err, "failed to send data collection payload");
     }
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
@@ -125,7 +125,7 @@ pub async fn process_from_json(
             .as_ref()
             .unwrap();
         let payload_json = serde_json::to_string(&payload).unwrap();
-        info!("Data Collection Payload: {}", payload_json.as_str());
+        info!(target: "data_collection", payload = payload_json.as_str());
         let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         tokio::spawn(async move {

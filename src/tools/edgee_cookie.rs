@@ -132,7 +132,7 @@ pub fn decrypt_and_update(encrypted_edgee_cookie: &str) -> Result<EdgeeCookie, &
     }
 
     // deserialize edgee_cookie
-    let edgee_cookie_str = parse(edgee_cookie_decrypted.unwrap().as_bytes());
+    let edgee_cookie_str = parse(edgee_cookie_decrypted?.as_bytes());
     if edgee_cookie_str.is_err() {
         return Err("Failed to parse edgee_cookie");
     }
