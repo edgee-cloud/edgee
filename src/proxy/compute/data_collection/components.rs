@@ -52,6 +52,8 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
     let payload = provider::Payload {
         uuid: p.uuid,
         timestamp: p.timestamp.timestamp(),
+        timestamp_millis: p.timestamp.timestamp_millis(),
+        timestamp_micros: p.timestamp.timestamp_micros(),
         event_type: match p.event_type {
             Some(EventType::Page) => provider::EventType::Page,
             Some(EventType::Identify) => provider::EventType::Identify,
@@ -296,6 +298,12 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
             _ => Err(anyhow::anyhow!("invalid event type")),
         };
 
+        let event_str = match payload.event_type {
+            provider::EventType::Page => "page",
+            provider::EventType::Identify => "identify",
+            provider::EventType::Track => "track",
+        };
+
         match request {
             Ok(res) => match res {
                 Ok(req) => {
@@ -332,14 +340,13 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
 
                     // spawn a separated async thread
                     tokio::spawn(async move {
-                        info!(
-                            "-> data collection request - provider={}, event={:?}, method={:?}, url={:?}, body={:?}",
-                            cfg.name,
-                            payload.event_type,
-                            req.method,
-                            req.url,
-                            req.body
-                        );
+                        let method_str = match req.method {
+                            provider::HttpMethod::Get => "GET",
+                            provider::HttpMethod::Put => "PUT",
+                            provider::HttpMethod::Post => "POST",
+                            provider::HttpMethod::Delete => "DELETE",
+                        };
+                        info!(target: "data_collection", step = "request", provider = cfg.name, event = event_str, method = method_str, url = req.url, body = req.body);
                         let res = match req.method {
                             provider::HttpMethod::Get => {
                                 client.get(req.url).headers(headers).send().await
@@ -368,52 +375,27 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
                         match res {
                             Ok(res) => {
                                 if res.status().is_success() {
-                                    info!(
-                                        "<- data collection request sent successfully: provider={}, event={:?}, method={:?}, status={:?}",
-                                        cfg.name,
-                                        payload.event_type,
-                                        req.method,
-                                        res.status(),
-                                    );
+                                    let status_str = format!("{:?}", res.status());
+                                    let body_res_str = res.text().await.unwrap_or_default();
+                                    info!(target: "data_collection", step = "response", provider = cfg.name, event = event_str, method = method_str, status = status_str, body = body_res_str);
                                 } else {
-                                    error!(
-                                        "<- data collection request failed: provider={}, event={:?}, method={:?}, status={:?}, response={:?}",
-                                        cfg.name,
-                                        payload.event_type,
-                                        req.method,
-                                        res.status(),
-                                        res.text().await
-                                    );
+                                    let status_str = format!("{:?}", res.status());
+                                    let body_res_str = res.text().await.unwrap_or_default();
+                                    error!(target: "data_collection", step = "response", provider = cfg.name, event = event_str, method = method_str, status = status_str, body = body_res_str);
                                 }
                             }
                             Err(err) => {
-                                error!(
-                                    "<- data collection request failed to be sent: provider={}, event={:?}, method={:?}, err={:?}",
-                                    cfg.name,
-                                    payload.event_type,
-                                    req.method,
-                                    err,
-                                )
+                                error!(target: "data_collection", step = "response", provider = cfg.name, event = event_str, method = method_str, err = err.to_string());
                             }
                         }
                     });
                 }
                 Err(err) => {
-                    error!(
-                        "- failed to handle data collection payload: provider={}, event={:?}, err={:?}",
-                        cfg.name,
-                        payload.event_type,
-                        err
-                    )
+                    error!(target: "data_collection", provider = cfg.name, event = event_str, err = err.to_string(), "failed to handle data collection payload");
                 }
             },
             Err(err) => {
-                error!(
-                    "- failed to call data collection wasm component - provider={}, event={:?}, err={:?}",
-                    cfg.name,
-                    payload.event_type,
-                    err
-                );
+                error!(target: "data_collection", provider = cfg.name, event = event_str, err = err.to_string(), "failed to call data collection wasm component");
             }
         }
     }
