@@ -14,18 +14,27 @@ GITHUB_REPO='edgee'
 
 # Helper utilities
 
+_normal=$(printf '\033[0m')
+_bold=$(printf '\033[0;1m')
+_underline=$(printf '\033[0;4m')
+_purple=$(printf '\033[0;35m')
+_blue=$(printf '\033[1;34m')
+_green=$(printf '\033[0;32m')
+_red=$(printf '\033[1;31m')
+_gray=$(printf '\033[0;37m')
+
 _divider='--------------------------------------------------------------------------------'
 _prompt='>>>'
 _indent='    '
 
 _header() {
     cat 1>&2 <<EOF
-                                    E D G E E
-                                    Installer
+                                    ${_bold}${_blue}E D G E E${_normal}
+                                    ${_purple}Installer${_normal}
 
 $_divider
-Website:        https://www.edgee.cloud
-Documentation:  https://docs.edgee.cloud/introduction
+${_bold}Website${_normal}:        https://www.edgee.cloud
+${_bold}Documentation${_normal}:  https://docs.edgee.cloud/introduction
 $_divider
 
 EOF
@@ -36,16 +45,16 @@ _usage() {
 edgee-installer
 The installer for Edgee (https://www.edgee.cloud)
 
-USAGE:
+${_bold}USAGE${_normal}:
     edgee-installer [-h/--help]
 
-FLAGS:
+${_bold}FLAGS${_normal}:
     -h, --help      Print help informations
 EOF
 }
 
 err() {
-    echo "$_prompt Error: $*" >&2
+    echo "$_bold$_red$_prompt Error: $*$_normal" >&2
     exit 1
 }
 
@@ -113,11 +122,25 @@ download() {
 }
 
 download_latest() {
-    local _arch
+    local _arch _edgee_version
     _arch="$(get_arch)"
 
     download "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases/latest/download/edgee.$_arch" edgee
     chmod +x edgee
+    _edgee_version=$(./edgee --version | cut -d' ' -f2)
+
+    cat <<EOF
+
+${_bold}${_blue}Edgee${_normal} ${_green}$_edgee_version${_normal} binary successfully downloaded as 'edgee' file.
+
+${_underline}Run it:${_normal}
+
+${_gray}$ ./edgee${_normal}
+
+${_underline}Usage:${_normal}
+
+${_gray}$ ./edgee --help${_normal}
+EOF
 }
 
 main() {
