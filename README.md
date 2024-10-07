@@ -40,15 +40,26 @@ Check out [the official docs](https://docs.edgee.cloud) to dive into Edgee's mai
 
 # Running Edgee
 
-Once you have a valid configuration file (see next section), you can run Edgee in different ways, using Docker, or running as a Rust crate.
+Once you have a valid configuration file (see next section), you can run Edgee in different ways, using the installer, Docker or running as a Rust crate.
 
 ⚠️ Note: all the examples below assume that TLS certificates and WebAssembly components can be found in `/var/edgee/cert` and  in `/var/edgee/wasm` respectively.
+
+## Using the installer
+
+You can install and run `edgee` locally using the installer script:
+
+```shell
+$ curl --proto '=https' --tlsv1.2 -sSf https://install.edgee.cloud | sh
+[...]
+$ ./edgee
+```
+
 
 ## Using docker
 
 You can run it using the CLI:
 
-```console
+```shell
 docker run \
   -v $PWD/edgee.toml:/app/edgee.toml \
   -v $PWD/cert:/var/edgee/cert \
