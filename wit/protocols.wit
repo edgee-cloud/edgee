@@ -1,4 +1,4 @@
-package edgee:protocols@0.1.1;
+package edgee:protocols@0.1.2;
 
 world data-collection {
     export provider: interface {
@@ -18,7 +18,6 @@ world data-collection {
             campaign: campaign,
             client: client,
             session: session,
-            destinations: list<tuple<string, bool>>,
         }
 
         record page-event {
@@ -82,8 +81,8 @@ world data-collection {
             previous-session-id: string,
             session-count: u32,
             session-start: bool,
-            first-seen: string,
-            last-seen: string,
+            first-seen: s64,
+            last-seen: s64,
         }
 
         record edgee-request {
