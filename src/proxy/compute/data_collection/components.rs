@@ -275,10 +275,9 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
                 .unwrap_or_default(),
             session_count: p.session.clone().unwrap_or_default().session_count,
             session_start: p.session.clone().unwrap_or_default().session_start,
-            first_seen: p.session.clone().unwrap_or_default().first_seen.to_string(),
-            last_seen: p.session.clone().unwrap_or_default().last_seen.to_string(),
+            first_seen: p.session.clone().unwrap_or_default().first_seen.timestamp(),
+            last_seen: p.session.clone().unwrap_or_default().last_seen.timestamp(),
         },
-        destinations: Vec::new(),
     };
 
     for cfg in &config::get().components.data_collection {
