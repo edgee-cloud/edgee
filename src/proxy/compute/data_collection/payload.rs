@@ -227,3 +227,26 @@ pub struct Session {
     pub first_seen: DateTime<Utc>,
     pub last_seen: DateTime<Utc>,
 }
+
+impl Payload {
+    pub fn is_destination_enabled(&self, name: &str) -> &bool {
+        // if destinations is not set, return true
+        if self.destinations.is_none() {
+            return &true;
+        }
+
+        // get destinations.get("all")
+        let all = self
+            .destinations
+            .as_ref()
+            .unwrap()
+            .get("all")
+            .unwrap_or(&true);
+
+        // check if the destination is enabled
+        if self.destinations.as_ref().unwrap().contains_key(name) {
+            return self.destinations.as_ref().unwrap().get(name).unwrap();
+        }
+        all
+    }
+}
