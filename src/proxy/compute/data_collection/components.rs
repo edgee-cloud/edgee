@@ -50,7 +50,7 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
     // clone the payload to be able to move it to the async thread
     let p = p.clone();
     let payload = provider::Payload {
-        uuid: p.uuid,
+        uuid: p.uuid.clone(),
         timestamp: p.timestamp.timestamp(),
         timestamp_millis: p.timestamp.timestamp_millis(),
         timestamp_micros: p.timestamp.timestamp_micros(),
@@ -281,6 +281,9 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
     };
 
     for cfg in &config::get().components.data_collection {
+        if !p.is_destination_enabled(cfg.name.as_str()) {
+            continue;
+        }
         let component = WASM_COMPONENTS
             .get()
             .unwrap()
