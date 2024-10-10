@@ -1,4 +1,8 @@
-wasmtime::component::bindgen!({world: "data-collection", path: "wit/protocols.wit"});
+wasmtime::component::bindgen!({
+    world: "data-collection",
+    path: "wit/protocols.wit",
+    async: true,
+});
 
 static WASM_LINKER: OnceCell<wasmtime::component::Linker<HostView>> = OnceCell::const_new();
 static WASM_ENGINE: OnceCell<wasmtime::Engine> = OnceCell::const_new();
@@ -48,7 +52,6 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
     let mut store = wasmtime::Store::new(engine, HostView::new());
 
     // clone the payload to be able to move it to the async thread
-    let p = p.clone();
     let payload = provider::Payload {
         uuid: p.uuid.clone(),
         timestamp: p.timestamp.timestamp(),
@@ -289,14 +292,23 @@ pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
             .unwrap()
             .get(cfg.name.as_str())
             .unwrap();
-        let (instance, _) = DataCollection::instantiate(&mut store, &component, linker)?;
+        let (instance, _) =
+            DataCollection::instantiate_async(&mut store, &component, linker).await?;
         let provider = instance.provider();
         let credentials: Vec<(String, String)> = cfg.credentials.clone().into_iter().collect();
 
         let request = match p.event_type {
-            Some(EventType::Page) => provider.call_page(&mut store, &payload, &credentials),
-            Some(EventType::Track) => provider.call_track(&mut store, &payload, &credentials),
-            Some(EventType::Identify) => provider.call_identify(&mut store, &payload, &credentials),
+            Some(EventType::Page) => provider.call_page(&mut store, &payload, &credentials).await,
+            Some(EventType::Track) => {
+                provider
+                    .call_track(&mut store, &payload, &credentials)
+                    .await
+            }
+            Some(EventType::Identify) => {
+                provider
+                    .call_identify(&mut store, &payload, &credentials)
+                    .await
+            }
             _ => Err(anyhow::anyhow!("invalid event type")),
         };
 
