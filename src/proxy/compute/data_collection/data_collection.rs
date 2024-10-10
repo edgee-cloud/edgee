@@ -52,10 +52,16 @@ pub async fn process_from_html(
     // add more info from the request
     payload = add_more_info_from_request(request_headers, payload, path, client_ip);
 
+    // Get payload JSON data and UUID
+    let payload_json = serde_json::to_string(&payload).expect("Could not encode payload into JSON");
+    let payload_uuid = payload.uuid.clone();
+
     // send the payload to the data collection components
-    if let Err(err) = components::send_data_collection(&payload).await {
-        warn!(?err, "failed to send data collection payload");
-    }
+    tokio::spawn(async move {
+        if let Err(err) = components::send_data_collection(payload.clone()).await {
+            warn!(?err, "failed to send data collection payload");
+        }
+    });
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
     if config::get().compute.data_collection_api_key.is_some()
@@ -63,7 +69,6 @@ pub async fn process_from_html(
     {
         let api_key = config::get().compute.data_collection_api_key.as_ref()?;
         let api_url = config::get().compute.data_collection_api_url.as_ref()?;
-        let payload_json = serde_json::to_string(&payload).unwrap();
         info!(target: "data_collection", payload = payload_json.as_str());
         let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
@@ -78,7 +83,7 @@ pub async fn process_from_html(
         });
     }
 
-    Option::from(payload.uuid)
+    Option::from(payload_uuid)
 }
 
 pub async fn process_from_json(
@@ -105,10 +110,15 @@ pub async fn process_from_json(
     // add more info from the request
     payload = add_more_info_from_request(request_headers, payload, path, client_ip);
 
+    // Get payload JSON data and UUID
+    let payload_json = serde_json::to_string(&payload).expect("Could not encode payload into JSON");
+
     // send the payload to the data collection components
-    if let Err(err) = components::send_data_collection(&payload).await {
-        warn!(?err, "failed to send data collection payload");
-    }
+    tokio::spawn(async move {
+        if let Err(err) = components::send_data_collection(payload.clone()).await {
+            warn!(?err, "failed to send data collection payload");
+        }
+    });
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
     if config::get().compute.data_collection_api_key.is_some()
@@ -124,7 +134,6 @@ pub async fn process_from_json(
             .data_collection_api_url
             .as_ref()
             .unwrap();
-        let payload_json = serde_json::to_string(&payload).unwrap();
         info!(target: "data_collection", payload = payload_json.as_str());
         let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
