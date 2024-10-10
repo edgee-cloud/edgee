@@ -46,7 +46,7 @@ pub fn init() {
     }
 }
 
-pub async fn send_data_collection(p: &Payload) -> anyhow::Result<()> {
+pub async fn send_data_collection(p: Payload) -> anyhow::Result<()> {
     let engine = WASM_ENGINE.get().unwrap();
     let linker = WASM_LINKER.get().unwrap();
     let mut store = wasmtime::Store::new(engine, HostView::new());
