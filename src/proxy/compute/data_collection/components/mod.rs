@@ -4,52 +4,27 @@ wasmtime::component::bindgen!({
     async: true,
 });
 
-static WASM_LINKER: OnceCell<wasmtime::component::Linker<HostView>> = OnceCell::const_new();
-static WASM_ENGINE: OnceCell<wasmtime::Engine> = OnceCell::const_new();
-static WASM_COMPONENTS: OnceCell<HashMap<&str, Component>> = OnceCell::const_new();
-
 use crate::config::config;
 use crate::proxy::compute::data_collection::payload::{EventType, Payload};
+use context::ComponentsContext;
 use exports::provider;
 use http::{HeaderMap, HeaderName, HeaderValue};
 use std::net::IpAddr;
+use std::str::FromStr;
 use std::time::Duration;
-use std::{collections::HashMap, str::FromStr};
-use tokio::sync::OnceCell;
 use tracing::{error, info};
-use wasmtime::component::Component;
+
+mod context;
 
 pub fn init() {
-    let mut runtime_conf = wasmtime::Config::default();
-    runtime_conf.wasm_component_model(true);
-
-    let engine = wasmtime::Engine::new(&runtime_conf).unwrap();
-    let mut linker = wasmtime::component::Linker::<HostView>::new(&engine);
-    wasmtime_wasi::add_to_linker_sync(&mut linker).unwrap();
-
-    let mut components: HashMap<&str, Component> = HashMap::new();
-    for cfg in &config::get().components.data_collection {
-        let component = Component::from_file(&engine, &cfg.component).unwrap();
-        components.insert(&cfg.name, component);
-    }
-
-    if let Err(_) = WASM_ENGINE.set(engine) {
-        panic!("failed to initialize wasm engine");
-    }
-
-    if let Err(_) = WASM_LINKER.set(linker) {
-        panic!("failed to initialize wasm linker");
-    }
-
-    if let Err(_) = WASM_COMPONENTS.set(components) {
-        panic!("failed to initialize wasm components");
-    }
+    ComponentsContext::init().unwrap();
 }
 
 pub async fn send_data_collection(p: Payload) -> anyhow::Result<()> {
-    let engine = WASM_ENGINE.get().unwrap();
-    let linker = WASM_LINKER.get().unwrap();
-    let mut store = wasmtime::Store::new(engine, HostView::new());
+    let config = config::get();
+
+    let ctx = ComponentsContext::get();
+    let mut store = ctx.empty_store();
 
     // clone the payload to be able to move it to the async thread
     let payload = provider::Payload {
@@ -283,17 +258,13 @@ pub async fn send_data_collection(p: Payload) -> anyhow::Result<()> {
         },
     };
 
-    for cfg in &config::get().components.data_collection {
-        if !p.is_destination_enabled(cfg.name.as_str()) {
+    for cfg in config.components.data_collection.iter() {
+        if !p.is_destination_enabled(&cfg.name) {
             continue;
         }
-        let component = WASM_COMPONENTS
-            .get()
-            .unwrap()
-            .get(cfg.name.as_str())
-            .unwrap();
-        let (instance, _) =
-            DataCollection::instantiate_async(&mut store, &component, linker).await?;
+        let instance = ctx
+            .instantiate_data_collection(&cfg.name, &mut store)
+            .await?;
         let provider = instance.provider();
         let credentials: Vec<(String, String)> = cfg.credentials.clone().into_iter().collect();
 
@@ -435,27 +406,4 @@ fn anonymize_ip(ip: &String) -> String {
         }
     };
     ip.to_string()
-}
-
-struct HostView {
-    table: wasmtime::component::ResourceTable,
-    wasi: wasmtime_wasi::WasiCtx,
-}
-
-impl HostView {
-    fn new() -> Self {
-        let table = wasmtime_wasi::ResourceTable::new();
-        let wasi = wasmtime_wasi::WasiCtxBuilder::new().build();
-        Self { table, wasi }
-    }
-}
-
-impl wasmtime_wasi::WasiView for HostView {
-    fn table(&mut self) -> &mut wasmtime_wasi::ResourceTable {
-        &mut self.table
-    }
-
-    fn ctx(&mut self) -> &mut wasmtime_wasi::WasiCtx {
-        &mut self.wasi
-    }
 }
