@@ -2,19 +2,19 @@ use std::collections::HashMap;
 
 use tokio::sync::OnceCell;
 use wasmtime::{
-    component::{Component, InstancePre, Linker, ResourceTable},
+    component::{Component, Linker, ResourceTable},
     Engine, Store,
 };
 use wasmtime_wasi::{WasiCtx, WasiView};
 
-use super::DataCollection;
+use super::{DataCollection, DataCollectionPre};
 use crate::config::config;
 
 static COMPONENTS_CONTEXT: OnceCell<ComponentsContext> = OnceCell::const_new();
 
 pub struct ComponentsContext {
     pub engine: Engine,
-    pub components: HashMap<String, InstancePre<HostState>>,
+    pub components: HashMap<String, DataCollectionPre<HostState>>,
 }
 
 impl ComponentsContext {
@@ -36,6 +36,7 @@ impl ComponentsContext {
             .map(|entry| {
                 let component = Component::from_file(&engine, &entry.component)?;
                 let instance_pre = linker.instantiate_pre(&component)?;
+                let instance_pre = DataCollectionPre::new(instance_pre)?;
                 Ok((entry.name.clone(), instance_pre))
             })
             .collect::<anyhow::Result<_>>()?;
@@ -71,9 +72,10 @@ impl ComponentsContext {
             .get(name)
             .expect("Data collection not found, should not happen");
 
-        let (instance, _) = DataCollection::instantiate_pre(store, instance_pre).await?;
-
-        Ok(instance)
+        instance_pre
+            .instantiate_async(store)
+            .await
+            .map_err(Into::into)
     }
 }
 
