@@ -230,7 +230,7 @@ pub async fn handle_request(
             };
 
             // interpret what's in the body
-            _ = match compute::html_handler(
+            let _ = match compute::html_handler(
                 &mut body_str,
                 &incoming_host,
                 &incoming_path,
@@ -242,41 +242,45 @@ pub async fn handle_request(
             .await
             {
                 Ok(document) => {
-                    let mut page_event_param = r#" data-page-event="true""#;
+                    let mut page_event_param = r#" data-client-side="true""#;
                     let event_path_param = format!(
                         r#" data-event-path="{}""#,
                         path::generate(&incoming_host.as_str())
                     );
 
-                    if !document.trace_uuid.is_empty() {
-                        response_parts.headers.insert(
-                            HeaderName::from_str("x-edgee-trace")?,
-                            HeaderValue::from_str(&document.trace_uuid)?,
-                        );
-                        page_event_param = r#" data-page-event="false""#;
+                    let mut debug_script = "".to_string();
+                    if !document.data_collection_events.is_empty() {
+                        if is_debug_mode {
+                            debug_script = format!(
+                                r#"<script>var _edgee_events = {}</script>"#,
+                                document.data_collection_events
+                            );
+                        }
+                        page_event_param = r#" data-client-side="false""#;
                     }
 
                     // if the context is empty, we need to add an empty context script tag
-                    let mut empty_context = "";
-                    if document.context.is_empty() {
-                        empty_context =
-                            r#"<script id="__EDGEE_CONTEXT__" type="application/json">{}</script>"#;
+                    let mut empty_data_layer = "";
+                    if document.data_layer.is_empty() {
+                        empty_data_layer = r#"<script id="__EDGEE_DATA_LAYER__" type="application/json">{}</script>"#;
                     }
 
                     if !document.inlined_sdk.is_empty() {
                         let new_tag = format!(
-                            r#"{}<script{}{}>{}</script>"#,
-                            empty_context,
+                            r#"{}{}<script{}{}>{}</script>"#,
+                            debug_script,
+                            empty_data_layer,
                             page_event_param,
                             event_path_param,
-                            document.inlined_sdk.as_str()
+                            document.inlined_sdk.as_str(),
                         );
                         body_str =
                             body_str.replace(document.sdk_full_tag.as_str(), new_tag.as_str());
                     } else {
                         let new_tag = format!(
-                            r#"{}<script{}{} async src="{}"></script>"#,
-                            empty_context,
+                            r#"{}{}<script{}{} async src="{}"></script>"#,
+                            debug_script,
+                            empty_data_layer,
                             page_event_param,
                             event_path_param,
                             document.sdk_src.as_str()

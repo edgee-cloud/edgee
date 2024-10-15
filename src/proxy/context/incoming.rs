@@ -1,5 +1,6 @@
 use crate::tools::real_ip::Realip;
 use anyhow::Context;
+use http::header::COOKIE;
 use http::{header::HOST, request::Parts, uri::PathAndQuery, HeaderMap};
 use hyper::body::Incoming;
 use std::{net::SocketAddr, str::FromStr};
@@ -46,10 +47,11 @@ impl IncomingContext {
         }
 
         // debug mode
-        let is_debug_mode = match incoming_parts.headers.get("edgee-debug") {
-            Some(_) => true,
-            None => false,
-        };
+        let all_cookies = incoming_parts.headers.get_all(COOKIE);
+        let is_debug_mode = all_cookies
+            .iter()
+            .filter_map(|cookie| cookie.to_str().ok())
+            .any(|cookie| cookie.contains("_edgeedebug=true"));
 
         // client ip
         let client_ip = Realip::new().get_from_request(&remote_addr, &incoming_parts.headers);

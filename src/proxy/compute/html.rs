@@ -2,11 +2,11 @@ use regex::Regex;
 
 #[derive(Debug)]
 pub struct Document {
-    pub trace_uuid: String,
+    pub data_collection_events: String,
     pub sdk_full_tag: String,
     pub sdk_src: String,
     pub inlined_sdk: String,
-    pub context: String,
+    pub data_layer: String,
     pub title: String,
     pub canonical: String,
     pub keywords: String,
@@ -37,11 +37,11 @@ pub struct Document {
 pub(crate) fn parse_html(html: &str) -> Document {
     let recorded_tags: Vec<&str> = vec!["script", "title", "meta", "link"];
     let mut results = Document {
-        trace_uuid: String::new(),
+        data_collection_events: String::new(),
         sdk_full_tag: String::new(),
         sdk_src: String::new(),
         inlined_sdk: String::new(),
-        context: String::new(),
+        data_layer: String::new(),
         title: String::new(),
         canonical: String::new(),
         keywords: String::new(),
@@ -119,7 +119,7 @@ pub(crate) fn parse_html(html: &str) -> Document {
                         }
                         results.sdk_full_tag = temp.clone();
                     }
-                } else if temp.contains(r#"__EDGEE_CONTEXT__"#) {
+                } else if temp.contains(r#"__EDGEE_DATA_LAYER__"#) {
                     // first, remove the opening tag
                     temp.clear();
 
@@ -139,7 +139,7 @@ pub(crate) fn parse_html(html: &str) -> Document {
                     temp = temp.replace("</script>", "");
 
                     // get only what is between the tags
-                    results.context = temp.clone();
+                    results.data_layer = temp.clone();
                 } else if temp == "<title>" {
                     // This is the start tag of the title, so we need to get the full tag with the closing tag as well
                     while let Some(&next_c) = chars.peek() {

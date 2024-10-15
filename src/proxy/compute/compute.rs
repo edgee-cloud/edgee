@@ -61,7 +61,7 @@ pub async fn html_handler(
             if cookie.is_none() {
                 set_edgee_header(response_parts, "compute-aborted(no-cookie)");
             } else {
-                let data_collection_trace_uuid = data_collection::process_from_html(
+                let data_collection_events = data_collection::process_from_html(
                     &document,
                     &cookie.unwrap(),
                     proto,
@@ -71,8 +71,8 @@ pub async fn html_handler(
                     client_ip,
                 )
                 .await;
-                if data_collection_trace_uuid.is_some() {
-                    document.trace_uuid = data_collection_trace_uuid.unwrap();
+                if data_collection_events.is_some() {
+                    document.data_collection_events = data_collection_events.unwrap();
                 }
             }
         }
@@ -90,8 +90,14 @@ pub async fn json_handler(
     path: &PathAndQuery,
     request_headers: &HeaderMap,
     client_ip: &String,
-) {
-    data_collection::process_from_json(body, cookie, path, request_headers, client_ip).await;
+) -> Result<String, &'static str> {
+    let data_collection_events =
+        data_collection::process_from_json(body, cookie, path, request_headers, client_ip).await;
+    if data_collection_events.is_some() {
+        Ok(data_collection_events.unwrap())
+    } else {
+        Err("compute-aborted(no-events)")
+    }
 }
 
 /// Processes the payload of a request under certain conditions.
@@ -107,7 +113,7 @@ pub async fn json_handler(
 /// # Returns
 ///
 /// * `Result<bool, &'static str>` - Returns a Result. If the payload is processed successfully, it returns `Ok(true)`.
-///   If any of the conditions are met, it returns `Err` with a string indicating the reason for the computation abort.
+/// If any of the conditions are met, it returns `Err` with a string indicating the reason for the computation abort.
 ///
 /// # Errors
 ///

@@ -3,20 +3,22 @@ use std::collections::HashMap;
 use super::exports::provider;
 use crate::proxy::compute::data_collection::payload;
 
-impl From<payload::Payload> for provider::Payload {
-    fn from(value: payload::Payload) -> Self {
+impl From<payload::Event> for provider::Event {
+    fn from(value: payload::Event) -> Self {
+        let data = match value.data {
+            Some(payload::EventData::Page(page)) => provider::Data::Page(page.into()),
+            Some(payload::EventData::User(user)) => provider::Data::User(user.into()),
+            Some(payload::EventData::Track(track)) => provider::Data::Track(track.into()),
+            None => todo!(),
+        };
         Self {
             uuid: value.uuid,
             timestamp: value.timestamp.timestamp(),
             timestamp_millis: value.timestamp.timestamp_millis(),
             timestamp_micros: value.timestamp.timestamp_micros(),
-            event_type: value.event_type.unwrap_or_default().into(),
-            page: value.page.unwrap_or_default().into(),
-            identify: value.identify.unwrap_or_default().into(),
-            track: value.track.unwrap_or_default().into(),
-            campaign: value.campaign.unwrap_or_default().into(),
-            client: value.client.unwrap_or_default().into(),
-            session: value.session.unwrap_or_default().into(),
+            event_type: value.event_type.into(),
+            data,
+            context: value.context.unwrap_or_default().into(),
         }
     }
 }
@@ -25,13 +27,13 @@ impl From<payload::EventType> for provider::EventType {
     fn from(value: payload::EventType) -> Self {
         match value {
             payload::EventType::Page => Self::Page,
-            payload::EventType::Identify => Self::Identify,
+            payload::EventType::User => Self::User,
             payload::EventType::Track => Self::Track,
         }
     }
 }
 
-impl From<payload::Page> for provider::PageEvent {
+impl From<payload::Page> for provider::PageData {
     fn from(value: payload::Page) -> Self {
         Self {
             name: value.name.unwrap_or_default(),
@@ -47,8 +49,8 @@ impl From<payload::Page> for provider::PageEvent {
     }
 }
 
-impl From<payload::Identify> for provider::IdentifyEvent {
-    fn from(value: payload::Identify) -> Self {
+impl From<payload::User> for provider::UserData {
+    fn from(value: payload::User) -> Self {
         Self {
             user_id: value.user_id.unwrap_or_default(),
             anonymous_id: value.anonymous_id.unwrap_or_default(),
@@ -58,11 +60,23 @@ impl From<payload::Identify> for provider::IdentifyEvent {
     }
 }
 
-impl From<payload::Track> for provider::TrackEvent {
+impl From<payload::Track> for provider::TrackData {
     fn from(value: payload::Track) -> Self {
         Self {
             name: value.name.unwrap_or_default(),
             properties: convert_dict(value.properties.unwrap_or_default()),
+        }
+    }
+}
+
+impl From<payload::Context> for provider::Context {
+    fn from(value: payload::Context) -> Self {
+        Self {
+            page: value.page.unwrap_or_default().into(),
+            user: value.user.unwrap_or_default().into(),
+            client: value.client.unwrap_or_default().into(),
+            campaign: value.campaign.unwrap_or_default().into(),
+            session: value.session.unwrap_or_default().into(),
         }
     }
 }
@@ -84,7 +98,7 @@ impl From<payload::Campaign> for provider::Campaign {
 impl From<payload::Client> for provider::Client {
     fn from(value: payload::Client) -> Self {
         Self {
-            ip: anonymize_ip(&value.ip.unwrap_or_default()),
+            ip: value.ip.unwrap_or_default(),
             locale: value.locale.unwrap_or_default(),
             timezone: value.timezone.unwrap_or_default(),
             user_agent: value.user_agent.unwrap_or_default(),
@@ -124,27 +138,4 @@ fn convert_dict<T: ToString>(dict: HashMap<String, T>) -> Vec<(String, String)> 
     dict.into_iter()
         .map(|(key, value)| (key, value.to_string()))
         .collect()
-}
-
-fn anonymize_ip(ip: &str) -> String {
-    use std::net::IpAddr;
-
-    const KEEP_IPV4_BYTES: usize = 3;
-    const KEEP_IPV6_BYTES: usize = 6;
-
-    let ip: IpAddr = ip.parse().unwrap();
-    let anonymized_ip = match ip {
-        IpAddr::V4(ip) => {
-            let mut data = ip.octets();
-            data[KEEP_IPV4_BYTES..].fill(0);
-            IpAddr::V4(data.into())
-        }
-        IpAddr::V6(ip) => {
-            let mut data = ip.octets();
-            data[KEEP_IPV6_BYTES..].fill(0);
-            IpAddr::V6(data.into())
-        }
-    };
-
-    anonymized_ip.to_string()
 }

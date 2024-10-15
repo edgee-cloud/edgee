@@ -1,26 +1,28 @@
-package edgee:protocols@0.1.2;
+package edgee:protocols@0.2.0;
 
 world data-collection {
     export provider: interface {
         type dict = list<tuple<string,string>>;
 
-        enum event-type { page, track, identify }
+        enum event-type { page, track, user }
 
-        record payload {
+        record event {
             uuid: string,
             timestamp: s64,
             timestamp-millis: s64,
             timestamp-micros: s64,
             event-type: event-type,
-            page: page-event,
-            identify: identify-event,
-            track: track-event,
-            campaign: campaign,
-            client: client,
-            session: session,
+            data: data,
+            context: context,
         }
 
-        record page-event {
+        variant data {
+            page(page-data),
+            track(track-data),
+            user(user-data),
+        }
+
+        record page-data {
             name: string,
             category: string,
             keywords: list<string>,
@@ -32,16 +34,24 @@ world data-collection {
             properties: dict,
         }
 
-        record identify-event {
+        record user-data {
             user-id: string,
             anonymous-id: string,
             edgee-id: string,
             properties: dict,
         }
 
-        record track-event {
+        record track-data {
             name: string,
             properties: dict,
+        }
+
+        record context {
+            page: page-data,
+            user: user-data,
+            client: client,
+            campaign: campaign,
+            session: session,
         }
 
         record client {
@@ -94,8 +104,8 @@ world data-collection {
 
         enum http-method { GET, PUT, POST, DELETE }
 
-        page: func(p: payload, cred: dict) -> result<edgee-request, string>;
-        track: func(p: payload, cred: dict) -> result<edgee-request, string>;
-        identify: func(p: payload, cred:dict) -> result<edgee-request, string>;
+        page: func(e: event, cred: dict) -> result<edgee-request, string>;
+        track: func(e: event, cred: dict) -> result<edgee-request, string>;
+        user: func(e: event, cred:dict) -> result<edgee-request, string>;
     }
 }
