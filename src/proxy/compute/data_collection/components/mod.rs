@@ -77,11 +77,21 @@ pub async fn send_data_collection(p: Payload) -> anyhow::Result<()> {
         let request = match request {
             Ok(Ok(request)) => request,
             Ok(Err(err)) => {
-                error!(target: "data_collection", provider = cfg.name, event = event_str, err = err.to_string(), "failed to handle data collection payload");
+                error!(
+                    provider = cfg.name,
+                    event = event_str,
+                    err = err.to_string(),
+                    "failed to handle data collection payload"
+                );
                 continue;
             }
             Err(err) => {
-                error!(target: "data_collection", provider = cfg.name, event = event_str, err = err.to_string(), "failed to handle data collection payload");
+                error!(
+                    provider = cfg.name,
+                    event = event_str,
+                    err = err.to_string(),
+                    "failed to handle data collection payload"
+                );
                 continue;
             }
         };
@@ -106,7 +116,14 @@ pub async fn send_data_collection(p: Payload) -> anyhow::Result<()> {
                 provider::HttpMethod::Post => "POST",
                 provider::HttpMethod::Delete => "DELETE",
             };
-            info!(target: "data_collection", step = "request", provider = cfg.name, event = event_str, method = method_str, url = request.url, body = request.body);
+            info!(
+                step = "request",
+                provider = cfg.name,
+                event = event_str,
+                method = method_str,
+                url = request.url,
+                body = request.body
+            );
 
             let res = match request.method {
                 provider::HttpMethod::Get => client.get(request.url).headers(headers).send().await,
@@ -136,15 +153,35 @@ pub async fn send_data_collection(p: Payload) -> anyhow::Result<()> {
                     if res.status().is_success() {
                         let status_str = format!("{:?}", res.status());
                         let body_res_str = res.text().await.unwrap_or_default();
-                        info!(target: "data_collection", step = "response", provider = cfg.name, event = event_str, method = method_str, status = status_str, body = body_res_str);
+                        info!(
+                            step = "response",
+                            provider = cfg.name,
+                            event = event_str,
+                            method = method_str,
+                            status = status_str,
+                            body = body_res_str
+                        );
                     } else {
                         let status_str = format!("{:?}", res.status());
                         let body_res_str = res.text().await.unwrap_or_default();
-                        error!(target: "data_collection", step = "response", provider = cfg.name, event = event_str, method = method_str, status = status_str, body = body_res_str);
+                        error!(
+                            step = "response",
+                            provider = cfg.name,
+                            event = event_str,
+                            method = method_str,
+                            status = status_str,
+                            body = body_res_str
+                        );
                     }
                 }
                 Err(err) => {
-                    error!(target: "data_collection", step = "response", provider = cfg.name, event = event_str, method = method_str, err = err.to_string());
+                    error!(
+                        step = "response",
+                        provider = cfg.name,
+                        event = event_str,
+                        method = method_str,
+                        err = err.to_string()
+                    );
                 }
             }
         });
