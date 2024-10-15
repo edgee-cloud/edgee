@@ -42,13 +42,11 @@ pub fn init(log_format: LogFormat) {
         let directives = env::var("EDGEE_LOG")
             .or_else(|_| env::var("RUST_LOG"))
             .unwrap_or_else(|_| {
-                let mut directive = config.level.to_string();
-
                 if let Some(ref span) = config.span {
-                    directive = format!("{directive}[{span}]");
+                    format!("edgee[{span}]={}", config.level)
+                } else {
+                    format!("edgee={}", config.level)
                 }
-
-                directive
             });
 
         builder.parse_lossy(directives)
