@@ -107,7 +107,7 @@ pub async fn json_handler(
 /// # Returns
 ///
 /// * `Result<bool, &'static str>` - Returns a Result. If the payload is processed successfully, it returns `Ok(true)`.
-/// If any of the conditions are met, it returns `Err` with a string indicating the reason for the computation abort.
+///   If any of the conditions are met, it returns `Err` with a string indicating the reason for the computation abort.
 ///
 /// # Errors
 ///
