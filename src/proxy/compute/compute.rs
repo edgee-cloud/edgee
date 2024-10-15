@@ -1,21 +1,24 @@
-use crate::config::config;
-use crate::proxy::compute::data_collection::data_collection;
-use crate::proxy::compute::html::{parse_html, Document};
-use crate::proxy::proxy::set_edgee_header;
-use crate::tools;
-use crate::tools::edgee_cookie;
-use crate::tools::edgee_cookie::EdgeeCookie;
+use std::str::FromStr;
+
 use bytes::Bytes;
 use http::header::CACHE_CONTROL;
 use http::response::Parts;
 use http::uri::PathAndQuery;
 use http::{HeaderMap, HeaderName, HeaderValue};
-use std::str::FromStr;
 use tracing::warn;
 
+use super::data_collection::data_collection;
+use super::html::{parse_html, Document};
+use crate::config::config;
+use crate::proxy::proxy::set_edgee_header;
+use crate::tools::{
+    self,
+    edgee_cookie::{self, EdgeeCookie},
+};
+
 pub async fn html_handler(
-    body: &String,
-    host: &String,
+    body: &str,
+    host: &str,
     path: &PathAndQuery,
     request_headers: &HeaderMap,
     proto: &str,
@@ -37,7 +40,7 @@ pub async fn html_handler(
         Err("compute-aborted(no-sdk)")?;
     }
 
-    let mut document = parse_html(&body);
+    let mut document = parse_html(body);
 
     // verify if document.sdk_full_tag is present, otherwise SDK is probably commented in the page
     if document.sdk_full_tag.is_empty() {
@@ -52,9 +55,9 @@ pub async fn html_handler(
         );
     }
 
-    match do_process_payload(&path, request_headers, response_parts) {
+    match do_process_payload(path, request_headers, response_parts) {
         Ok(_) => {
-            let cookie = edgee_cookie::get(&request_headers, response_parts, &host);
+            let cookie = edgee_cookie::get(request_headers, response_parts, host);
             if cookie.is_none() {
                 set_edgee_header(response_parts, "compute-aborted(no-cookie)");
             } else {
@@ -62,9 +65,9 @@ pub async fn html_handler(
                     &document,
                     &cookie.unwrap(),
                     proto,
-                    &host,
-                    &path,
-                    &request_headers,
+                    host,
+                    path,
+                    request_headers,
                     client_ip,
                 )
                 .await;
@@ -88,7 +91,7 @@ pub async fn json_handler(
     request_headers: &HeaderMap,
     client_ip: &String,
 ) {
-    data_collection::process_from_json(body, &cookie, &path, &request_headers, client_ip).await;
+    data_collection::process_from_json(body, cookie, path, request_headers, client_ip).await;
 }
 
 /// Processes the payload of a request under certain conditions.
