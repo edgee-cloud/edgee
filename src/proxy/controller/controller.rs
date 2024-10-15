@@ -32,9 +32,23 @@ pub async fn edgee_client_event(
     let cookie = edgee_cookie::get_or_set(&request_headers, &mut response_parts, &host);
 
     let body = incoming_ctx.incoming_body.collect().await?.to_bytes();
+    let mut data_collection_events: String = String::new();
     if body.len() > 0 {
-        compute::json_handler(&body, &cookie, path, request_headers, client_ip).await;
+        let data_collection_events_res =
+            compute::json_handler(&body, &cookie, path, request_headers, client_ip).await;
+        if data_collection_events_res.is_ok() {
+            data_collection_events = data_collection_events_res.unwrap();
+        }
     }
+
+    if incoming_ctx.is_debug_mode {
+        response_parts.status = StatusCode::OK;
+        return Ok(build_response(
+            response_parts,
+            Bytes::from(data_collection_events),
+        ));
+    }
+
     Ok(build_response(response_parts, Bytes::new()))
 }
 
@@ -69,8 +83,22 @@ pub async fn edgee_client_event_from_third_party_sdk(
     let cookie_str = serde_json::to_string(&cookie).unwrap();
     let cookie_encrypted = encrypt(&cookie_str).unwrap();
 
+    let mut data_collection_events: String = String::new();
     if body.len() > 0 {
-        compute::json_handler(&body, &cookie, path, request_headers, client_ip).await;
+        let data_collection_events_res =
+            compute::json_handler(&body, &cookie, path, request_headers, client_ip).await;
+        if data_collection_events_res.is_ok() {
+            data_collection_events = data_collection_events_res.unwrap();
+        }
+    }
+
+    let mut body = Full::from(Bytes::from(format!(r#"{{"e":"{}"}}"#, cookie_encrypted))).boxed();
+    if incoming_ctx.is_debug_mode && data_collection_events.len() > 0 {
+        body = Full::from(Bytes::from(format!(
+            r#"{{"e":"{}", "events":{}}}"#,
+            cookie_encrypted, data_collection_events
+        )))
+        .boxed()
     }
 
     Ok(http::Response::builder()
@@ -78,7 +106,7 @@ pub async fn edgee_client_event_from_third_party_sdk(
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::CACHE_CONTROL, "private, no-store")
-        .body(Full::from(Bytes::from(format!(r#"{{"e":"{}"}}"#, cookie_encrypted))).boxed())
+        .body(body)
         .expect("serving sdk should never fail"))
 }
 
