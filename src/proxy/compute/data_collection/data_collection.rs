@@ -87,14 +87,12 @@ pub async fn process_from_html(
         }]);
     }
 
-
     let mut events = payload
         .data_collection
         .clone()
         .unwrap()
         .events
         .unwrap_or_default();
-
 
     // remove events with all components disabled
     for e in events.clone().iter() {
@@ -201,7 +199,8 @@ pub async fn process_from_json(
         return Option::from("[]".to_string());
     }
 
-    let events_json = serde_json::to_string(&events).expect("Could not encode data collection events into JSON");
+    let events_json =
+        serde_json::to_string(&events).expect("Could not encode data collection events into JSON");
     info!(target: "data_collection", events = events_json.as_str());
 
     // send the payload to the data collection components
@@ -322,7 +321,17 @@ fn prepare_data_collection_payload(mut payload: Payload) -> Payload {
 fn add_session(mut payload: Payload, edgee_cookie: &EdgeeCookie) -> Payload {
     // edgee_id
     let user_id = edgee_cookie.id.to_string();
-    payload.data_collection.as_mut().unwrap().context.as_mut().unwrap().user.as_mut().unwrap().edgee_id = user_id;
+    payload
+        .data_collection
+        .as_mut()
+        .unwrap()
+        .context
+        .as_mut()
+        .unwrap()
+        .user
+        .as_mut()
+        .unwrap()
+        .edgee_id = user_id;
 
     let mut user_session = payload::Session {
         session_id: edgee_cookie.ss.timestamp().to_string(),
