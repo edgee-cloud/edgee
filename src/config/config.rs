@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use serde::Deserialize;
@@ -163,6 +163,7 @@ pub struct BackendConfiguration {
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct ComponentsConfiguration {
     pub data_collection: Vec<DataCollectionConfiguration>,
+    pub cache: Option<PathBuf>,
 }
 
 #[derive(Deserialize, Debug, Default, Clone)]
