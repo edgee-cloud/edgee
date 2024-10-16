@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use http::{HeaderMap, HeaderName, HeaderValue};
-use tracing::{error, info};
+use tracing::{error, info, Instrument};
 
 use crate::config::config;
 use crate::proxy::compute::data_collection::payload::Payload;
@@ -77,11 +77,21 @@ pub async fn send_data_collection(p: Payload) -> anyhow::Result<()> {
         let request = match request {
             Ok(Ok(request)) => request,
             Ok(Err(err)) => {
-                error!(target: "data_collection", provider = cfg.name, event = event_str, err = err.to_string(), "failed to handle data collection payload");
+                error!(
+                    provider = cfg.name,
+                    event = event_str,
+                    err = err.to_string(),
+                    "failed to handle data collection payload"
+                );
                 continue;
             }
             Err(err) => {
-                error!(target: "data_collection", provider = cfg.name, event = event_str, err = err.to_string(), "failed to handle data collection payload");
+                error!(
+                    provider = cfg.name,
+                    event = event_str,
+                    err = err.to_string(),
+                    "failed to handle data collection payload"
+                );
                 continue;
             }
         };
@@ -99,55 +109,87 @@ pub async fn send_data_collection(p: Payload) -> anyhow::Result<()> {
         let client = client.clone();
 
         // spawn a separated async thread
-        tokio::spawn(async move {
-            let method_str = match request.method {
-                provider::HttpMethod::Get => "GET",
-                provider::HttpMethod::Put => "PUT",
-                provider::HttpMethod::Post => "POST",
-                provider::HttpMethod::Delete => "DELETE",
-            };
-            info!(target: "data_collection", step = "request", provider = cfg.name, event = event_str, method = method_str, url = request.url, body = request.body);
+        tokio::spawn(
+            async move {
+                let method_str = match request.method {
+                    provider::HttpMethod::Get => "GET",
+                    provider::HttpMethod::Put => "PUT",
+                    provider::HttpMethod::Post => "POST",
+                    provider::HttpMethod::Delete => "DELETE",
+                };
+                info!(
+                    step = "request",
+                    provider = cfg.name,
+                    event = event_str,
+                    method = method_str,
+                    url = request.url,
+                    body = request.body
+                );
 
-            let res = match request.method {
-                provider::HttpMethod::Get => client.get(request.url).headers(headers).send().await,
-                provider::HttpMethod::Put => {
-                    client
-                        .put(request.url)
-                        .headers(headers)
-                        .body(request.body)
-                        .send()
-                        .await
-                }
-                provider::HttpMethod::Post => {
-                    client
-                        .post(request.url)
-                        .headers(headers)
-                        .body(request.body)
-                        .send()
-                        .await
-                }
-                provider::HttpMethod::Delete => {
-                    client.delete(request.url).headers(headers).send().await
-                }
-            };
+                let res = match request.method {
+                    provider::HttpMethod::Get => {
+                        client.get(request.url).headers(headers).send().await
+                    }
+                    provider::HttpMethod::Put => {
+                        client
+                            .put(request.url)
+                            .headers(headers)
+                            .body(request.body)
+                            .send()
+                            .await
+                    }
+                    provider::HttpMethod::Post => {
+                        client
+                            .post(request.url)
+                            .headers(headers)
+                            .body(request.body)
+                            .send()
+                            .await
+                    }
+                    provider::HttpMethod::Delete => {
+                        client.delete(request.url).headers(headers).send().await
+                    }
+                };
 
-            match res {
-                Ok(res) => {
-                    if res.status().is_success() {
-                        let status_str = format!("{:?}", res.status());
-                        let body_res_str = res.text().await.unwrap_or_default();
-                        info!(target: "data_collection", step = "response", provider = cfg.name, event = event_str, method = method_str, status = status_str, body = body_res_str);
-                    } else {
-                        let status_str = format!("{:?}", res.status());
-                        let body_res_str = res.text().await.unwrap_or_default();
-                        error!(target: "data_collection", step = "response", provider = cfg.name, event = event_str, method = method_str, status = status_str, body = body_res_str);
+                match res {
+                    Ok(res) => {
+                        if res.status().is_success() {
+                            let status_str = format!("{:?}", res.status());
+                            let body_res_str = res.text().await.unwrap_or_default();
+                            info!(
+                                step = "response",
+                                provider = cfg.name,
+                                event = event_str,
+                                method = method_str,
+                                status = status_str,
+                                body = body_res_str
+                            );
+                        } else {
+                            let status_str = format!("{:?}", res.status());
+                            let body_res_str = res.text().await.unwrap_or_default();
+                            error!(
+                                step = "response",
+                                provider = cfg.name,
+                                event = event_str,
+                                method = method_str,
+                                status = status_str,
+                                body = body_res_str
+                            );
+                        }
+                    }
+                    Err(err) => {
+                        error!(
+                            step = "response",
+                            provider = cfg.name,
+                            event = event_str,
+                            method = method_str,
+                            err = err.to_string()
+                        );
                     }
                 }
-                Err(err) => {
-                    error!(target: "data_collection", step = "response", provider = cfg.name, event = event_str, method = method_str, err = err.to_string());
-                }
             }
-        });
+            .in_current_span(),
+        );
     }
 
     Ok(())

@@ -13,6 +13,9 @@ mod tools;
 #[derive(Debug, Parser)]
 #[command(about, author, version)]
 struct Options {
+    #[arg(long, env = "EDGEE_LOG_FORMAT", value_enum, default_value_t)]
+    log_format: logger::LogFormat,
+
     #[arg(short = 'f', long = "config", env = "EDGEE_CONFIG_PATH")]
     config_path: Option<PathBuf>,
 }
@@ -22,7 +25,7 @@ async fn main() {
     let options = Options::parse();
 
     config::config::init(options.config_path.as_deref());
-    logger::logger::init();
+    logger::init(options.log_format);
     proxy::compute::data_collection::components::init();
 
     tokio::select! {

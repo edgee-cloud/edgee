@@ -15,8 +15,12 @@ use json_comments::StripComments;
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::io::Read;
-use tracing::{info, warn};
+use tracing::{info, warn, Instrument};
 
+#[tracing::instrument(
+    name = "data_collection",
+    skip(document, edgee_cookie, request_headers, client_ip)
+)]
 pub async fn process_from_html(
     document: &Document,
     edgee_cookie: &EdgeeCookie,
@@ -57,11 +61,17 @@ pub async fn process_from_html(
     let payload_uuid = payload.uuid.clone();
 
     // send the payload to the data collection components
-    tokio::spawn(async move {
-        if let Err(err) = components::send_data_collection(payload.clone()).await {
-            warn!(?err, "failed to send data collection payload");
+    tokio::spawn(
+        async move {
+            if let Err(err) = components::send_data_collection(payload.clone())
+                .in_current_span()
+                .await
+            {
+                warn!(?err, "failed to send data collection payload");
+            }
         }
-    });
+        .in_current_span(),
+    );
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
     if config::get().compute.data_collection_api_key.is_some()
@@ -69,7 +79,7 @@ pub async fn process_from_html(
     {
         let api_key = config::get().compute.data_collection_api_key.as_ref()?;
         let api_url = config::get().compute.data_collection_api_url.as_ref()?;
-        info!(target: "data_collection", payload = payload_json.as_str());
+        info!(payload = payload_json.as_str());
         let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         tokio::spawn(async move {
@@ -86,6 +96,10 @@ pub async fn process_from_html(
     Option::from(payload_uuid)
 }
 
+#[tracing::instrument(
+    name = "data_collection",
+    skip(body, edgee_cookie, request_headers, client_ip)
+)]
 pub async fn process_from_json(
     body: &Bytes,
     edgee_cookie: &EdgeeCookie,
@@ -114,11 +128,14 @@ pub async fn process_from_json(
     let payload_json = serde_json::to_string(&payload).expect("Could not encode payload into JSON");
 
     // send the payload to the data collection components
-    tokio::spawn(async move {
-        if let Err(err) = components::send_data_collection(payload.clone()).await {
-            warn!(?err, "failed to send data collection payload");
+    tokio::spawn(
+        async move {
+            if let Err(err) = components::send_data_collection(payload.clone()).await {
+                warn!(?err, "failed to send data collection payload");
+            }
         }
-    });
+        .in_current_span(),
+    );
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
     if config::get().compute.data_collection_api_key.is_some()
@@ -134,7 +151,7 @@ pub async fn process_from_json(
             .data_collection_api_url
             .as_ref()
             .unwrap();
-        info!(target: "data_collection", payload = payload_json.as_str());
+        info!(payload = payload_json.as_str());
         let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         tokio::spawn(async move {
@@ -242,7 +259,7 @@ fn add_more_info_from_html_or_request(
                 None
             }
         })
-        .unwrap_or_else(|| format!("{}://{}{}", proto, host, incoming_path.to_string()));
+        .unwrap_or_else(|| format!("{}://{}{}", proto, host, incoming_path));
     payload.page.as_mut().unwrap().url = Some(url);
 
     // path: we first try to get it from the payload, then from the canonical, and finally from the request
@@ -276,8 +293,8 @@ fn add_more_info_from_html_or_request(
         })
         .map(|s| html_escape::decode_html_entities(&s).to_string())
         .or_else(|| incoming_path.query().map(|qs| "?".to_string() + qs))
-        .unwrap_or_else(|| "".to_string());
-    if search == "?" || search == "" {
+        .unwrap_or_default();
+    if search == "?" || search.is_empty() {
         // if search is = "?", we leave it blank
         payload.page.as_mut().unwrap().search = None;
     } else {
@@ -299,7 +316,7 @@ fn add_more_info_from_html_or_request(
                 None
             }
         })
-        .unwrap_or_else(|| "".to_string());
+        .unwrap_or_default();
     payload.page.as_mut().unwrap().title = Some(title.clone());
 
     // keywords: we first try to get it from the payload, and finally from the keywords meta tag
@@ -321,7 +338,7 @@ fn add_more_info_from_html_or_request(
                 None
             }
         })
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_default();
     payload.page.as_mut().unwrap().keywords = Some(keywords);
 
     payload
@@ -584,8 +601,5 @@ fn get_preferred_language(request_headers: &HeaderMap) -> String {
 /// # Errors
 /// This function will return a `serde_json::Error` if the JSON data cannot be parsed into a `Payload`.
 fn parse_payload<T: Read>(clean_json: T) -> Result<Payload, serde_json::Error> {
-    match serde_json::from_reader(clean_json) {
-        Ok(payload) => Ok(payload),
-        Err(e) => Err(e),
-    }
+    serde_json::from_reader(clean_json)
 }

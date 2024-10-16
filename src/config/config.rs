@@ -1,7 +1,9 @@
-use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::OnceLock;
+
+use serde::Deserialize;
+use tracing::level_filters::LevelFilter;
 
 static CONFIG: OnceLock<StaticConfiguration> = OnceLock::new();
 
@@ -11,7 +13,7 @@ pub trait Validate {
 
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct StaticConfiguration {
-    #[serde(default = "default_log_config")]
+    #[serde(default)]
     pub log: LogConfiguration,
 
     pub http: Option<HttpConfiguration>,
@@ -29,11 +31,6 @@ pub struct StaticConfiguration {
     pub components: ComponentsConfiguration,
 }
 
-fn default_log_config() -> LogConfiguration {
-    LogConfiguration {
-        level: "info".to_string(),
-    }
-}
 fn default_compute_config() -> ComputeConfiguration {
     ComputeConfiguration {
         cookie_name: default_cookie_name(),
@@ -88,9 +85,21 @@ impl StaticConfiguration {
     }
 }
 
-#[derive(Deserialize, Debug, Clone, Default)]
+#[serde_with::serde_as]
+#[derive(Deserialize, Debug, Clone)]
 pub struct LogConfiguration {
-    pub level: String,
+    #[serde_as(as = "serde_with::DisplayFromStr")]
+    pub level: LevelFilter,
+    pub span: Option<String>,
+}
+
+impl Default for LogConfiguration {
+    fn default() -> Self {
+        Self {
+            level: LevelFilter::INFO,
+            span: None,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -264,7 +273,7 @@ pub fn get() -> &'static StaticConfiguration {
 #[cfg(test)]
 pub fn init_test_config() {
     let config = StaticConfiguration {
-        log: default_log_config(),
+        log: Default::default(),
         http: Some(HttpConfiguration {
             address: "127.0.0.1:8080".to_string(),
             force_https: false,
