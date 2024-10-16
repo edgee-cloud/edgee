@@ -56,11 +56,4 @@ pub fn init(log_format: LogFormat) {
         .with(filter_layer)
         .with(fmt_layer)
         .init();
-
-    // let filter: EnvFilter = EnvFilter::from(&config.level);
-    // if cfg!(debug_assertions) {
-    //     registry().with(fmt::layer()).with(filter).init();
-    // } else {
-    //     registry().with(fmt::layer().json()).with(filter).init();
-    // }
 }
