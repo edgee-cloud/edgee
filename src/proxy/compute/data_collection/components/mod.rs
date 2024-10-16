@@ -158,15 +158,15 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
                             if res.status().is_success() {
                                 let status_str = format!("{:?}", res.status());
                                 let body_res_str = res.text().await.unwrap_or_default();
-                                info!(target: "data_collection", step = "response", provider = cfg.name, event = event_str, method = method_str, status = status_str, body = body_res_str);
+                                info!(step = "response", provider = cfg.name, event = event_str, method = method_str, status = status_str, body = body_res_str);
                             } else {
                                 let status_str = format!("{:?}", res.status());
                                 let body_res_str = res.text().await.unwrap_or_default();
-                                error!(target: "data_collection", step = "response", provider = cfg.name, event = event_str, method = method_str, status = status_str, body = body_res_str);
+                                error!(step = "response", provider = cfg.name, event = event_str, method = method_str, status = status_str, body = body_res_str);
                             }
                         }
                         Err(err) => {
-                            error!(target: "data_collection", step = "response", provider = cfg.name, event = event_str, method = method_str, err = err.to_string());
+                            error!(step = "response", provider = cfg.name, event = event_str, method = method_str, err = err.to_string());
                         }
                     }
                 }

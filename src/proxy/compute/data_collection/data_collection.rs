@@ -19,7 +19,7 @@ use tracing::{info, warn, Instrument};
 
 #[tracing::instrument(
     name = "data_collection",
-    skip(document, edgee_cookie, request_headers, client_ip)
+    skip(document, edgee_cookie, proto, host, path, request_headers, client_ip)
 )]
 pub async fn process_from_html(
     document: &Document,
@@ -105,16 +105,13 @@ pub async fn process_from_html(
         return Option::from("[]".to_string());
     }
 
-    let events_json =
-        serde_json::to_string(&events).expect("Could not encode data collection events into JSON");
-    info!(target: "data_collection", events = events_json.as_str());
+    let events_json = serde_json::to_string(&events).expect("Could not encode data collection events into JSON");
+    info!(events = events_json.as_str());
 
     // send the payload to the data collection components
     tokio::spawn(
         async move {
-            if let Err(err) = components::send_data_collection(&events)
-                .in_current_span()
-                .await
+            if let Err(err) = components::send_data_collection(&events).await
             {
                 warn!(?err, "failed to send data collection payload");
             }
@@ -148,7 +145,7 @@ pub async fn process_from_html(
 
 #[tracing::instrument(
     name = "data_collection",
-    skip(body, edgee_cookie, request_headers, client_ip)
+    skip(body, edgee_cookie, path, request_headers, client_ip)
 )]
 pub async fn process_from_json(
     body: &Bytes,
@@ -201,14 +198,12 @@ pub async fn process_from_json(
 
     let events_json =
         serde_json::to_string(&events).expect("Could not encode data collection events into JSON");
-    info!(target: "data_collection", events = events_json.as_str());
+    info!(events = events_json.as_str());
 
     // send the payload to the data collection components
     tokio::spawn(
         async move {
-            if let Err(err) = components::send_data_collection(&events)
-                .in_current_span()
-                .await
+            if let Err(err) = components::send_data_collection(&events).await
             {
                 warn!(?err, "failed to send data collection payload");
             }
