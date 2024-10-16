@@ -19,11 +19,17 @@ pub struct ComponentsContext {
 
 impl ComponentsContext {
     fn new() -> anyhow::Result<Self> {
+        let config = &config::get().components;
+
         let mut engine_config = wasmtime::Config::new();
         engine_config
             .wasm_backtrace_details(wasmtime::WasmBacktraceDetails::Enable)
             .wasm_component_model(true)
             .async_support(true);
+
+        if let Some(path) = config.cache.as_deref() {
+            engine_config.cache_config_load(path)?;
+        };
 
         let engine = Engine::new(&engine_config)?;
 
