@@ -105,18 +105,18 @@ pub async fn process_from_html(
         return Option::from("[]".to_string());
     }
 
-    let events_json = serde_json::to_string(&events).expect("Could not encode data collection events into JSON");
+    let events_json =
+        serde_json::to_string(&events).expect("Could not encode data collection events into JSON");
     info!(events = events_json.as_str());
 
     // send the payload to the data collection components
     tokio::spawn(
         async move {
-            if let Err(err) = components::send_data_collection(&events).await
-            {
+            if let Err(err) = components::send_data_collection(&events).await {
                 warn!(?err, "failed to send data collection payload");
             }
         }
-        .in_current_span()
+        .in_current_span(),
     );
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
@@ -203,12 +203,11 @@ pub async fn process_from_json(
     // send the payload to the data collection components
     tokio::spawn(
         async move {
-            if let Err(err) = components::send_data_collection(&events).await
-            {
+            if let Err(err) = components::send_data_collection(&events).await {
                 warn!(?err, "failed to send data collection payload");
             }
         }
-        .in_current_span()
+        .in_current_span(),
     );
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
