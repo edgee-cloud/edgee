@@ -20,13 +20,15 @@ pub struct ComponentsContext {
 impl ComponentsContext {
     fn new() -> anyhow::Result<Self> {
         let mut engine_config = wasmtime::Config::new();
-        engine_config.wasm_component_model(true);
-        engine_config.async_support(true);
+        engine_config
+            .wasm_backtrace_details(wasmtime::WasmBacktraceDetails::Enable)
+            .wasm_component_model(true)
+            .async_support(true);
 
         let engine = Engine::new(&engine_config)?;
 
         let mut linker = Linker::new(&engine);
-        wasmtime_wasi::add_to_linker_sync(&mut linker)?;
+        wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
         let config = config::get();
         let components = config
@@ -34,9 +36,17 @@ impl ComponentsContext {
             .data_collection
             .iter()
             .map(|entry| {
+                let span = tracing::info_span!("component-context", component = %entry.name);
+                let _span = span.enter();
+
+                tracing::debug!("Start pre-instanciate component");
+
                 let component = Component::from_file(&engine, &entry.component)?;
                 let instance_pre = linker.instantiate_pre(&component)?;
                 let instance_pre = DataCollectionPre::new(instance_pre)?;
+
+                tracing::debug!("Finished pre-instanciate component");
+
                 Ok((entry.name.clone(), instance_pre))
             })
             .collect::<anyhow::Result<_>>()?;
