@@ -1,7 +1,6 @@
 use std::convert::Infallible;
 use std::io::{Read, Write};
 use std::net::SocketAddr;
-use std::str::FromStr;
 
 use brotli::{CompressorWriter, Decompressor};
 use bytes::Bytes;
@@ -20,10 +19,11 @@ use crate::proxy::context::routing::RoutingContext;
 use crate::proxy::controller::controller;
 use crate::tools::path;
 
-const EDGEE_HEADER: &str = "x-edgee";
-const EDGEE_FULL_DURATION_HEADER: &str = "x-edgee-full-duration";
-const EDGEE_COMPUTE_DURATION_HEADER: &str = "x-edgee-compute-duration";
-const EDGEE_PROXY_DURATION_HEADER: &str = "x-edgee-proxy-duration";
+const EDGEE_HEADER: HeaderName = HeaderName::from_static("x-edgee");
+const EDGEE_FULL_DURATION_HEADER: HeaderName = HeaderName::from_static("x-edgee-full-duration");
+const EDGEE_COMPUTE_DURATION_HEADER: HeaderName =
+    HeaderName::from_static("x-edgee-compute-duration");
+const EDGEE_PROXY_DURATION_HEADER: HeaderName = HeaderName::from_static("x-edgee-proxy-duration");
 
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
@@ -353,19 +353,19 @@ fn set_duration_headers(
 ) {
     if is_debug_mode {
         response_parts.headers.insert(
-            HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
+            EDGEE_FULL_DURATION_HEADER,
             HeaderValue::from_str(format!("{}ms", full_duration).as_str()).unwrap(),
         );
     }
     if let Some(duration) = compute_duration {
         response_parts.headers.insert(
-            HeaderName::from_str(EDGEE_COMPUTE_DURATION_HEADER).unwrap(),
+            EDGEE_COMPUTE_DURATION_HEADER,
             HeaderValue::from_str(format!("{}ms", duration).as_str()).unwrap(),
         );
         if is_debug_mode {
             let proxy_duration = full_duration - duration;
             response_parts.headers.insert(
-                HeaderName::from_str(EDGEE_PROXY_DURATION_HEADER).unwrap(),
+                EDGEE_PROXY_DURATION_HEADER,
                 HeaderValue::from_str(format!("{}ms", proxy_duration).as_str()).unwrap(),
             );
         }
@@ -383,10 +383,9 @@ fn set_duration_headers(
 ///
 /// The function inserts the process information into the response headers.
 pub fn set_edgee_header(response_parts: &mut Parts, process: &str) {
-    response_parts.headers.insert(
-        HeaderName::from_str(EDGEE_HEADER).unwrap(),
-        HeaderValue::from_str(process).unwrap(),
-    );
+    response_parts
+        .headers
+        .insert(EDGEE_HEADER, HeaderValue::from_str(process).unwrap());
 }
 
 /// Determines whether to proxy the request based on various conditions.
