@@ -28,7 +28,7 @@ pub async fn process_from_html(
     host: &str,
     path: &PathAndQuery,
     request_headers: &HeaderMap,
-    client_ip: &String,
+    client_ip: &str,
 ) -> Option<String> {
     let json_context = document.data_layer.clone();
     let mut payload = Payload::default();
@@ -152,7 +152,7 @@ pub async fn process_from_json(
     edgee_cookie: &EdgeeCookie,
     path: &PathAndQuery,
     request_headers: &HeaderMap,
-    client_ip: &String,
+    client_ip: &str,
 ) -> Option<String> {
     // populate the edgee payload from the json
     let payload_result = parse_payload(body.as_ref());
@@ -411,7 +411,7 @@ fn add_more_info_from_html_or_request(
                 None
             }
         })
-        .unwrap_or_else(|| format!("{}://{}{}", proto, host, incoming_path.to_string()));
+        .unwrap_or_else(|| format!("{}://{}{}", proto, host, incoming_path));
     payload
         .data_collection
         .as_mut()
@@ -564,7 +564,7 @@ fn add_more_info_from_html_or_request(
                 None
             }
         })
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_default();
     payload
         .data_collection
         .as_mut()
@@ -594,7 +594,7 @@ fn add_more_info_from_request(
     request_headers: &HeaderMap,
     mut payload: Payload,
     path: &PathAndQuery,
-    client_ip: &String,
+    client_ip: &str,
 ) -> Payload {
     // first, prepare the payload
     if payload

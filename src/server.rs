@@ -1,64 +1,61 @@
-use crate::config::config;
-use crate::proxy;
-use bytes::Bytes;
-use http_body_util::combinators::BoxBody;
-use hyper::body::Incoming;
+use std::sync::Arc;
+use std::{fs, io, net::SocketAddr};
+
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto::Builder;
-use proxy::proxy::handle_request;
+use hyper_util::service::TowerToHyperService;
 use rustls::ServerConfig;
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::{convert::Infallible, fs, io, net::SocketAddr};
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
 use tracing::{error, info};
 
+use crate::config::config::{self, HttpConfiguration, HttpsConfiguration};
+use crate::proxy::proxy;
+
+type Response = http::Response<tower_http::compression::CompressionBody<proxy::ResponseBody>>;
+
 pub async fn start() -> anyhow::Result<()> {
+    use futures::future::try_join_all;
+
     let config = config::get();
     let mut tasks = Vec::new();
 
-    if config.http.is_some() {
+    if let Some(ref config) = config.http {
         tasks.push(tokio::spawn(async {
-            if let Err(err) = http().await {
+            if let Err(err) = http(config).await {
                 error!(?err, "Failed to start HTTP entrypoint");
             }
         }));
     }
 
-    if config.https.is_some() {
+    if let Some(ref config) = config.https {
         tasks.push(tokio::spawn(async {
-            if let Err(err) = https().await {
+            if let Err(err) = https(config).await {
                 error!(?err, "Failed to start HTTPS entrypoint");
             }
         }));
     }
 
-    tokio::select! {
-        _ = tasks.pop().unwrap() => Ok(()),
-    }
+    let _ = try_join_all(tasks).await;
+    Ok(())
 }
 
-async fn http() -> anyhow::Result<()> {
-    let cfg = config::get()
-        .http
-        .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("HTTP configuration is missing"))?;
-
+async fn http(config: &HttpConfiguration) -> anyhow::Result<()> {
     info!(
-        address = cfg.address,
-        force_https = cfg.force_https,
+        address = config.address,
+        force_https = config.force_https,
         "Starting HTTP entrypoint"
     );
 
-    let addr: SocketAddr = cfg.address.parse()?;
+    let addr: SocketAddr = config.address.parse()?;
     let listener = TcpListener::bind(addr).await?;
     loop {
         let (stream, remote_addr) = listener.accept().await?;
+
         let io = TokioIo::new(stream);
-        let service = RequestManager::new(remote_addr, "http".to_string());
+        let service = TowerToHyperService::new(make_service(remote_addr, "http"));
+
         tokio::spawn(async move {
             if let Err(err) = Builder::new(TokioExecutor::new())
                 .serve_connection_with_upgrades(io, service)
@@ -70,15 +67,10 @@ async fn http() -> anyhow::Result<()> {
     }
 }
 
-async fn https() -> anyhow::Result<()> {
-    let cfg = config::get()
-        .https
-        .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("HTTPS configuration is missing"))?;
+async fn https(config: &HttpsConfiguration) -> anyhow::Result<()> {
+    info!(address = config.address, "Starting HTTPS entrypoint");
 
-    info!(address = cfg.address, "Starting HTTPS entrypoint");
-
-    let addr: SocketAddr = cfg.address.parse()?;
+    let addr: SocketAddr = config.address.parse()?;
     let listener = TcpListener::bind(addr).await?;
     fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer<'static>>> {
         let certfile = fs::File::open(filename).unwrap();
@@ -93,8 +85,8 @@ async fn https() -> anyhow::Result<()> {
     }
 
     let _ = rustls::crypto::ring::default_provider().install_default();
-    let certs = load_certs(&cfg.cert).unwrap();
-    let key = load_key(&cfg.key).unwrap();
+    let certs = load_certs(&config.cert).unwrap();
+    let key = load_key(&config.key).unwrap();
     let mut server_config = ServerConfig::builder()
         .with_no_client_auth()
         .with_single_cert(certs, key)
@@ -105,16 +97,19 @@ async fn https() -> anyhow::Result<()> {
     loop {
         let (stream, remote_addr) = listener.accept().await?;
         let tls_acceptor = tls_acceptor.clone();
+
+        let tls_stream = match tls_acceptor.accept(stream).await {
+            Ok(tls_stream) => tls_stream,
+            Err(err) => {
+                error!(?err, "failed to perform tls handshake");
+                continue;
+            }
+        };
+
+        let io = TokioIo::new(tls_stream);
+        let service = TowerToHyperService::new(make_service(remote_addr, "https"));
+
         tokio::spawn(async move {
-            let tls_stream = match tls_acceptor.accept(stream).await {
-                Ok(tls_stream) => tls_stream,
-                Err(err) => {
-                    error!(?err, "failed to perform tls handshake");
-                    return;
-                }
-            };
-            let io = TokioIo::new(tls_stream);
-            let service = RequestManager::new(remote_addr, "https".to_string());
             if let Err(err) = Builder::new(TokioExecutor::new())
                 .serve_connection_with_upgrades(io, service)
                 .await
@@ -125,32 +120,28 @@ async fn https() -> anyhow::Result<()> {
     }
 }
 
-type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send + 'static>>;
-
-pub struct RequestManager {
+/// Create the service pipeline, using the proxy handler as the "final" request handler
+///
+/// Arguments:
+/// - `remote_addr`: Remote client address
+/// - `proto`: Protocol used (HTTP or HTTPS)
+///
+/// Returns:
+///
+/// A full service pipeline for handling a client request
+fn make_service(
     remote_addr: SocketAddr,
-    proto: String,
-}
+    proto: &str,
+) -> tower::util::BoxCloneService<proxy::Request, Response, anyhow::Error> {
+    use tower::{ServiceBuilder, ServiceExt};
+    use tower_http::compression::CompressionLayer;
 
-impl RequestManager {
-    pub fn new(addr: SocketAddr, proto: String) -> Self {
-        Self {
-            remote_addr: addr,
-            proto,
-        }
-    }
-}
-
-impl hyper::service::Service<http::Request<Incoming>> for RequestManager {
-    type Response = http::Response<BoxBody<Bytes, Infallible>>;
-    type Error = anyhow::Error;
-    type Future = BoxFuture<anyhow::Result<Self::Response>>;
-
-    fn call(&self, req: http::Request<Incoming>) -> Self::Future {
-        if self.proto == "https" {
-            Box::pin(handle_request(req, self.remote_addr, "https"))
-        } else {
-            Box::pin(handle_request(req, self.remote_addr, "http"))
-        }
-    }
+    let proto = proto.to_string();
+    ServiceBuilder::new()
+        .layer(CompressionLayer::new())
+        .service_fn(move |req| {
+            let proto = proto.clone();
+            async move { proxy::handle_request(req, remote_addr, &proto).await }
+        })
+        .boxed_clone()
 }

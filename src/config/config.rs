@@ -38,7 +38,6 @@ fn default_compute_config() -> ComputeConfiguration {
         aes_iv: default_aes_iv(),
         behind_proxy_cache: false,
         max_decompressed_body_size: default_max_decompressed_body_size(),
-        max_compressed_body_size: default_max_compressed_body_size(),
         proxy_only: false,
         enforce_no_store_policy: false,
         data_collection_api_key: None,
@@ -185,8 +184,6 @@ pub struct ComputeConfiguration {
     pub behind_proxy_cache: bool,
     #[serde(default = "default_max_decompressed_body_size")]
     pub max_decompressed_body_size: usize,
-    #[serde(default = "default_max_compressed_body_size")]
-    pub max_compressed_body_size: usize,
     #[serde(default)]
     pub proxy_only: bool,
     #[serde(default)]
@@ -205,10 +202,8 @@ fn default_aes_iv() -> String {
     "__iv.edgee.cloud".to_string()
 }
 fn default_max_decompressed_body_size() -> usize {
-    6000000
-}
-fn default_max_compressed_body_size() -> usize {
-    3000000
+    // 6 MB
+    6_000_000
 }
 
 fn read_config(path: Option<&Path>) -> Result<StaticConfiguration, String> {
