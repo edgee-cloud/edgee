@@ -49,7 +49,7 @@ Once you have a valid configuration file (see next section), you can run Edgee i
 You can install and run `edgee` locally using the installer script:
 
 ```shell
-$ curl --proto '=https' --tlsv1.2 -sSf https://install.edgee.cloud | sh
+$ curl https://install.edgee.cloud | sh
 [...]
 $ ./edgee
 ```
