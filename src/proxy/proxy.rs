@@ -1,10 +1,8 @@
-use crate::config::config;
-use crate::proxy::compute::compute;
-use crate::proxy::context::incoming::IncomingContext;
-use crate::proxy::context::proxy::ProxyContext;
-use crate::proxy::context::routing::RoutingContext;
-use crate::proxy::controller::controller;
-use crate::tools::path;
+use std::convert::Infallible;
+use std::io::{Read, Write};
+use std::net::SocketAddr;
+use std::str::FromStr;
+
 use brotli::{CompressorWriter, Decompressor};
 use bytes::Bytes;
 use http::response::Parts;
@@ -12,13 +10,15 @@ use http::{header, HeaderName, HeaderValue, Method};
 use http_body_util::{combinators::BoxBody, BodyExt};
 use hyper::body::Incoming;
 use libflate::{deflate, gzip};
-use std::{
-    convert::Infallible,
-    io::{Read, Write},
-    net::SocketAddr,
-    str::FromStr,
-};
 use tracing::{error, info, warn};
+
+use crate::config::config;
+use crate::proxy::compute::compute;
+use crate::proxy::context::incoming::IncomingContext;
+use crate::proxy::context::proxy::ProxyContext;
+use crate::proxy::context::routing::RoutingContext;
+use crate::proxy::controller::controller;
+use crate::tools::path;
 
 const EDGEE_HEADER: &str = "x-edgee";
 const EDGEE_FULL_DURATION_HEADER: &str = "x-edgee-full-duration";
@@ -42,7 +42,7 @@ pub async fn handle_request(
     let is_debug_mode = incoming_ctx.is_debug_mode;
     let content_type = incoming_ctx
         .header(header::CONTENT_TYPE)
-        .unwrap_or(String::new());
+        .unwrap_or_default();
     let incoming_method = incoming_ctx.method().clone();
     let incoming_host = incoming_ctx.host().clone();
     let incoming_path = incoming_ctx.path().clone();
@@ -86,26 +86,26 @@ pub async fn handle_request(
     }
 
     // event path, method POST and content-type application/json
-    if incoming_method == Method::POST && content_type == "application/json" {
-        if incoming_path.path() == "/_edgee/event"
-            || path::validate(incoming_host.as_str(), incoming_path.path())
-        {
-            info!(
-                "204 - {} {}{} - {}ms",
-                incoming_method,
-                incoming_host,
-                incoming_path,
-                timer_start.elapsed().as_millis()
-            );
-            return controller::edgee_client_event(
-                incoming_ctx,
-                &incoming_host,
-                &incoming_path,
-                &incoming_headers,
-                &client_ip,
-            )
-            .await;
-        }
+    if incoming_method == Method::POST
+        && content_type == "application/json"
+        && (incoming_path.path() == "/_edgee/event"
+            || path::validate(incoming_host.as_str(), incoming_path.path()))
+    {
+        info!(
+            "204 - {} {}{} - {}ms",
+            incoming_method,
+            incoming_host,
+            incoming_path,
+            timer_start.elapsed().as_millis()
+        );
+        return controller::edgee_client_event(
+            incoming_ctx,
+            &incoming_host,
+            &incoming_path,
+            &incoming_headers,
+            &client_ip,
+        )
+        .await;
     }
 
     // event path for third party integration (Edgee installed like a third party, and use localstorage)
@@ -230,8 +230,8 @@ pub async fn handle_request(
             };
 
             // interpret what's in the body
-            let _ = match compute::html_handler(
-                &mut body_str,
+            match compute::html_handler(
+                &body_str,
                 &incoming_host,
                 &incoming_path,
                 &incoming_headers,
@@ -243,10 +243,8 @@ pub async fn handle_request(
             {
                 Ok(document) => {
                     let mut page_event_param = r#" data-client-side="true""#;
-                    let event_path_param = format!(
-                        r#" data-event-path="{}""#,
-                        path::generate(&incoming_host.as_str())
-                    );
+                    let event_path_param =
+                        format!(r#" data-event-path="{}""#, path::generate(&incoming_host));
 
                     let mut debug_script = "".to_string();
                     if !document.data_collection_events.is_empty() {
@@ -475,15 +473,15 @@ fn do_only_proxy(
     }
 
     // if the response is compressed and if content length is greater than the max_compressed_body_size configuration
-    if ["gzip", "deflate", "br"].contains(&encoding.unwrap_or_default()) {
-        if response_body.len() > config::get().compute.max_compressed_body_size {
-            warn!(
-                "compressed body too large: {} > {}",
-                response_body.len(),
-                config::get().compute.max_compressed_body_size
-            );
-            Err("proxy-only(compressed-body-too-large)")?;
-        }
+    if ["gzip", "deflate", "br"].contains(&encoding.unwrap_or_default())
+        && response_body.len() > config::get().compute.max_compressed_body_size
+    {
+        warn!(
+            "compressed body too large: {} > {}",
+            response_body.len(),
+            config::get().compute.max_compressed_body_size
+        );
+        Err("proxy-only(compressed-body-too-large)")?;
     }
 
     Ok(false)

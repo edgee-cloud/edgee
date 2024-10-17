@@ -17,10 +17,10 @@ type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
 pub async fn edgee_client_event(
     incoming_ctx: IncomingContext,
-    host: &String,
+    host: &str,
     path: &PathAndQuery,
     request_headers: &HeaderMap,
-    client_ip: &String,
+    client_ip: &str,
 ) -> anyhow::Result<Response> {
     let res = http::Response::builder()
         .status(StatusCode::NO_CONTENT)
@@ -29,11 +29,11 @@ pub async fn edgee_client_event(
         .body(empty())?;
 
     let (mut response_parts, _incoming) = res.into_parts();
-    let cookie = edgee_cookie::get_or_set(&request_headers, &mut response_parts, &host);
+    let cookie = edgee_cookie::get_or_set(request_headers, &mut response_parts, host);
 
     let body = incoming_ctx.incoming_body.collect().await?.to_bytes();
     let mut data_collection_events: String = String::new();
-    if body.len() > 0 {
+    if !body.is_empty() {
         let data_collection_events_res =
             compute::json_handler(&body, &cookie, path, request_headers, client_ip).await;
         if data_collection_events_res.is_ok() {
@@ -56,11 +56,9 @@ pub async fn edgee_client_event_from_third_party_sdk(
     incoming_ctx: IncomingContext,
     path: &PathAndQuery,
     request_headers: &HeaderMap,
-    client_ip: &String,
+    client_ip: &str,
 ) -> anyhow::Result<Response> {
     let body = incoming_ctx.incoming_body.collect().await?.to_bytes();
-
-    let cookie: EdgeeCookie;
 
     // get "e" from query string
     let map: HashMap<String, String> = path
@@ -72,19 +70,18 @@ pub async fn edgee_client_event_from_third_party_sdk(
         .map(|v| (v[0].to_string(), v[1].to_string()))
         .collect();
     let e = map.get("e");
-    if e.is_none() {
-        // user has no id, set a new cookie
-        cookie = EdgeeCookie::new();
-    } else {
+    let cookie = if let Some(e) = e {
         // user has an id, decrypt it. if decryption fails, set a new cookie
-        cookie =
-            edgee_cookie::decrypt_and_update(e.unwrap()).unwrap_or_else(|_| EdgeeCookie::new());
-    }
+        edgee_cookie::decrypt_and_update(e).unwrap_or_else(|_| EdgeeCookie::new())
+    } else {
+        // user has no id, set a new cookie
+        EdgeeCookie::new()
+    };
     let cookie_str = serde_json::to_string(&cookie).unwrap();
     let cookie_encrypted = encrypt(&cookie_str).unwrap();
 
     let mut data_collection_events: String = String::new();
-    if body.len() > 0 {
+    if !body.is_empty() {
         let data_collection_events_res =
             compute::json_handler(&body, &cookie, path, request_headers, client_ip).await;
         if data_collection_events_res.is_ok() {
@@ -93,7 +90,7 @@ pub async fn edgee_client_event_from_third_party_sdk(
     }
 
     let mut body = Full::from(Bytes::from(format!(r#"{{"e":"{}"}}"#, cookie_encrypted))).boxed();
-    if incoming_ctx.is_debug_mode && data_collection_events.len() > 0 {
+    if incoming_ctx.is_debug_mode && !data_collection_events.is_empty() {
         body = Full::from(Bytes::from(format!(
             r#"{{"e":"{}", "events":{}}}"#,
             cookie_encrypted, data_collection_events
@@ -138,7 +135,7 @@ pub fn redirect_to_https(
 
 pub fn sdk(path: &str) -> anyhow::Result<Response> {
     let inlined_sdk = html::get_sdk_from_url(path);
-    if inlined_sdk.is_ok() {
+    if let Ok(inlined_sdk) = inlined_sdk {
         Ok(http::Response::builder()
             .status(StatusCode::OK)
             .header(
@@ -146,7 +143,7 @@ pub fn sdk(path: &str) -> anyhow::Result<Response> {
                 "application/javascript; charset=utf-8",
             )
             .header(header::CACHE_CONTROL, "public, max-age=300")
-            .body(Full::from(Bytes::from(inlined_sdk.unwrap())).boxed())
+            .body(Full::from(Bytes::from(inlined_sdk)).boxed())
             .expect("serving sdk should never fail"))
     } else {
         Ok(http::Response::builder()
@@ -172,6 +169,8 @@ fn empty() -> BoxBody<Bytes, Infallible> {
 pub fn build_response(mut parts: http::response::Parts, body: Bytes) -> Response {
     // Update Content-Length header to correct size
     parts.headers.insert("content-length", body.len().into());
+
+    parts.headers.remove("transfer-encoding");
 
     let mut builder = http::Response::builder();
     for (name, value) in parts.headers {

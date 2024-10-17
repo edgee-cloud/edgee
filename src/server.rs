@@ -1,5 +1,8 @@
-use crate::config::config;
-use crate::proxy;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::{convert::Infallible, fs, io, net::SocketAddr};
+
 use bytes::Bytes;
 use http_body_util::combinators::BoxBody;
 use hyper::body::Incoming;
@@ -8,29 +11,28 @@ use hyper_util::server::conn::auto::Builder;
 use proxy::proxy::handle_request;
 use rustls::ServerConfig;
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::{convert::Infallible, fs, io, net::SocketAddr};
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
 use tracing::{error, info};
+
+use crate::config::config::{self, HttpConfiguration, HttpsConfiguration};
+use crate::proxy;
 
 pub async fn start() -> anyhow::Result<()> {
     let config = config::get();
     let mut tasks = Vec::new();
 
-    if config.http.is_some() {
+    if let Some(ref config) = config.http {
         tasks.push(tokio::spawn(async {
-            if let Err(err) = http().await {
+            if let Err(err) = http(config).await {
                 error!(?err, "Failed to start HTTP entrypoint");
             }
         }));
     }
 
-    if config.https.is_some() {
+    if let Some(ref config) = config.https {
         tasks.push(tokio::spawn(async {
-            if let Err(err) = https().await {
+            if let Err(err) = https(config).await {
                 error!(?err, "Failed to start HTTPS entrypoint");
             }
         }));
@@ -41,24 +43,21 @@ pub async fn start() -> anyhow::Result<()> {
     }
 }
 
-async fn http() -> anyhow::Result<()> {
-    let cfg = config::get()
-        .http
-        .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("HTTP configuration is missing"))?;
-
+async fn http(config: &HttpConfiguration) -> anyhow::Result<()> {
     info!(
-        address = cfg.address,
-        force_https = cfg.force_https,
+        address = config.address,
+        force_https = config.force_https,
         "Starting HTTP entrypoint"
     );
 
-    let addr: SocketAddr = cfg.address.parse()?;
+    let addr: SocketAddr = config.address.parse()?;
     let listener = TcpListener::bind(addr).await?;
     loop {
         let (stream, remote_addr) = listener.accept().await?;
+
         let io = TokioIo::new(stream);
-        let service = RequestManager::new(remote_addr, "http".to_string());
+        let service = RequestManager::new(remote_addr, "http");
+
         tokio::spawn(async move {
             if let Err(err) = Builder::new(TokioExecutor::new())
                 .serve_connection_with_upgrades(io, service)
@@ -70,15 +69,10 @@ async fn http() -> anyhow::Result<()> {
     }
 }
 
-async fn https() -> anyhow::Result<()> {
-    let cfg = config::get()
-        .https
-        .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("HTTPS configuration is missing"))?;
+async fn https(config: &HttpsConfiguration) -> anyhow::Result<()> {
+    info!(address = config.address, "Starting HTTPS entrypoint");
 
-    info!(address = cfg.address, "Starting HTTPS entrypoint");
-
-    let addr: SocketAddr = cfg.address.parse()?;
+    let addr: SocketAddr = config.address.parse()?;
     let listener = TcpListener::bind(addr).await?;
     fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer<'static>>> {
         let certfile = fs::File::open(filename).unwrap();
@@ -93,8 +87,8 @@ async fn https() -> anyhow::Result<()> {
     }
 
     let _ = rustls::crypto::ring::default_provider().install_default();
-    let certs = load_certs(&cfg.cert).unwrap();
-    let key = load_key(&cfg.key).unwrap();
+    let certs = load_certs(&config.cert).unwrap();
+    let key = load_key(&config.key).unwrap();
     let mut server_config = ServerConfig::builder()
         .with_no_client_auth()
         .with_single_cert(certs, key)
@@ -105,16 +99,19 @@ async fn https() -> anyhow::Result<()> {
     loop {
         let (stream, remote_addr) = listener.accept().await?;
         let tls_acceptor = tls_acceptor.clone();
+
+        let tls_stream = match tls_acceptor.accept(stream).await {
+            Ok(tls_stream) => tls_stream,
+            Err(err) => {
+                error!(?err, "failed to perform tls handshake");
+                continue;
+            }
+        };
+
+        let io = TokioIo::new(tls_stream);
+        let service = RequestManager::new(remote_addr, "https");
+
         tokio::spawn(async move {
-            let tls_stream = match tls_acceptor.accept(stream).await {
-                Ok(tls_stream) => tls_stream,
-                Err(err) => {
-                    error!(?err, "failed to perform tls handshake");
-                    return;
-                }
-            };
-            let io = TokioIo::new(tls_stream);
-            let service = RequestManager::new(remote_addr, "https".to_string());
             if let Err(err) = Builder::new(TokioExecutor::new())
                 .serve_connection_with_upgrades(io, service)
                 .await
@@ -133,10 +130,10 @@ pub struct RequestManager {
 }
 
 impl RequestManager {
-    pub fn new(addr: SocketAddr, proto: String) -> Self {
+    pub fn new(addr: SocketAddr, proto: &str) -> Self {
         Self {
             remote_addr: addr,
-            proto,
+            proto: proto.into(),
         }
     }
 }
