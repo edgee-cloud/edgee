@@ -1,15 +1,12 @@
 use std::convert::Infallible;
-use std::io::{Read, Write};
 use std::net::SocketAddr;
 
-use brotli::{CompressorWriter, Decompressor};
 use bytes::Bytes;
 use http::response::Parts;
 use http::{header, HeaderName, HeaderValue, Method};
 use http_body_util::{combinators::BoxBody, BodyExt};
 use hyper::body::Incoming;
-use libflate::{deflate, gzip};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use crate::config::config;
 use crate::proxy::compute::compute;
@@ -25,10 +22,12 @@ const EDGEE_COMPUTE_DURATION_HEADER: HeaderName =
     HeaderName::from_static("x-edgee-compute-duration");
 const EDGEE_PROXY_DURATION_HEADER: HeaderName = HeaderName::from_static("x-edgee-proxy-duration");
 
-type Response = http::Response<BoxBody<Bytes, Infallible>>;
+pub type Request = http::Request<Incoming>;
+pub type ResponseBody = BoxBody<Bytes, Infallible>;
+pub type Response = http::Response<ResponseBody>;
 
 pub async fn handle_request(
-    request: http::Request<Incoming>,
+    request: Request,
     remote_addr: SocketAddr,
     proto: &str,
 ) -> anyhow::Result<Response> {
@@ -158,19 +157,8 @@ pub async fn handle_request(
     let proxy_ctx = ProxyContext::new(incoming_ctx, &routing_ctx);
 
     // send request and get response
-    let res = proxy_ctx.response().await;
+    let res = proxy_ctx.forward_request().await;
     match res {
-        Err(err) => {
-            error!("backend request failed: {}", err);
-            info!(
-                "502 - {} {}{} - {}ms",
-                incoming_method,
-                incoming_host,
-                incoming_path,
-                timer_start.elapsed().as_millis()
-            );
-            controller::bad_gateway_error()
-        }
         Ok(upstream) => {
             let (mut response_parts, incoming) = upstream.into_parts();
             let response_body = incoming.collect().await?.to_bytes();
@@ -200,34 +188,8 @@ pub async fn handle_request(
 
             set_edgee_header(&mut response_parts, "compute");
             let proxy_duration = timer_start.elapsed().as_millis();
-            let response_headers = response_parts.headers.clone();
-            let encoding = response_headers
-                .get(header::CONTENT_ENCODING)
-                .and_then(|h| h.to_str().ok());
 
-            // decompress the response body
-            let cursor = std::io::Cursor::new(response_body.clone());
-            let mut body_str = match encoding {
-                Some("gzip") => {
-                    let mut decoder = gzip::Decoder::new(cursor)?;
-                    let mut buf = Vec::new();
-                    decoder.read_to_end(&mut buf)?;
-                    String::from_utf8_lossy(&buf).to_string()
-                }
-                Some("deflate") => {
-                    let mut decoder = deflate::Decoder::new(cursor);
-                    let mut buf = Vec::new();
-                    decoder.read_to_end(&mut buf)?;
-                    String::from_utf8_lossy(&buf).to_string()
-                }
-                Some("br") => {
-                    let mut decoder = Decompressor::new(cursor, 4096);
-                    let mut buf = Vec::new();
-                    decoder.read_to_end(&mut buf)?;
-                    String::from_utf8_lossy(&buf).to_string()
-                }
-                Some(_) | None => String::from_utf8_lossy(&response_body).to_string(),
-            };
+            let mut body_str = String::from_utf8_lossy(&response_body).into_owned();
 
             // interpret what's in the body
             match compute::html_handler(
@@ -292,28 +254,6 @@ pub async fn handle_request(
                 }
             };
 
-            let data = match encoding {
-                Some("gzip") => {
-                    let mut encoder = gzip::Encoder::new(Vec::new())?;
-                    encoder.write_all(body_str.as_bytes())?;
-                    encoder.finish().into_result()?
-                }
-                Some("deflate") => {
-                    let mut encoder = deflate::Encoder::new(Vec::new());
-                    encoder.write_all(body_str.as_bytes())?;
-                    encoder.finish().into_result()?
-                }
-                Some("br") => {
-                    // handle brotli encoding
-                    // q: quality (range: 0-11), lgwin: window size (range: 10-24)
-                    let mut encoder = CompressorWriter::new(Vec::new(), 4096, 11, 24);
-                    encoder.write_all(body_str.as_bytes())?;
-                    encoder.flush()?;
-                    encoder.into_inner()
-                }
-                Some(_) | None => body_str.into(),
-            };
-
             let full_duration = timer_start.elapsed().as_millis();
             let compute_duration = full_duration - proxy_duration;
             set_duration_headers(
@@ -325,8 +265,19 @@ pub async fn handle_request(
 
             Ok(controller::build_response(
                 response_parts,
-                Bytes::from(data),
+                Bytes::from(body_str),
             ))
+        }
+        Err(err) => {
+            error!("backend request failed: {}", err);
+            info!(
+                "502 - {} {}{} - {}ms",
+                incoming_method,
+                incoming_host,
+                incoming_path,
+                timer_start.elapsed().as_millis()
+            );
+            controller::bad_gateway_error()
         }
     }
 }
@@ -419,9 +370,6 @@ fn do_only_proxy(
     response_parts: &Parts,
 ) -> Result<bool, &'static str> {
     let response_headers = response_parts.headers.clone();
-    let encoding = response_headers
-        .get(header::CONTENT_ENCODING)
-        .and_then(|h| h.to_str().ok());
     let content_type = response_headers
         .get(header::CONTENT_TYPE)
         .and_then(|h| h.to_str().ok());
@@ -463,24 +411,6 @@ fn do_only_proxy(
     // if the response doesn't have a body
     if response_body.is_empty() {
         Err("proxy-only(no-body)")?;
-    }
-
-    // if content-encoding is not supported
-    if !["gzip", "deflate", "identity", "br", ""].contains(&encoding.unwrap_or_default()) {
-        warn!("encoding not supported: {}", encoding.unwrap_or_default());
-        Err("proxy-only(encoding-not-supported)")?;
-    }
-
-    // if the response is compressed and if content length is greater than the max_compressed_body_size configuration
-    if ["gzip", "deflate", "br"].contains(&encoding.unwrap_or_default())
-        && response_body.len() > config::get().compute.max_compressed_body_size
-    {
-        warn!(
-            "compressed body too large: {} > {}",
-            response_body.len(),
-            config::get().compute.max_compressed_body_size
-        );
-        Err("proxy-only(compressed-body-too-large)")?;
     }
 
     Ok(false)

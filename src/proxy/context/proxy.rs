@@ -57,6 +57,9 @@ impl<'a> ProxyContext<'a> {
             );
         }
 
+        // We want uncompressed response from endpoint since we already do the compression
+        incoming_headers.remove("accept-encoding");
+
         // rebuild all the cookies
         let cookies = incoming_headers.get_all("cookie");
         let mut str_cookies = String::new();
@@ -85,7 +88,7 @@ impl<'a> ProxyContext<'a> {
         }
     }
 
-    pub async fn response(self) -> anyhow::Result<http::Response<Incoming>> {
+    pub async fn forward_request(self) -> anyhow::Result<http::Response<Incoming>> {
         if self.routing_context.backend.enable_ssl {
             self.forward_https_request().await
         } else {
@@ -115,10 +118,7 @@ impl<'a> ProxyContext<'a> {
 
         let req = req.body(self.incoming_body).expect("request to be built");
         let client = Client::builder(TokioExecutor::new()).build(HttpConnector::new());
-        client
-            .request(req)
-            .await
-            .map_err(|err| anyhow::Error::new(err))
+        client.request(req).await.map_err(Into::into)
     }
 
     async fn forward_https_request(self) -> anyhow::Result<http::Response<Incoming>> {
@@ -152,9 +152,6 @@ impl<'a> ProxyContext<'a> {
             .enable_http2()
             .build();
         let client = Client::builder(TokioExecutor::new()).build(connector);
-        client
-            .request(req)
-            .await
-            .map_err(|err| anyhow::Error::new(err))
+        client.request(req).await.map_err(Into::into)
     }
 }

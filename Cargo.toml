@@ -21,6 +21,7 @@ cbc = { version = "0.1.2", features = ["std"] }
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.18", features = ["derive", "env"] }
 cookie = "0.18.1"
+futures = "0.3.31"
 hex = "0.4.3"
 html-escape = "0.2.13"
 http = "1.1.0"
@@ -46,6 +47,8 @@ serde_yml = "0.0.12"
 tokio = { version = "1", features = ["full"] }
 tokio-rustls = { version = "0.26.0", features = ["ring"] }
 toml = "0.8.12"
+tower = { version = "0.5.1", features = ["full"] }
+tower-http = { version = "0.6.1", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
 url = "2.5.2"
