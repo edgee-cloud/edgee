@@ -8,6 +8,7 @@ use http::response::Parts;
 use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
+use std::collections::HashMap;
 use std::io::Read;
 use std::time::Duration as StdDuration;
 use uuid::Uuid;
@@ -84,10 +85,17 @@ pub fn get(
 ) -> Option<EdgeeCookie> {
     let all_cookies = request_headers.get_all(COOKIE);
     for cookie in all_cookies {
-        let parts: Vec<&str> = cookie.to_str().unwrap().split('=').collect();
-        let name = parts[0].trim();
-        let value = parts[1].trim();
-        if name == config::get().compute.cookie_name.as_str() {
+        // Put cookies value into a map
+        let mut map = HashMap::new();
+        for item in cookie.to_str().unwrap().split("; ") {
+            let parts: Vec<&str> = item.split('=').collect();
+            if parts.len() != 2 {
+                continue;
+            }
+            map.insert(parts[0].trim().to_string(), parts[1].trim().to_string());
+        }
+
+        if let Some(value) = map.get(config::get().compute.cookie_name.as_str()) {
             let edgee_cookie_result = decrypt_and_update(value);
             if edgee_cookie_result.is_err() {
                 return Some(init_and_set_cookie(response_parts, host));
