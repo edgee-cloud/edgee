@@ -36,7 +36,7 @@ pub async fn edgee_client_event(
     if body.len() > 0 {
         let data_collection_events_res =
             compute::json_handler(&body, &cookie, path, request_headers, client_ip).await;
-        if data_collection_events_res.is_ok() {
+        if data_collection_events_res.is_some() {
             data_collection_events = data_collection_events_res.unwrap();
         }
     }
@@ -87,7 +87,7 @@ pub async fn edgee_client_event_from_third_party_sdk(
     if body.len() > 0 {
         let data_collection_events_res =
             compute::json_handler(&body, &cookie, path, request_headers, client_ip).await;
-        if data_collection_events_res.is_ok() {
+        if data_collection_events_res.is_some() {
             data_collection_events = data_collection_events_res.unwrap();
         }
     }

@@ -30,13 +30,13 @@ pub async fn process_from_html(
     request_headers: &HeaderMap,
     client_ip: &String,
 ) -> Option<String> {
-    let json_context = document.data_layer.clone();
+    let json_data_layer = document.data_layer.clone();
     let mut payload = Payload::default();
-    if !json_context.is_empty() {
-        // Clean the json_context from comments and spaces
-        let stripped_context = StripComments::new(json_context.as_bytes());
-        // populate the edgee payload from the json
-        let payload_result = parse_payload(stripped_context);
+    if !json_data_layer.is_empty() {
+        // Clean the json_data_layer from comments and spaces
+        let stripped_data_layer = StripComments::new(json_data_layer.as_bytes());
+        // populate the edgee data_layer from the json
+        let payload_result = parse_payload(stripped_data_layer);
         if payload_result.is_err() {
             warn!("Error parsing json payload: {:?}", payload_result.err());
         } else {

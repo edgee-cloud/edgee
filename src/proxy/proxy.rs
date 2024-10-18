@@ -242,7 +242,7 @@ pub async fn handle_request(
             .await
             {
                 Ok(document) => {
-                    let mut page_event_param = r#" data-client-side="true""#;
+                    let mut client_side_param = r#" data-client-side="true""#;
                     let event_path_param = format!(
                         r#" data-event-path="{}""#,
                         path::generate(&incoming_host.as_str())
@@ -256,10 +256,10 @@ pub async fn handle_request(
                                 document.data_collection_events
                             );
                         }
-                        page_event_param = r#" data-client-side="false""#;
+                        client_side_param = r#" data-client-side="false""#;
                     }
 
-                    // if the context is empty, we need to add an empty context script tag
+                    // if the data_layer is empty, we need to add an empty data_layer script tag
                     let mut empty_data_layer = "";
                     if document.data_layer.is_empty() {
                         empty_data_layer = r#"<script id="__EDGEE_DATA_LAYER__" type="application/json">{}</script>"#;
@@ -270,7 +270,7 @@ pub async fn handle_request(
                             r#"{}{}<script{}{}>{}</script>"#,
                             debug_script,
                             empty_data_layer,
-                            page_event_param,
+                            client_side_param,
                             event_path_param,
                             document.inlined_sdk.as_str(),
                         );
@@ -281,7 +281,7 @@ pub async fn handle_request(
                             r#"{}{}<script{}{} async src="{}"></script>"#,
                             debug_script,
                             empty_data_layer,
-                            page_event_param,
+                            client_side_param,
                             event_path_param,
                             document.sdk_src.as_str()
                         );
