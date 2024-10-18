@@ -90,14 +90,8 @@ pub async fn json_handler(
     path: &PathAndQuery,
     request_headers: &HeaderMap,
     client_ip: &String,
-) -> Result<String, &'static str> {
-    let data_collection_events =
-        data_collection::process_from_json(body, cookie, path, request_headers, client_ip).await;
-    if data_collection_events.is_some() {
-        Ok(data_collection_events.unwrap())
-    } else {
-        Err("compute-aborted(no-events)")
-    }
+) -> Option<String> {
+    data_collection::process_from_json(body, cookie, path, request_headers, client_ip).await
 }
 
 /// Processes the payload of a request under certain conditions.
