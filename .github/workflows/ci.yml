@@ -5,6 +5,7 @@ on:
       - main
   pull_request:
 
+
 jobs:
   test:
     name: cargo test
@@ -18,9 +19,27 @@ jobs:
   fmt:
     name: cargo fmt
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
+          toolchain: nightly-2024-10-15
           components: rustfmt
-      - uses: actions-rust-lang/rustfmt@v1
+      - uses: clechasseur/rs-fmt-check@v2
+        with:
+          toolchain: nightly-2024-10-15
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: clippy
+      - uses: wearerequired/lint-action@master
+        with:
+          clippy: true
