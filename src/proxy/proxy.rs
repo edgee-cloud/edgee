@@ -24,12 +24,15 @@ const EDGEE_HEADER: &str = "x-edgee";
 const EDGEE_FULL_DURATION_HEADER: &str = "x-edgee-full-duration";
 const EDGEE_COMPUTE_DURATION_HEADER: &str = "x-edgee-compute-duration";
 const EDGEE_PROXY_DURATION_HEADER: &str = "x-edgee-proxy-duration";
+
 pub const DATA_COLLECTION_ENDPOINT: &str = "/_edgee/event";
 pub const DATA_COLLECTION_ENDPOINT_FROM_THIRD_PARTY_SDK: &str = "/_edgee/csevent";
+
+pub type Request = http::Request<Incoming>;
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
 pub async fn handle_request(
-    http_request: http::Request<Incoming>,
+    http_request: Request,
     remote_addr: SocketAddr,
     proto: &str,
 ) -> anyhow::Result<Response> {
