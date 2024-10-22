@@ -1,22 +1,27 @@
-use crate::config::config;
-use crate::proxy;
-use bytes::Bytes;
-use http_body_util::combinators::BoxBody;
-use hyper::body::Incoming;
-use hyper_util::rt::{TokioExecutor, TokioIo};
-use hyper_util::server::conn::auto::Builder;
-use proxy::proxy::handle_request;
-use rustls::ServerConfig;
-use rustls_pki_types::{CertificateDer, PrivateKeyDer};
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::{convert::Infallible, fs, io, net::SocketAddr};
+
+use bytes::Bytes;
+use http_body_util::combinators::BoxBody;
+use hyper_util::rt::{TokioExecutor, TokioIo};
+use hyper_util::server::conn::auto::Builder;
+use hyper_util::service::TowerToHyperService;
+use rustls::ServerConfig;
+use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
+use tower::util::BoxCloneService;
+use tower_http::compression::CompressionBody;
 use tracing::{error, info};
 
+use crate::config::config;
+use crate::proxy::proxy;
+
+type Body = CompressionBody<BoxBody<Bytes, Infallible>>;
+
 pub async fn start() -> anyhow::Result<()> {
+    use futures::future::try_join_all;
+
     let config = config::get();
     let mut tasks = Vec::new();
 
@@ -36,9 +41,8 @@ pub async fn start() -> anyhow::Result<()> {
         }));
     }
 
-    tokio::select! {
-        _ = tasks.pop().unwrap() => Ok(()),
-    }
+    let _ = try_join_all(tasks).await;
+    Ok(())
 }
 
 async fn http() -> anyhow::Result<()> {
@@ -58,7 +62,9 @@ async fn http() -> anyhow::Result<()> {
     loop {
         let (stream, remote_addr) = listener.accept().await?;
         let io = TokioIo::new(stream);
-        let service = RequestManager::new(remote_addr, "http".to_string());
+
+        let service = TowerToHyperService::new(make_service(remote_addr, "http"));
+
         tokio::spawn(async move {
             if let Err(err) = Builder::new(TokioExecutor::new())
                 .serve_connection_with_upgrades(io, service)
@@ -114,7 +120,9 @@ async fn https() -> anyhow::Result<()> {
                 }
             };
             let io = TokioIo::new(tls_stream);
-            let service = RequestManager::new(remote_addr, "https".to_string());
+
+            let service = TowerToHyperService::new(make_service(remote_addr, "https"));
+
             if let Err(err) = Builder::new(TokioExecutor::new())
                 .serve_connection_with_upgrades(io, service)
                 .await
@@ -125,32 +133,28 @@ async fn https() -> anyhow::Result<()> {
     }
 }
 
-type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send + 'static>>;
-
-pub struct RequestManager {
+/// Create the service pipeline, using the proxy handler as the "final" request handler
+///
+/// Arguments:
+/// - `remote_addr`: Remote client address
+/// - `proto`: Protocol used (HTTP or HTTPS)
+///
+/// Returns:
+///
+/// A full service pipeline for handling a client request
+fn make_service(
     remote_addr: SocketAddr,
-    proto: String,
-}
+    proto: &str,
+) -> BoxCloneService<proxy::Request, http::Response<Body>, anyhow::Error> {
+    use tower::{ServiceBuilder, ServiceExt};
+    use tower_http::compression::CompressionLayer;
 
-impl RequestManager {
-    pub fn new(addr: SocketAddr, proto: String) -> Self {
-        Self {
-            remote_addr: addr,
-            proto,
-        }
-    }
-}
-
-impl hyper::service::Service<http::Request<Incoming>> for RequestManager {
-    type Response = http::Response<BoxBody<Bytes, Infallible>>;
-    type Error = anyhow::Error;
-    type Future = BoxFuture<anyhow::Result<Self::Response>>;
-
-    fn call(&self, req: http::Request<Incoming>) -> Self::Future {
-        if self.proto == "https" {
-            Box::pin(handle_request(req, self.remote_addr, "https"))
-        } else {
-            Box::pin(handle_request(req, self.remote_addr, "http"))
-        }
-    }
+    let proto = proto.to_string();
+    ServiceBuilder::new()
+        .layer(CompressionLayer::new())
+        .service_fn(move |req| {
+            let proto = proto.clone();
+            async move { proxy::handle_request(req, remote_addr, &proto).await }
+        })
+        .boxed_clone()
 }
