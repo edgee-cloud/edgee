@@ -13,7 +13,7 @@ use crate::config::config;
 use crate::proxy::proxy::set_edgee_header;
 use crate::tools::{
     self,
-    edgee_cookie::{self, EdgeeCookie},
+    edgee_cookie::{self},
 };
 
 pub async fn html_handler(
@@ -57,17 +57,16 @@ pub async fn html_handler(
 
     match do_process_payload(path, request_headers, response_parts) {
         Ok(_) => {
-            let cookie = edgee_cookie::get(request_headers, response_parts, host);
-            if cookie.is_none() {
+            if !edgee_cookie::has_cookie(request_headers) {
                 set_edgee_header(response_parts, "compute-aborted(no-cookie)");
             } else {
                 let data_collection_events = data_collection::process_from_html(
                     &document,
-                    &cookie.unwrap(),
                     proto,
                     host,
                     path,
                     request_headers,
+                    response_parts,
                     client_ip,
                 )
                 .await;
@@ -86,12 +85,14 @@ pub async fn html_handler(
 
 pub async fn json_handler(
     body: &Bytes,
-    cookie: &EdgeeCookie,
     path: &PathAndQuery,
+    host: &str,
     request_headers: &HeaderMap,
     client_ip: &String,
+    response_parts: &mut Parts,
 ) -> Option<String> {
-    data_collection::process_from_json(body, cookie, path, request_headers, client_ip).await
+    data_collection::process_from_json(body, path, host, request_headers, client_ip, response_parts)
+        .await
 }
 
 /// Processes the payload of a request under certain conditions.
