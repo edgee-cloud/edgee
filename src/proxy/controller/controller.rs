@@ -17,7 +17,7 @@ type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
 pub async fn edgee_client_event(
     incoming_ctx: IncomingContext,
-    host: &String,
+    host: &str,
     path: &PathAndQuery,
     request_headers: &HeaderMap,
     client_ip: &String,
@@ -29,13 +29,18 @@ pub async fn edgee_client_event(
         .body(empty())?;
 
     let (mut response_parts, _incoming) = res.into_parts();
-    let cookie = edgee_cookie::get_or_set(&request_headers, &mut response_parts, &host);
-
     let body = incoming_ctx.incoming_body.collect().await?.to_bytes();
     let mut data_collection_events: String = String::new();
     if body.len() > 0 {
-        let data_collection_events_res =
-            compute::json_handler(&body, &cookie, path, request_headers, client_ip).await;
+        let data_collection_events_res = compute::json_handler(
+            &body,
+            path,
+            host,
+            request_headers,
+            client_ip,
+            &mut response_parts,
+        )
+        .await;
         if data_collection_events_res.is_some() {
             data_collection_events = data_collection_events_res.unwrap();
         }
@@ -54,11 +59,20 @@ pub async fn edgee_client_event(
 
 pub async fn edgee_client_event_from_third_party_sdk(
     incoming_ctx: IncomingContext,
+    host: &str,
     path: &PathAndQuery,
     request_headers: &HeaderMap,
     client_ip: &String,
 ) -> anyhow::Result<Response> {
-    let body = incoming_ctx.incoming_body.collect().await?.to_bytes();
+    let res = http::Response::builder()
+        .status(StatusCode::OK)
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::CACHE_CONTROL, "private, no-store")
+        .body(empty())?;
+
+    let (mut response_parts, _incoming) = res.into_parts();
+    let resp_body = incoming_ctx.incoming_body.collect().await?.to_bytes();
 
     let cookie: EdgeeCookie;
 
@@ -84,30 +98,32 @@ pub async fn edgee_client_event_from_third_party_sdk(
     let cookie_encrypted = encrypt(&cookie_str).unwrap();
 
     let mut data_collection_events: String = String::new();
-    if body.len() > 0 {
-        let data_collection_events_res =
-            compute::json_handler(&body, &cookie, path, request_headers, client_ip).await;
+    if resp_body.len() > 0 {
+        let data_collection_events_res = compute::json_handler(
+            &resp_body,
+            path,
+            host,
+            request_headers,
+            client_ip,
+            &mut response_parts,
+        )
+        .await;
         if data_collection_events_res.is_some() {
             data_collection_events = data_collection_events_res.unwrap();
         }
     }
 
-    let mut body = Full::from(Bytes::from(format!(r#"{{"e":"{}"}}"#, cookie_encrypted))).boxed();
+    let body: Bytes;
     if incoming_ctx.is_debug_mode && data_collection_events.len() > 0 {
-        body = Full::from(Bytes::from(format!(
+        body = Bytes::from(format!(
             r#"{{"e":"{}", "events":{}}}"#,
             cookie_encrypted, data_collection_events
-        )))
-        .boxed()
+        ));
+    } else {
+        body = Bytes::from(format!(r#"{{"e":"{}"}}"#, cookie_encrypted));
     }
 
-    Ok(http::Response::builder()
-        .status(StatusCode::OK)
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-        .header(header::CONTENT_TYPE, "application/json")
-        .header(header::CACHE_CONTROL, "private, no-store")
-        .body(body)
-        .expect("serving sdk should never fail"))
+    Ok(build_response(response_parts, body))
 }
 
 pub fn options(allow_methods: &str) -> anyhow::Result<Response> {

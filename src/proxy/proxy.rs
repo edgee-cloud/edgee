@@ -99,7 +99,7 @@ pub async fn handle_request(
             );
             return controller::edgee_client_event(
                 incoming_ctx,
-                &incoming_host,
+                incoming_host.as_str(),
                 &incoming_path,
                 &incoming_headers,
                 &client_ip,
@@ -130,6 +130,7 @@ pub async fn handle_request(
             );
             return controller::edgee_client_event_from_third_party_sdk(
                 incoming_ctx,
+                incoming_host.as_str(),
                 &incoming_path,
                 &incoming_headers,
                 &client_ip,

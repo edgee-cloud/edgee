@@ -2,13 +2,14 @@ use crate::config::config;
 use crate::proxy::compute::data_collection::payload::{EventData, EventType, Payload};
 use crate::proxy::compute::data_collection::{components, payload};
 use crate::proxy::compute::html::Document;
-use crate::tools::edgee_cookie::EdgeeCookie;
+use crate::tools::edgee_cookie;
 use base64::alphabet::STANDARD;
 use base64::engine::general_purpose::PAD;
 use base64::engine::GeneralPurpose;
 use base64::Engine;
 use bytes::Bytes;
 use html_escape;
+use http::response::Parts;
 use http::uri::PathAndQuery;
 use http::{header, HeaderMap};
 use json_comments::StripComments;
@@ -19,15 +20,15 @@ use tracing::{info, warn, Instrument};
 
 #[tracing::instrument(
     name = "data_collection",
-    skip(document, edgee_cookie, proto, host, path, request_headers, client_ip)
+    skip(document, proto, host, path, request_headers, client_ip)
 )]
 pub async fn process_from_html(
     document: &Document,
-    edgee_cookie: &EdgeeCookie,
     proto: &str,
     host: &str,
     path: &PathAndQuery,
     request_headers: &HeaderMap,
+    response_parts: &mut Parts,
     client_ip: &String,
 ) -> Option<String> {
     let json_data_layer = document.data_layer.clone();
@@ -48,7 +49,7 @@ pub async fn process_from_html(
     payload = prepare_data_collection_payload(payload);
 
     // add session info
-    payload = add_session(payload, edgee_cookie);
+    payload = add_session(payload, request_headers, response_parts, host);
 
     // add more info from the html or request
     payload = add_more_info_from_html_or_request(document, payload, proto, host, path);
@@ -143,16 +144,14 @@ pub async fn process_from_html(
     Option::from(events_json)
 }
 
-#[tracing::instrument(
-    name = "data_collection",
-    skip(body, edgee_cookie, path, request_headers, client_ip)
-)]
+#[tracing::instrument(name = "data_collection", skip(body, path, request_headers, client_ip))]
 pub async fn process_from_json(
     body: &Bytes,
-    edgee_cookie: &EdgeeCookie,
     path: &PathAndQuery,
+    host: &str,
     request_headers: &HeaderMap,
     client_ip: &String,
+    response_parts: &mut Parts,
 ) -> Option<String> {
     // populate the edgee payload from the json
     let payload_result = parse_payload(body.as_ref());
@@ -166,7 +165,7 @@ pub async fn process_from_json(
     payload = prepare_data_collection_payload(payload);
 
     // add session info
-    payload = add_session(payload, edgee_cookie);
+    payload = add_session(payload, request_headers, response_parts, host);
 
     // add more info from the request
     payload = add_more_info_from_request(request_headers, payload, path, client_ip);
@@ -250,56 +249,32 @@ pub async fn process_from_json(
 /// # Returns
 /// - `Payload`: The updated `Payload` object with initialized fields.
 fn prepare_data_collection_payload(mut payload: Payload) -> Payload {
-    if payload.data_collection.is_none() {
-        payload.data_collection = Some(Default::default());
-    }
-
-    // Initialize the context field within data_collection if it is None
-    if payload.data_collection.as_ref().unwrap().context.is_none() {
-        payload.data_collection.as_mut().unwrap().context = Some(Default::default());
-    }
-
-    // Initialize the page field within context if it is None
-    if payload
+    // Ensure data_collection and its nested fields are initialized
+    payload
         .data_collection
-        .as_ref()
+        .get_or_insert_with(Default::default)
+        .context
+        .get_or_insert_with(Default::default)
+        .client
+        .get_or_insert_with(Default::default);
+    payload
+        .data_collection
+        .as_mut()
         .unwrap()
         .context
-        .as_ref()
+        .as_mut()
         .unwrap()
         .page
-        .is_none()
-    {
-        payload
-            .data_collection
-            .as_mut()
-            .unwrap()
-            .context
-            .as_mut()
-            .unwrap()
-            .page = Some(Default::default());
-    }
-
-    // Initialize the user field within context if it is None
-    if payload
+        .get_or_insert_with(Default::default);
+    payload
         .data_collection
-        .as_ref()
+        .as_mut()
         .unwrap()
         .context
-        .as_ref()
+        .as_mut()
         .unwrap()
         .user
-        .is_none()
-    {
-        payload
-            .data_collection
-            .as_mut()
-            .unwrap()
-            .context
-            .as_mut()
-            .unwrap()
-            .user = Some(Default::default());
-    }
+        .get_or_insert_with(Default::default);
 
     payload
 }
@@ -312,7 +287,14 @@ fn prepare_data_collection_payload(mut payload: Payload) -> Payload {
 ///
 /// # Returns
 /// - `Payload`: The updated `Payload` object with session information.
-fn add_session(mut payload: Payload, edgee_cookie: &EdgeeCookie) -> Payload {
+fn add_session(
+    mut payload: Payload,
+    request_headers: &HeaderMap,
+    response_parts: &mut Parts,
+    host: &str,
+) -> Payload {
+    let edgee_cookie = edgee_cookie::get_or_set(&request_headers, response_parts, &host, &payload);
+
     // edgee_id
     let user_id = edgee_cookie.id.to_string();
     payload
@@ -354,6 +336,54 @@ fn add_session(mut payload: Payload, edgee_cookie: &EdgeeCookie) -> Payload {
         .as_mut()
         .unwrap()
         .session = Some(user_session);
+
+    // if edgee_cookie.sz is not None, we add it to the payload
+    if edgee_cookie.sz.is_some() {
+        if let Some(sz) = &edgee_cookie.sz {
+            let size_vec: Vec<&str> = sz.split('x').collect();
+            if size_vec.len() == 3 {
+                if let (Ok(width), Ok(height), Ok(density)) = (
+                    size_vec[0].parse::<i32>(),
+                    size_vec[1].parse::<i32>(),
+                    size_vec[2].parse::<i32>(),
+                ) {
+                    payload
+                        .data_collection
+                        .as_mut()
+                        .unwrap()
+                        .context
+                        .as_mut()
+                        .unwrap()
+                        .client
+                        .as_mut()
+                        .unwrap()
+                        .screen_width = Some(width);
+                    payload
+                        .data_collection
+                        .as_mut()
+                        .unwrap()
+                        .context
+                        .as_mut()
+                        .unwrap()
+                        .client
+                        .as_mut()
+                        .unwrap()
+                        .screen_height = Some(height);
+                    payload
+                        .data_collection
+                        .as_mut()
+                        .unwrap()
+                        .context
+                        .as_mut()
+                        .unwrap()
+                        .client
+                        .as_mut()
+                        .unwrap()
+                        .screen_density = Some(density);
+                }
+            }
+        }
+    }
     payload
 }
 
