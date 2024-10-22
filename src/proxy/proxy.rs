@@ -25,10 +25,11 @@ const EDGEE_FULL_DURATION_HEADER: &str = "x-edgee-full-duration";
 const EDGEE_COMPUTE_DURATION_HEADER: &str = "x-edgee-compute-duration";
 const EDGEE_PROXY_DURATION_HEADER: &str = "x-edgee-proxy-duration";
 
+pub type Request = http::Request<Incoming>;
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
 pub async fn handle_request(
-    request: http::Request<Incoming>,
+    request: Request,
     remote_addr: SocketAddr,
     proto: &str,
 ) -> anyhow::Result<Response> {
