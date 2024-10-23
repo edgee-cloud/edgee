@@ -468,7 +468,7 @@ fn add_more_info_from_html_or_request(
                 None
             }
         })
-        .unwrap_or_else(|| request.get_path_and_query().to_string());
+        .unwrap_or_else(|| request.get_path_and_query().path().to_string());
     payload
         .data_collection
         .as_mut()
