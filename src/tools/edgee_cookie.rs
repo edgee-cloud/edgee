@@ -1,13 +1,14 @@
 use crate::config::config;
 use crate::proxy::compute::data_collection::payload::Payload;
 use crate::proxy::context::incoming::RequestHandle;
+use crate::proxy::proxy::DATA_COLLECTION_ENDPOINT_FROM_THIRD_PARTY_SDK;
 use crate::tools::crypto::{decrypt, encrypt};
 use chrono::{DateTime, Duration, Utc};
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, SameSite};
 use http::header::{COOKIE, SET_COOKIE};
 use http::response::Parts;
-use http::HeaderValue;
+use http::{HeaderValue, Method};
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
 use std::collections::HashMap;
@@ -43,6 +44,30 @@ impl EdgeeCookie {
             sz: None,
         }
     }
+
+    fn set_screen_size(&mut self, payload: &Payload) {
+        if let Some(client) = payload
+            .data_collection
+            .as_ref()
+            .and_then(|dc| dc.context.as_ref())
+            .and_then(|ctx| ctx.client.as_ref())
+        {
+            let screen_width = client.screen_width.clone();
+            let screen_height = client.screen_height.clone();
+            let screen_density = client.screen_density.clone();
+
+            if screen_width.is_none() || screen_height.is_none() || screen_density.is_none() {
+                return;
+            }
+
+            self.sz = Some(format!(
+                "{}x{}x{}",
+                screen_width.unwrap(),
+                screen_height.unwrap(),
+                screen_density.unwrap()
+            ));
+        }
+    }
 }
 
 /// Retrieves an `EdgeeCookie` from the request headers or initializes a new one if it does not exist,
@@ -66,6 +91,10 @@ pub fn get_or_set(request: &RequestHandle, response: &mut Parts, payload: &Paylo
 }
 
 pub fn has_cookie(request: &RequestHandle) -> bool {
+    get_cookie(request).is_some()
+}
+
+pub fn get_cookie(request: &RequestHandle) -> Option<String> {
     let all_cookies = request.get_headers().get_all(COOKIE);
     for cookie in all_cookies {
         let mut map = HashMap::new();
@@ -78,17 +107,39 @@ pub fn has_cookie(request: &RequestHandle) -> bool {
         }
 
         if map.contains_key(config::get().compute.cookie_name.as_str()) {
-            return true;
+            return Some(
+                map.get(config::get().compute.cookie_name.as_str())
+                    .unwrap()
+                    .to_string(),
+            );
         }
     }
-    false
+    get_cookie_from_query_or_none(request)
+}
+
+fn get_cookie_from_query_or_none(request: &RequestHandle) -> Option<String> {
+    if request.get_path() == DATA_COLLECTION_ENDPOINT_FROM_THIRD_PARTY_SDK
+        && request.get_method() == Method::POST
+    {
+        let map: HashMap<String, String> = request
+            .get_query()
+            .split('&')
+            .map(|s| s.split('=').collect::<Vec<&str>>())
+            .filter(|v| v.len() == 2)
+            .map(|v| (v[0].to_string(), v[1].to_string()))
+            .collect();
+        let e = map.get("e");
+        e.map(|e| e.to_string())
+    } else {
+        None
+    }
 }
 
 /// Retrieves an `EdgeeCookie` from the request headers, decrypts and updates it, and sets it in the response headers.
 ///
 /// # Arguments
 ///
-/// * `request_headers` - A reference to the request headers.
+/// * `request` - A reference to the request headers.
 /// * `response` - A mutable reference to the response headers where the cookie will be set.
 /// * `host` - A string slice that holds the host for which the cookie is set.
 ///
@@ -100,43 +151,23 @@ pub fn get(
     response: &mut Parts,
     payload: &Payload,
 ) -> Option<EdgeeCookie> {
-    let all_cookies = request.get_headers().get_all(COOKIE);
-    for cookie in all_cookies {
-        // Put cookies value into a map
-        let mut map = HashMap::new();
-        for item in cookie.to_str().unwrap().split("; ") {
-            let parts: Vec<&str> = item.split('=').collect();
-            if parts.len() != 2 {
-                continue;
-            }
-            map.insert(parts[0].trim().to_string(), parts[1].trim().to_string());
+    if let Some(value) = get_cookie(request) {
+        let edgee_cookie_result = decrypt_and_update(value.as_str(), payload);
+        if edgee_cookie_result.is_err() {
+            return Some(init_and_set_cookie(request, response, payload));
         }
+        let mut edgee_cookie = edgee_cookie_result.unwrap();
+        edgee_cookie.set_screen_size(payload);
 
-        if let Some(value) = map.get(config::get().compute.cookie_name.as_str()) {
-            let edgee_cookie_result = decrypt_and_update(value);
-            if edgee_cookie_result.is_err() {
-                return Some(init_and_set_cookie(request, response, payload));
-            }
-            let mut edgee_cookie = edgee_cookie_result.unwrap();
+        let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
+        let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
+        set_cookie(
+            &edgee_cookie_encrypted,
+            response,
+            request.get_host().as_str(),
+        );
 
-            let screen_size = get_screen_size(payload);
-            if screen_size.is_some()
-                && edgee_cookie.sz.is_some()
-                && (edgee_cookie.sz.as_ref().unwrap() != screen_size.as_ref().unwrap())
-            {
-                edgee_cookie.sz = screen_size;
-            }
-
-            let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
-            let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
-            set_cookie(
-                &edgee_cookie_encrypted,
-                response,
-                request.get_host().as_str(),
-            );
-
-            return Some(edgee_cookie);
-        }
+        return Some(edgee_cookie);
     }
     None
 }
@@ -146,6 +177,7 @@ pub fn get(
 /// # Arguments
 ///
 /// * `encrypted_edgee_cookie` - A string slice that holds the encrypted `EdgeeCookie`.
+/// * `payload` - A reference to the payload object that contains the data collection information.
 ///
 /// # Returns
 ///
@@ -162,7 +194,10 @@ pub fn get(
 /// let updated_cookie = decrypt_and_update("some_encrypted_cookie").unwrap();
 /// println!("Updated EdgeeCookie: {:?}", updated_cookie);
 /// ```
-pub fn decrypt_and_update(encrypted_edgee_cookie: &str) -> Result<EdgeeCookie, &'static str> {
+fn decrypt_and_update(
+    encrypted_edgee_cookie: &str,
+    payload: &Payload,
+) -> Result<EdgeeCookie, &'static str> {
     let edgee_cookie_decrypted = decrypt(&encrypted_edgee_cookie);
     if edgee_cookie_decrypted.is_err() {
         return Err("Failed to decrypt edgee_cookie");
@@ -189,6 +224,7 @@ pub fn decrypt_and_update(encrypted_edgee_cookie: &str) -> Result<EdgeeCookie, &
         edgee_cookie.ls = now;
         edgee_cookie.ss = now;
     }
+    edgee_cookie.set_screen_size(payload);
 
     Ok(edgee_cookie)
 }
@@ -197,7 +233,7 @@ pub fn decrypt_and_update(encrypted_edgee_cookie: &str) -> Result<EdgeeCookie, &
 ///
 /// # Arguments
 ///
-/// * `request_headers` - A reference to the request headers.
+/// * `request` - A reference to the request headers.
 /// * `response` - A mutable reference to the response headers where the cookie will be set.
 /// * `host` - A string slice that holds the host for which the cookie is set.
 ///
@@ -210,10 +246,7 @@ fn init_and_set_cookie(
     payload: &Payload,
 ) -> EdgeeCookie {
     let mut edgee_cookie = EdgeeCookie::new();
-    let screen_size = get_screen_size(payload);
-    if screen_size.is_some() {
-        edgee_cookie.sz = screen_size;
-    }
+    edgee_cookie.set_screen_size(payload);
     let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
     let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
     set_cookie(
@@ -222,32 +255,6 @@ fn init_and_set_cookie(
         request.get_host().as_str(),
     );
     edgee_cookie
-}
-
-fn get_screen_size(payload: &Payload) -> Option<String> {
-    let client = match payload
-        .data_collection
-        .as_ref()
-        .and_then(|dc| dc.context.as_ref())
-        .and_then(|ctx| ctx.client.as_ref())
-    {
-        Some(client) => client,
-        None => return None,
-    };
-
-    let screen_width = client.screen_width.clone();
-    let screen_height = client.screen_height.clone();
-    let screen_density = client.screen_density.clone();
-
-    if screen_width.is_none() || screen_height.is_none() || screen_density.is_none() {
-        return None;
-    }
-    Some(format!(
-        "{}x{}x{}",
-        screen_width.unwrap(),
-        screen_height.unwrap(),
-        screen_density.unwrap()
-    ))
 }
 
 /// Sets a cookie in the response headers.

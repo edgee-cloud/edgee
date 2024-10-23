@@ -56,10 +56,9 @@ pub async fn html_handler(
             if !edgee_cookie::has_cookie(request) {
                 set_edgee_header(response, "compute-aborted(no-cookie)");
             } else {
-                let data_collection_events =
-                    data_collection::process_from_html(&document, request, response).await;
-                if data_collection_events.is_some() {
-                    document.data_collection_events = data_collection_events.unwrap();
+                let events = data_collection::process_from_html(&document, request, response).await;
+                if events.is_some() {
+                    document.data_collection_events = events.unwrap();
                 }
             }
         }
@@ -86,7 +85,7 @@ pub async fn json_handler(
 ///
 /// # Arguments
 ///
-/// * `path` - A reference to the path
+/// * `request` - A reference to the request object
 /// * `response` - A mutable reference to the response parts
 ///
 /// # Returns

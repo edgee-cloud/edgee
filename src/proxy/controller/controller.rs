@@ -1,15 +1,13 @@
+use crate::config::config;
 use crate::proxy::compute::compute;
 use crate::proxy::compute::html;
 use crate::proxy::context::incoming::{IncomingContext, RequestHandle};
-use crate::tools::crypto::encrypt;
-use crate::tools::edgee_cookie;
-use crate::tools::edgee_cookie::EdgeeCookie;
 use bytes::Bytes;
+use http::header::SET_COOKIE;
 use http::{header, StatusCode};
 use http_body_util::combinators::BoxBody;
 use http_body_util::BodyExt;
 use http_body_util::{Empty, Full};
-use std::collections::HashMap;
 use std::convert::Infallible;
 use std::time::Instant;
 use tracing::info;
@@ -28,10 +26,10 @@ pub async fn edgee_client_event(ctx: IncomingContext) -> anyhow::Result<Response
     let body = ctx.body.collect().await?.to_bytes();
 
     let mut data_collection_events: String = String::new();
-    if body.len() > 0 {
-        let data_collection_events_res = compute::json_handler(&body, request, &mut response).await;
-        if data_collection_events_res.is_some() {
-            data_collection_events = data_collection_events_res.unwrap();
+    if !body.is_empty() {
+        let events = compute::json_handler(&body, request, &mut response).await;
+        if events.is_some() {
+            data_collection_events = events.unwrap();
         }
     }
 
@@ -60,48 +58,64 @@ pub async fn edgee_client_event_from_third_party_sdk(
     let request = &ctx.get_request().clone();
     let body = ctx.body.collect().await?.to_bytes();
 
-    let cookie: EdgeeCookie;
+    if !body.is_empty() {
+        let events = compute::json_handler(&body, &request, &mut response).await;
 
-    // get "e" from query string
-    let map: HashMap<String, String> = request
-        .get_query()
-        .split('&')
-        .map(|s| s.split('=').collect::<Vec<&str>>())
-        .filter(|v| v.len() == 2)
-        .map(|v| (v[0].to_string(), v[1].to_string()))
-        .collect();
-    let e = map.get("e");
-    if e.is_none() {
-        // user has no id, set a new cookie
-        cookie = EdgeeCookie::new();
-    } else {
-        // user has an id, decrypt it. if decryption fails, set a new cookie
-        cookie =
-            edgee_cookie::decrypt_and_update(e.unwrap()).unwrap_or_else(|_| EdgeeCookie::new());
-    }
-    let cookie_str = serde_json::to_string(&cookie).unwrap();
-    let cookie_encrypted = encrypt(&cookie_str).unwrap();
+        let all_cookies = response.headers.get_all(SET_COOKIE).iter();
 
-    let mut data_collection_events: String = String::new();
-    if body.len() > 0 {
-        let data_collection_events_res =
-            compute::json_handler(&body, &request, &mut response).await;
-        if data_collection_events_res.is_some() {
-            data_collection_events = data_collection_events_res.unwrap();
+        let mut set_cookie_header = "";
+        for cookie in all_cookies {
+            if cookie
+                .to_str()?
+                .starts_with(config::get().compute.cookie_name.as_str())
+            {
+                set_cookie_header = cookie.to_str()?;
+                break;
+            }
         }
-    }
 
-    let resp_body: Bytes;
-    if request.is_debug_mode() && data_collection_events.len() > 0 {
-        resp_body = Bytes::from(format!(
-            r#"{{"e":"{}", "events":{}}}"#,
-            cookie_encrypted, data_collection_events
+        if set_cookie_header.is_empty() {
+            return Ok(build_response(response, Bytes::new()));
+        }
+
+        let cookie_encrypted = set_cookie_header
+            .split(&format!("{}=", config::get().compute.cookie_name.as_str()))
+            .nth(1)
+            .unwrap_or("")
+            .split(';')
+            .next()
+            .unwrap_or("")
+            .to_string();
+
+        if cookie_encrypted.is_empty() {
+            return Ok(build_response(response, Bytes::new()));
+        }
+
+        // check if Egdee-Debug header is present in the request
+        let mut is_debug = request.is_debug_mode();
+        if request.get_header("Edgee-Debug").is_some() {
+            is_debug = true;
+        }
+
+        if events.is_some() && is_debug {
+            return Ok(build_response(
+                response,
+                Bytes::from(format!(
+                    r#"{{"e":"{}", "events":{}}}"#,
+                    cookie_encrypted,
+                    events.unwrap()
+                )),
+            ));
+        }
+        // set json body {e: cookie_encrypted}
+
+        return Ok(build_response(
+            response,
+            Bytes::from(format!(r#"{{"e":"{}"}}"#, cookie_encrypted)),
         ));
-    } else {
-        resp_body = Bytes::from(format!(r#"{{"e":"{}"}}"#, cookie_encrypted));
     }
 
-    Ok(build_response(response, resp_body))
+    Ok(build_response(response, Bytes::new()))
 }
 
 pub fn options(allow_methods: &str) -> anyhow::Result<Response> {
@@ -109,7 +123,10 @@ pub fn options(allow_methods: &str) -> anyhow::Result<Response> {
         .status(StatusCode::NO_CONTENT)
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(header::ACCESS_CONTROL_ALLOW_METHODS, allow_methods)
-        .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type")
+        .header(
+            header::ACCESS_CONTROL_ALLOW_HEADERS,
+            "Content-Type, Edgee-Debug",
+        )
         .header(header::ACCESS_CONTROL_MAX_AGE, "3600")
         .body(empty())
         .expect("response builder should never fail"))

@@ -24,7 +24,8 @@ const EDGEE_HEADER: &str = "x-edgee";
 const EDGEE_FULL_DURATION_HEADER: &str = "x-edgee-full-duration";
 const EDGEE_COMPUTE_DURATION_HEADER: &str = "x-edgee-compute-duration";
 const EDGEE_PROXY_DURATION_HEADER: &str = "x-edgee-proxy-duration";
-
+pub const DATA_COLLECTION_ENDPOINT: &str = "/_edgee/event";
+pub const DATA_COLLECTION_ENDPOINT_FROM_THIRD_PARTY_SDK: &str = "/_edgee/csevent";
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
 pub async fn handle_request(
@@ -72,7 +73,7 @@ pub async fn handle_request(
 
     // event path, method POST and content-type application/json
     if request.get_method() == Method::POST && request.get_content_type() == "application/json" {
-        if request.get_path() == "/_edgee/event"
+        if request.get_path() == DATA_COLLECTION_ENDPOINT
             || path::validate(request.get_host().as_str(), request.get_path())
         {
             info!(
@@ -87,7 +88,7 @@ pub async fn handle_request(
     }
 
     // event path for third party integration (Edgee installed like a third party, and use localstorage)
-    if request.get_path() == "/_edgee/csevent" {
+    if request.get_path() == DATA_COLLECTION_ENDPOINT_FROM_THIRD_PARTY_SDK {
         if request.get_method() == Method::OPTIONS {
             info!(
                 "200 - {} {}{} - {}ms",
