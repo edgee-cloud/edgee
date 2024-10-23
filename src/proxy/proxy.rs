@@ -274,10 +274,7 @@ pub async fn handle_request(
                 Some(compute_duration),
             );
 
-            Ok(controller::build_response(
-                response,
-                Bytes::from(data),
-            ))
+            Ok(controller::build_response(response, Bytes::from(data)))
         }
     }
 }

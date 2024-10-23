@@ -57,11 +57,7 @@ impl EdgeeCookie {
 /// # Returns
 ///
 /// * `EdgeeCookie` - The `EdgeeCookie` that was retrieved or newly created.
-pub fn get_or_set(
-    request: &RequestHandle,
-    response: &mut Parts,
-    payload: &Payload,
-) -> EdgeeCookie {
+pub fn get_or_set(request: &RequestHandle, response: &mut Parts, payload: &Payload) -> EdgeeCookie {
     let edgee_cookie = get(request, response, payload);
     if edgee_cookie.is_none() {
         return init_and_set_cookie(request, response, payload);

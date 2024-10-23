@@ -29,8 +29,7 @@ pub async fn edgee_client_event(ctx: IncomingContext) -> anyhow::Result<Response
 
     let mut data_collection_events: String = String::new();
     if body.len() > 0 {
-        let data_collection_events_res =
-            compute::json_handler(&body, request, &mut response).await;
+        let data_collection_events_res = compute::json_handler(&body, request, &mut response).await;
         if data_collection_events_res.is_some() {
             data_collection_events = data_collection_events_res.unwrap();
         }
