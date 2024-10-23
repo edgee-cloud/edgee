@@ -20,11 +20,10 @@ impl<'a> ProxyContext<'a> {
         const FORWARDED_PROTO: &str = "x-forwarded-proto";
         const FORWARDED_HOST: &str = "x-forwarded-host";
 
-        let mut incoming_headers = incoming_context.headers().clone();
-        let incoming_method = incoming_context.method().clone();
-        let incoming_host = incoming_context.host().clone();
-        let incoming_body = incoming_context.incoming_body;
-        let client_ip = incoming_context.client_ip.clone();
+        let mut incoming_headers = incoming_context.request.get_headers().clone();
+        let incoming_method = incoming_context.request.get_method().clone();
+        let incoming_body = incoming_context.body;
+        let client_ip = incoming_context.request.get_client_ip();
 
         if let Some(forwarded_for) = incoming_headers.get_mut(FORWARDED_FOR) {
             let existing_value = forwarded_for.to_str().unwrap();
@@ -41,19 +40,16 @@ impl<'a> ProxyContext<'a> {
         if incoming_headers.get(FORWARDED_PROTO).is_none() {
             incoming_headers.insert(
                 FORWARDED_PROTO,
-                HeaderValue::from_str(if incoming_context.is_https {
-                    "https"
-                } else {
-                    "http"
-                })
-                .expect("header value should be valid"),
+                HeaderValue::from_str(incoming_context.request.get_proto())
+                    .expect("header value should be valid"),
             );
         }
 
         if incoming_headers.get(FORWARDED_HOST).is_none() {
             incoming_headers.insert(
                 FORWARDED_HOST,
-                HeaderValue::from_str(&incoming_host).expect("header value should be valid"),
+                HeaderValue::from_str(incoming_context.request.get_host())
+                    .expect("header value should be valid"),
             );
         }
 

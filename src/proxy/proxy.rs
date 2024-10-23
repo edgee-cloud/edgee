@@ -28,7 +28,7 @@ const EDGEE_PROXY_DURATION_HEADER: &str = "x-edgee-proxy-duration";
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
 pub async fn handle_request(
-    request: http::Request<Incoming>,
+    http_request: http::Request<Incoming>,
     remote_addr: SocketAddr,
     proto: &str,
 ) -> anyhow::Result<Response> {
@@ -36,141 +36,99 @@ pub async fn handle_request(
     let timer_start = std::time::Instant::now();
 
     // set incoming context
-    let incoming_ctx = IncomingContext::new(request, remote_addr, proto);
-
-    // set several variables
-    let is_debug_mode = incoming_ctx.is_debug_mode;
-    let content_type = incoming_ctx
-        .header(header::CONTENT_TYPE)
-        .unwrap_or(String::new());
-    let incoming_method = incoming_ctx.method().clone();
-    let incoming_host = incoming_ctx.host().clone();
-    let incoming_path = incoming_ctx.path().clone();
-    let incoming_headers = incoming_ctx.headers().clone();
-    let incoming_proto = if incoming_ctx.is_https {
-        "https"
-    } else {
-        "http"
-    };
-    let client_ip = incoming_ctx.client_ip.clone();
+    let ctx = IncomingContext::new(http_request, remote_addr, proto);
+    let request = &ctx.get_request().clone();
 
     // Check if the request is HTTPS and if we should force HTTPS
-    if !incoming_ctx.is_https
+    if !request.is_https()
         && config::get().http.is_some()
         && config::get().http.as_ref().unwrap().force_https
     {
         info!(
             "301 - {} {}{} - {}ms",
-            incoming_method,
-            incoming_host,
-            incoming_path,
+            request.get_method(),
+            request.get_host(),
+            request.get_path(),
             timer_start.elapsed().as_millis()
         );
-        return controller::redirect_to_https(incoming_host, incoming_path);
+        return controller::redirect_to_https(request);
     }
 
     // SDK path
-    if incoming_method == Method::GET
-        && (incoming_path.path() == "/_edgee/sdk.js"
-            || (incoming_path.path().starts_with("/_edgee/libs/edgee.")
-                && incoming_path.path().ends_with(".js")))
+    if request.get_method() == Method::GET
+        && (request.get_path() == "/_edgee/sdk.js"
+            || (request.get_path().starts_with("/_edgee/libs/edgee.")
+                && request.get_path().ends_with(".js")))
     {
         info!(
             "200 - {} {}{} - {}ms",
-            incoming_method,
-            incoming_host,
-            incoming_path,
+            request.get_method(),
+            request.get_host(),
+            request.get_path(),
             timer_start.elapsed().as_millis()
         );
-        return controller::sdk(incoming_path.as_str());
+        return controller::sdk(request.get_path().as_str());
     }
 
     // event path, method POST and content-type application/json
-    if incoming_method == Method::POST && content_type == "application/json" {
-        if incoming_path.path() == "/_edgee/event"
-            || path::validate(incoming_host.as_str(), incoming_path.path())
+    if request.get_method() == Method::POST && request.get_content_type() == "application/json" {
+        if request.get_path() == "/_edgee/event"
+            || path::validate(request.get_host().as_str(), request.get_path())
         {
             info!(
                 "204 - {} {}{} - {}ms",
-                incoming_method,
-                incoming_host,
-                incoming_path,
+                request.get_method(),
+                request.get_host(),
+                request.get_path(),
                 timer_start.elapsed().as_millis()
             );
-            return controller::edgee_client_event(
-                incoming_ctx,
-                incoming_host.as_str(),
-                &incoming_path,
-                &incoming_headers,
-                &client_ip,
-            )
-            .await;
+            return controller::edgee_client_event(ctx).await;
         }
     }
 
     // event path for third party integration (Edgee installed like a third party, and use localstorage)
-    if incoming_path.path() == "/_edgee/csevent" {
-        if incoming_method == Method::OPTIONS {
+    if request.get_path() == "/_edgee/csevent" {
+        if request.get_method() == Method::OPTIONS {
             info!(
                 "200 - {} {}{} - {}ms",
-                incoming_method,
-                incoming_host,
-                incoming_path,
+                request.get_method(),
+                request.get_host(),
+                request.get_path(),
                 timer_start.elapsed().as_millis()
             );
             return controller::options("POST, OPTIONS");
         }
-        if incoming_method == Method::POST && content_type == "application/json" {
+        if request.get_method() == Method::POST && request.get_content_type() == "application/json"
+        {
             info!(
                 "200 - {} {}{} - {}ms",
-                incoming_method,
-                incoming_host,
-                incoming_path,
+                request.get_method(),
+                request.get_host(),
+                request.get_path(),
                 timer_start.elapsed().as_millis()
             );
-            return controller::edgee_client_event_from_third_party_sdk(
-                incoming_ctx,
-                incoming_host.as_str(),
-                &incoming_path,
-                &incoming_headers,
-                &client_ip,
-            )
-            .await;
+            return controller::edgee_client_event_from_third_party_sdk(ctx).await;
         }
     }
 
     // define the backend
-    let routing_ctx = match RoutingContext::from_request_context(&incoming_ctx) {
+    let routing_ctx = match RoutingContext::from_request(request) {
         None => {
             error!("backend not found");
-            info!(
-                "502 - {} {}{} - {}ms",
-                incoming_method,
-                incoming_host,
-                incoming_path,
-                timer_start.elapsed().as_millis()
-            );
-            return controller::bad_gateway_error();
+            return controller::bad_gateway_error(request, timer_start);
         }
         Some(r) => r,
     };
 
     // Amend proxy request with useful headers
-    let proxy_ctx = ProxyContext::new(incoming_ctx, &routing_ctx);
+    let proxy_ctx = ProxyContext::new(ctx, &routing_ctx);
 
     // send request and get response
     let res = proxy_ctx.response().await;
     match res {
         Err(err) => {
             error!("backend request failed: {}", err);
-            info!(
-                "502 - {} {}{} - {}ms",
-                incoming_method,
-                incoming_host,
-                incoming_path,
-                timer_start.elapsed().as_millis()
-            );
-            controller::bad_gateway_error()
+            controller::bad_gateway_error(request, timer_start)
         }
         Ok(upstream) => {
             let (mut response_parts, incoming) = upstream.into_parts();
@@ -178,20 +136,20 @@ pub async fn handle_request(
             info!(
                 "{} - {} {}{} - {}ms",
                 response_parts.status.as_str(),
-                incoming_method,
-                incoming_host,
-                incoming_path,
+                request.get_method(),
+                request.get_host(),
+                request.get_path(),
                 timer_start.elapsed().as_millis()
             );
 
             // Only proxy in some cases
-            match do_only_proxy(&incoming_method, &response_body, &response_parts) {
+            match do_only_proxy(request.get_method(), &response_body, &response_parts) {
                 Ok(_) => {}
                 Err(reason) => {
                     set_edgee_header(&mut response_parts, reason);
                     set_duration_headers(
                         &mut response_parts,
-                        is_debug_mode,
+                        request.is_debug_mode(),
                         timer_start.elapsed().as_millis(),
                         None,
                     );
@@ -231,27 +189,17 @@ pub async fn handle_request(
             };
 
             // interpret what's in the body
-            let _ = match compute::html_handler(
-                &mut body_str,
-                &incoming_host,
-                &incoming_path,
-                &incoming_headers,
-                incoming_proto,
-                &client_ip,
-                &mut response_parts,
-            )
-            .await
-            {
+            let _ = match compute::html_handler(&mut body_str, request, &mut response_parts).await {
                 Ok(document) => {
                     let mut client_side_param = r#" data-client-side="true""#;
                     let event_path_param = format!(
                         r#" data-event-path="{}""#,
-                        path::generate(&incoming_host.as_str())
+                        path::generate(request.get_host().as_str())
                     );
 
                     let mut debug_script = "".to_string();
                     if !document.data_collection_events.is_empty() {
-                        if is_debug_mode {
+                        if request.is_debug_mode() {
                             debug_script = format!(
                                 r#"<script>var _edgee_events = {}</script>"#,
                                 document.data_collection_events
@@ -321,7 +269,7 @@ pub async fn handle_request(
             let compute_duration = full_duration - proxy_duration;
             set_duration_headers(
                 &mut response_parts,
-                is_debug_mode,
+                request.is_debug_mode(),
                 full_duration,
                 Some(compute_duration),
             );

@@ -1,5 +1,6 @@
 use crate::config::config;
 use crate::proxy::compute::data_collection::payload::Payload;
+use crate::proxy::context::incoming::RequestHandle;
 use crate::tools::crypto::{decrypt, encrypt};
 use chrono::{DateTime, Duration, Utc};
 use cookie::time::OffsetDateTime;
@@ -57,20 +58,19 @@ impl EdgeeCookie {
 ///
 /// * `EdgeeCookie` - The `EdgeeCookie` that was retrieved or newly created.
 pub fn get_or_set(
-    request_headers: &http::HeaderMap,
+    request: &RequestHandle,
     response_parts: &mut Parts,
-    host: &str,
     payload: &Payload,
 ) -> EdgeeCookie {
-    let edgee_cookie = get(request_headers, response_parts, host, payload);
+    let edgee_cookie = get(request, response_parts, payload);
     if edgee_cookie.is_none() {
-        return init_and_set_cookie(response_parts, host, payload);
+        return init_and_set_cookie(request, response_parts, payload);
     }
     edgee_cookie.unwrap()
 }
 
-pub fn has_cookie(request_headers: &http::HeaderMap) -> bool {
-    let all_cookies = request_headers.get_all(COOKIE);
+pub fn has_cookie(request: &RequestHandle) -> bool {
+    let all_cookies = request.get_headers().get_all(COOKIE);
     for cookie in all_cookies {
         let mut map = HashMap::new();
         for item in cookie.to_str().unwrap().split("; ") {
@@ -100,12 +100,11 @@ pub fn has_cookie(request_headers: &http::HeaderMap) -> bool {
 ///
 /// * `Option<EdgeeCookie>` - An `Option` containing the `EdgeeCookie` if it exists and is successfully decrypted and updated, or `None` if the cookie does not exist or decryption fails.
 pub fn get(
-    request_headers: &http::HeaderMap,
+    request: &RequestHandle,
     response_parts: &mut Parts,
-    host: &str,
     payload: &Payload,
 ) -> Option<EdgeeCookie> {
-    let all_cookies = request_headers.get_all(COOKIE);
+    let all_cookies = request.get_headers().get_all(COOKIE);
     for cookie in all_cookies {
         // Put cookies value into a map
         let mut map = HashMap::new();
@@ -120,7 +119,7 @@ pub fn get(
         if let Some(value) = map.get(config::get().compute.cookie_name.as_str()) {
             let edgee_cookie_result = decrypt_and_update(value);
             if edgee_cookie_result.is_err() {
-                return Some(init_and_set_cookie(response_parts, host, payload));
+                return Some(init_and_set_cookie(request, response_parts, payload));
             }
             let mut edgee_cookie = edgee_cookie_result.unwrap();
 
@@ -134,7 +133,11 @@ pub fn get(
 
             let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
             let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
-            set_cookie(&edgee_cookie_encrypted, response_parts, host);
+            set_cookie(
+                &edgee_cookie_encrypted,
+                response_parts,
+                request.get_host().as_str(),
+            );
 
             return Some(edgee_cookie);
         }
@@ -205,7 +208,11 @@ pub fn decrypt_and_update(encrypted_edgee_cookie: &str) -> Result<EdgeeCookie, &
 /// # Returns
 ///
 /// * `EdgeeCookie` - The newly created and encrypted `EdgeeCookie`.
-fn init_and_set_cookie(response_parts: &mut Parts, host: &str, payload: &Payload) -> EdgeeCookie {
+fn init_and_set_cookie(
+    request: &RequestHandle,
+    response_parts: &mut Parts,
+    payload: &Payload,
+) -> EdgeeCookie {
     let mut edgee_cookie = EdgeeCookie::new();
     let screen_size = get_screen_size(payload);
     if screen_size.is_some() {
@@ -213,7 +220,11 @@ fn init_and_set_cookie(response_parts: &mut Parts, host: &str, payload: &Payload
     }
     let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
     let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
-    set_cookie(&edgee_cookie_encrypted, response_parts, host);
+    set_cookie(
+        &edgee_cookie_encrypted,
+        response_parts,
+        request.get_host().as_str(),
+    );
     edgee_cookie
 }
 

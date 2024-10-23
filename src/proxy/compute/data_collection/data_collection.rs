@@ -2,6 +2,7 @@ use crate::config::config;
 use crate::proxy::compute::data_collection::payload::{EventData, EventType, Payload};
 use crate::proxy::compute::data_collection::{components, payload};
 use crate::proxy::compute::html::Document;
+use crate::proxy::context::incoming::RequestHandle;
 use crate::tools::edgee_cookie;
 use base64::alphabet::STANDARD;
 use base64::engine::general_purpose::PAD;
@@ -10,7 +11,6 @@ use base64::Engine;
 use bytes::Bytes;
 use html_escape;
 use http::response::Parts;
-use http::uri::PathAndQuery;
 use http::{header, HeaderMap};
 use json_comments::StripComments;
 use std::collections::HashMap;
@@ -18,18 +18,11 @@ use std::fmt::Write;
 use std::io::Read;
 use tracing::{info, warn, Instrument};
 
-#[tracing::instrument(
-    name = "data_collection",
-    skip(document, proto, host, path, request_headers, client_ip)
-)]
+#[tracing::instrument(name = "data_collection", skip(document, request, response))]
 pub async fn process_from_html(
     document: &Document,
-    proto: &str,
-    host: &str,
-    path: &PathAndQuery,
-    request_headers: &HeaderMap,
-    response_parts: &mut Parts,
-    client_ip: &String,
+    request: &RequestHandle,
+    response: &mut Parts,
 ) -> Option<String> {
     let json_data_layer = document.data_layer.clone();
     let mut payload = Payload::default();
@@ -49,13 +42,13 @@ pub async fn process_from_html(
     payload = prepare_data_collection_payload(payload);
 
     // add session info
-    payload = add_session(payload, request_headers, response_parts, host);
+    payload = add_session(request, response, payload);
 
     // add more info from the html or request
-    payload = add_more_info_from_html_or_request(document, payload, proto, host, path);
+    payload = add_more_info_from_html_or_request(request, document, payload);
 
     // add more info from the request
-    payload = add_more_info_from_request(request_headers, payload, path, client_ip);
+    payload = add_more_info_from_request(request, payload);
 
     // populate the events with the data collection context
     payload
@@ -144,14 +137,11 @@ pub async fn process_from_html(
     Option::from(events_json)
 }
 
-#[tracing::instrument(name = "data_collection", skip(body, path, request_headers, client_ip))]
+#[tracing::instrument(name = "data_collection", skip(body, request, response))]
 pub async fn process_from_json(
     body: &Bytes,
-    path: &PathAndQuery,
-    host: &str,
-    request_headers: &HeaderMap,
-    client_ip: &String,
-    response_parts: &mut Parts,
+    request: &RequestHandle,
+    response: &mut Parts,
 ) -> Option<String> {
     // populate the edgee payload from the json
     let payload_result = parse_payload(body.as_ref());
@@ -165,10 +155,10 @@ pub async fn process_from_json(
     payload = prepare_data_collection_payload(payload);
 
     // add session info
-    payload = add_session(payload, request_headers, response_parts, host);
+    payload = add_session(request, response, payload);
 
     // add more info from the request
-    payload = add_more_info_from_request(request_headers, payload, path, client_ip);
+    payload = add_more_info_from_request(request, payload);
 
     // populate the events with the data collection context
     payload
@@ -282,18 +272,14 @@ fn prepare_data_collection_payload(mut payload: Payload) -> Payload {
 /// Adds session information to the payload based on the provided `EdgeeCookie`.
 ///
 /// # Arguments
+/// - `request`: A reference to the `RequestHandle` object.
+/// - `response`: A mutable reference to the `Parts` object.
 /// - `payload`: The `Payload` object to be updated with session information.
-/// - `edgee_cookie`: A reference to the `EdgeeCookie` containing session-related data.
 ///
 /// # Returns
 /// - `Payload`: The updated `Payload` object with session information.
-fn add_session(
-    mut payload: Payload,
-    request_headers: &HeaderMap,
-    response_parts: &mut Parts,
-    host: &str,
-) -> Payload {
-    let edgee_cookie = edgee_cookie::get_or_set(&request_headers, response_parts, &host, &payload);
+fn add_session(request: &RequestHandle, response: &mut Parts, mut payload: Payload) -> Payload {
+    let edgee_cookie = edgee_cookie::get_or_set(request, response, &payload);
 
     // edgee_id
     let user_id = edgee_cookie.id.to_string();
@@ -390,27 +376,28 @@ fn add_session(
 /// Adds more information from the HTML document or request to the payload.
 ///
 /// # Arguments
-/// - `document`: A reference to the `Document` containing the HTML content.
+/// - `request`: A reference to the `RequestHandle` object.
+/// - `document`: A reference to the `Document` object representing the HTML document.
 /// - `payload`: The `Payload` object to be updated with additional information.
-/// - `proto`: A string slice representing the protocol (e.g., "http" or "https").
-/// - `host`: A string slice representing the host.
-/// - `incoming_path`: A reference to the `PathAndQuery` object representing the request path and query.
 ///
 /// # Returns
 /// - `Payload`: The updated `Payload` object with additional information from the HTML document or request.
 fn add_more_info_from_html_or_request(
+    request: &RequestHandle,
     document: &Document,
     mut payload: Payload,
-    proto: &str,
-    host: &str,
-    incoming_path: &PathAndQuery,
 ) -> Payload {
     // canonical url
     let mut canonical_url = document.canonical.clone();
 
     // if canonical is a relative url, we add the domain
     if !canonical_url.is_empty() && !canonical_url.starts_with("http") {
-        canonical_url = format!("{}://{}{}", proto, host, canonical_url);
+        canonical_url = format!(
+            "{}://{}{}",
+            request.get_proto(),
+            request.get_host(),
+            canonical_url
+        );
     }
 
     // canonical path
@@ -441,7 +428,14 @@ fn add_more_info_from_html_or_request(
                 None
             }
         })
-        .unwrap_or_else(|| format!("{}://{}{}", proto, host, incoming_path.to_string()));
+        .unwrap_or_else(|| {
+            format!(
+                "{}://{}{}",
+                request.get_proto(),
+                request.get_host(),
+                request.get_path_and_query().to_string()
+            )
+        });
     payload
         .data_collection
         .as_mut()
@@ -474,7 +468,7 @@ fn add_more_info_from_html_or_request(
                 None
             }
         })
-        .unwrap_or_else(|| incoming_path.path().to_string());
+        .unwrap_or_else(|| request.get_path_and_query().to_string());
     payload
         .data_collection
         .as_mut()
@@ -506,7 +500,12 @@ fn add_more_info_from_html_or_request(
             }
         })
         .map(|s| html_escape::decode_html_entities(&s).to_string())
-        .or_else(|| incoming_path.query().map(|qs| "?".to_string() + qs))
+        .or_else(|| {
+            request
+                .get_path_and_query()
+                .query()
+                .map(|qs| "?".to_string() + qs)
+        })
         .unwrap_or_default();
     if search == "?" || search.is_empty() {
         // if search is = "?", we leave it blank
@@ -613,19 +612,12 @@ fn add_more_info_from_html_or_request(
 /// Adds more information to the payload from the request headers.
 ///
 /// # Arguments
-/// - `request_headers`: A reference to the `HeaderMap` containing the request headers.
+/// - `request`: A reference to the `RequestHandle` object.
 /// - `payload`: The `Payload` object to be updated with additional information.
-/// - `path`: A reference to the `PathAndQuery` object representing the request path and query.
-/// - `client_ip`: A reference to a `String` containing the client's IP address.
 ///
 /// # Returns
 /// - `Payload`: The updated `Payload` object with additional information from the request headers.
-fn add_more_info_from_request(
-    request_headers: &HeaderMap,
-    mut payload: Payload,
-    path: &PathAndQuery,
-    client_ip: &String,
-) -> Payload {
+fn add_more_info_from_request(request: &RequestHandle, mut payload: Payload) -> Payload {
     // first, prepare the payload
     if payload
         .data_collection
@@ -661,10 +653,9 @@ fn add_more_info_from_request(
         .referrer
         .is_none()
     {
-        let referer = request_headers
-            .get(header::REFERER)
-            .and_then(|h| h.to_str().ok())
-            .unwrap_or("");
+        let referer = request
+            .get_header(header::REFERER)
+            .unwrap_or("".to_string());
         payload
             .data_collection
             .as_mut()
@@ -675,7 +666,7 @@ fn add_more_info_from_request(
             .page
             .as_mut()
             .unwrap()
-            .referrer = Some(referer.to_string());
+            .referrer = Some(referer);
     }
 
     // if the referer is empty, we remove it
@@ -708,10 +699,9 @@ fn add_more_info_from_request(
     }
 
     // user_agent
-    let user_agent = request_headers
-        .get(header::USER_AGENT)
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or("");
+    let user_agent = request
+        .get_header(header::USER_AGENT)
+        .unwrap_or("".to_string());
     payload
         .data_collection
         .as_mut()
@@ -722,7 +712,7 @@ fn add_more_info_from_request(
         .client
         .as_mut()
         .unwrap()
-        .user_agent = Some(user_agent.to_string());
+        .user_agent = Some(user_agent);
 
     // client ip
     payload
@@ -735,7 +725,7 @@ fn add_more_info_from_request(
         .client
         .as_mut()
         .unwrap()
-        .ip = Some(client_ip.to_string());
+        .ip = Some(request.get_client_ip().to_string());
 
     // anonymize the ip address
     payload
@@ -751,7 +741,7 @@ fn add_more_info_from_request(
         .anonymize_ip();
 
     // locale
-    let locale = get_preferred_language(request_headers);
+    let locale = get_preferred_language(request.get_headers());
     payload
         .data_collection
         .as_mut()
@@ -765,10 +755,7 @@ fn add_more_info_from_request(
         .locale = Some(locale);
 
     // sec-ch-ua-arch (user_agent_architecture)
-    if let Some(sec_ch_ua_arch) = request_headers
-        .get("Sec-Ch-Ua-Arch")
-        .and_then(|h| h.to_str().ok())
-    {
+    if let Some(sec_ch_ua_arch) = request.get_header("Sec-Ch-Ua-Arch") {
         payload
             .data_collection
             .as_mut()
@@ -783,10 +770,7 @@ fn add_more_info_from_request(
     }
 
     // sec-ch-ua-bitness (user_agent_bitness)
-    if let Some(sec_ch_ua_bitness) = request_headers
-        .get("Sec-Ch-Ua-Bitness")
-        .and_then(|h| h.to_str().ok())
-    {
+    if let Some(sec_ch_ua_bitness) = request.get_header("Sec-Ch-Ua-Bitness") {
         payload
             .data_collection
             .as_mut()
@@ -801,10 +785,7 @@ fn add_more_info_from_request(
     }
 
     // sec-ch-ua (user_agent_full_version_list)
-    if let Some(sec_ch_ua) = request_headers
-        .get("Sec-Ch-Ua")
-        .and_then(|h| h.to_str().ok())
-    {
+    if let Some(sec_ch_ua) = request.get_header("Sec-Ch-Ua") {
         payload
             .data_collection
             .as_mut()
@@ -815,14 +796,11 @@ fn add_more_info_from_request(
             .client
             .as_mut()
             .unwrap()
-            .user_agent_full_version_list = Some(process_sec_ch_ua(sec_ch_ua));
+            .user_agent_full_version_list = Some(process_sec_ch_ua(sec_ch_ua.as_str()));
     }
 
     // sec-ch-ua-mobile (user_agent_mobile)
-    if let Some(sec_ch_ua_mobile) = request_headers
-        .get("Sec-Ch-Ua-Mobile")
-        .and_then(|h| h.to_str().ok())
-    {
+    if let Some(sec_ch_ua_mobile) = request.get_header("Sec-Ch-Ua-Mobile") {
         payload
             .data_collection
             .as_mut()
@@ -837,10 +815,7 @@ fn add_more_info_from_request(
     }
 
     // sec-ch-ua-model (user_agent_model)
-    if let Some(sec_ch_ua_model) = request_headers
-        .get("Sec-Ch-Ua-Model")
-        .and_then(|h| h.to_str().ok())
-    {
+    if let Some(sec_ch_ua_model) = request.get_header("Sec-Ch-Ua-Model") {
         payload
             .data_collection
             .as_mut()
@@ -855,10 +830,7 @@ fn add_more_info_from_request(
     }
 
     // sec-ch-ua-platform (os_name)
-    if let Some(sec_ch_ua_platform) = request_headers
-        .get("Sec-Ch-Ua-Platform")
-        .and_then(|h| h.to_str().ok())
-    {
+    if let Some(sec_ch_ua_platform) = request.get_header("Sec-Ch-Ua-Platform") {
         payload
             .data_collection
             .as_mut()
@@ -873,10 +845,7 @@ fn add_more_info_from_request(
     }
 
     // sec-ch-ua-platform-version (os_version)
-    if let Some(sec_ch_ua_platform_version) = request_headers
-        .get("Sec-Ch-Ua-Platform-Version")
-        .and_then(|h| h.to_str().ok())
-    {
+    if let Some(sec_ch_ua_platform_version) = request.get_header("Sec-Ch-Ua-Platform-Version") {
         payload
             .data_collection
             .as_mut()
@@ -891,10 +860,9 @@ fn add_more_info_from_request(
     }
 
     // campaign
-    let map: HashMap<String, String> =
-        url::form_urlencoded::parse(path.query().unwrap_or("").as_bytes())
-            .into_owned()
-            .collect();
+    let map: HashMap<String, String> = url::form_urlencoded::parse(request.get_query().as_bytes())
+        .into_owned()
+        .collect();
     let utm_keys = [
         "utm_campaign",
         "utm_source",
