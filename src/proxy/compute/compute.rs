@@ -101,10 +101,7 @@ pub async fn json_handler(
 /// * The `disableEdgeDataCollection` query parameter is present in the URL of the request.
 /// * The response is cacheable.
 /// * The request is for prefetch (indicated by the `Purpose` or `Sec-Purpose` headers).
-fn do_process_payload(
-    request: &RequestHandle,
-    response: &mut Parts,
-) -> Result<bool, &'static str> {
+fn do_process_payload(request: &RequestHandle, response: &mut Parts) -> Result<bool, &'static str> {
     // do not process the payload if disableEdgeDataCollection query param is present in the URL
     let query = request.get_query().as_str();
     if query.contains("disableEdgeDataCollection") {
