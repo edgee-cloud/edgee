@@ -19,7 +19,7 @@ use crate::tools::{
 pub async fn html_handler(
     body: &str,
     request: &RequestHandle,
-    response_parts: &mut Parts,
+    response: &mut Parts,
 ) -> Result<Document, &'static str> {
     // if the decompressed body is too large, abort the computation
     if body.len() > config::get().compute.max_decompressed_body_size {
@@ -45,26 +45,26 @@ pub async fn html_handler(
 
     // enforce_no_store_policy is used to enforce no-store cache-control header in the response for requests that can be computed
     if config::get().compute.enforce_no_store_policy {
-        response_parts.headers.insert(
+        response.headers.insert(
             HeaderName::from_str(CACHE_CONTROL.as_ref()).unwrap(),
             HeaderValue::from_str("no-store").unwrap(),
         );
     }
 
-    match do_process_payload(request, response_parts) {
+    match do_process_payload(request, response) {
         Ok(_) => {
             if !edgee_cookie::has_cookie(request) {
-                set_edgee_header(response_parts, "compute-aborted(no-cookie)");
+                set_edgee_header(response, "compute-aborted(no-cookie)");
             } else {
                 let data_collection_events =
-                    data_collection::process_from_html(&document, request, response_parts).await;
+                    data_collection::process_from_html(&document, request, response).await;
                 if data_collection_events.is_some() {
                     document.data_collection_events = data_collection_events.unwrap();
                 }
             }
         }
         Err(reason) => {
-            set_edgee_header(response_parts, reason);
+            set_edgee_header(response, reason);
         }
     }
 
@@ -74,9 +74,9 @@ pub async fn html_handler(
 pub async fn json_handler(
     body: &Bytes,
     request: &RequestHandle,
-    response_parts: &mut Parts,
+    response: &mut Parts,
 ) -> Option<String> {
-    data_collection::process_from_json(body, request, response_parts).await
+    data_collection::process_from_json(body, request, response).await
 }
 
 /// Processes the payload of a request under certain conditions.
@@ -87,7 +87,7 @@ pub async fn json_handler(
 /// # Arguments
 ///
 /// * `path` - A reference to the path
-/// * `response_parts` - A mutable reference to the response parts
+/// * `response` - A mutable reference to the response parts
 ///
 /// # Returns
 ///
@@ -103,7 +103,7 @@ pub async fn json_handler(
 /// * The request is for prefetch (indicated by the `Purpose` or `Sec-Purpose` headers).
 fn do_process_payload(
     request: &RequestHandle,
-    response_parts: &mut Parts,
+    response: &mut Parts,
 ) -> Result<bool, &'static str> {
     // do not process the payload if disableEdgeDataCollection query param is present in the URL
     let query = request.get_query().as_str();
@@ -114,7 +114,7 @@ fn do_process_payload(
     if !config::get().compute.enforce_no_store_policy {
         // process the payload, only if response is not cacheable
         // transform response_headers to HashMap<String, String>
-        let res_headers = response_parts
+        let res_headers = response
             .headers
             .iter()
             .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap().to_string()))

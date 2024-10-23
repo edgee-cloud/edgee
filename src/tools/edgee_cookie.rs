@@ -51,7 +51,7 @@ impl EdgeeCookie {
 /// # Arguments
 ///
 /// * `request_headers` - A reference to the request headers.
-/// * `response_parts` - A mutable reference to the response headers where the cookie will be set.
+/// * `response` - A mutable reference to the response headers where the cookie will be set.
 /// * `host` - A string slice that holds the host for which the cookie is set.
 ///
 /// # Returns
@@ -59,12 +59,12 @@ impl EdgeeCookie {
 /// * `EdgeeCookie` - The `EdgeeCookie` that was retrieved or newly created.
 pub fn get_or_set(
     request: &RequestHandle,
-    response_parts: &mut Parts,
+    response: &mut Parts,
     payload: &Payload,
 ) -> EdgeeCookie {
-    let edgee_cookie = get(request, response_parts, payload);
+    let edgee_cookie = get(request, response, payload);
     if edgee_cookie.is_none() {
-        return init_and_set_cookie(request, response_parts, payload);
+        return init_and_set_cookie(request, response, payload);
     }
     edgee_cookie.unwrap()
 }
@@ -93,7 +93,7 @@ pub fn has_cookie(request: &RequestHandle) -> bool {
 /// # Arguments
 ///
 /// * `request_headers` - A reference to the request headers.
-/// * `response_parts` - A mutable reference to the response headers where the cookie will be set.
+/// * `response` - A mutable reference to the response headers where the cookie will be set.
 /// * `host` - A string slice that holds the host for which the cookie is set.
 ///
 /// # Returns
@@ -101,7 +101,7 @@ pub fn has_cookie(request: &RequestHandle) -> bool {
 /// * `Option<EdgeeCookie>` - An `Option` containing the `EdgeeCookie` if it exists and is successfully decrypted and updated, or `None` if the cookie does not exist or decryption fails.
 pub fn get(
     request: &RequestHandle,
-    response_parts: &mut Parts,
+    response: &mut Parts,
     payload: &Payload,
 ) -> Option<EdgeeCookie> {
     let all_cookies = request.get_headers().get_all(COOKIE);
@@ -119,7 +119,7 @@ pub fn get(
         if let Some(value) = map.get(config::get().compute.cookie_name.as_str()) {
             let edgee_cookie_result = decrypt_and_update(value);
             if edgee_cookie_result.is_err() {
-                return Some(init_and_set_cookie(request, response_parts, payload));
+                return Some(init_and_set_cookie(request, response, payload));
             }
             let mut edgee_cookie = edgee_cookie_result.unwrap();
 
@@ -135,7 +135,7 @@ pub fn get(
             let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
             set_cookie(
                 &edgee_cookie_encrypted,
-                response_parts,
+                response,
                 request.get_host().as_str(),
             );
 
@@ -202,7 +202,7 @@ pub fn decrypt_and_update(encrypted_edgee_cookie: &str) -> Result<EdgeeCookie, &
 /// # Arguments
 ///
 /// * `request_headers` - A reference to the request headers.
-/// * `response_parts` - A mutable reference to the response headers where the cookie will be set.
+/// * `response` - A mutable reference to the response headers where the cookie will be set.
 /// * `host` - A string slice that holds the host for which the cookie is set.
 ///
 /// # Returns
@@ -210,7 +210,7 @@ pub fn decrypt_and_update(encrypted_edgee_cookie: &str) -> Result<EdgeeCookie, &
 /// * `EdgeeCookie` - The newly created and encrypted `EdgeeCookie`.
 fn init_and_set_cookie(
     request: &RequestHandle,
-    response_parts: &mut Parts,
+    response: &mut Parts,
     payload: &Payload,
 ) -> EdgeeCookie {
     let mut edgee_cookie = EdgeeCookie::new();
@@ -222,7 +222,7 @@ fn init_and_set_cookie(
     let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
     set_cookie(
         &edgee_cookie_encrypted,
-        response_parts,
+        response,
         request.get_host().as_str(),
     );
     edgee_cookie
@@ -259,13 +259,13 @@ fn get_screen_size(payload: &Payload) -> Option<String> {
 /// # Arguments
 ///
 /// * `value` - A string slice that holds the value of the cookie.
-/// * `response_parts` - A mutable reference to the response headers where the cookie will be set.
+/// * `response` - A mutable reference to the response headers where the cookie will be set.
 /// * `host` - A string slice that holds the host for which the cookie is set.
 ///
 /// # Panics
 ///
 /// This function will panic if the `HeaderValue::from_str` function fails to convert the cookie string to a `HeaderValue`.
-fn set_cookie(value: &str, response_parts: &mut Parts, host: &str) {
+fn set_cookie(value: &str, response: &mut Parts, host: &str) {
     let secure = config::get().http.is_some() && config::get().http.as_ref().unwrap().force_https;
     let root_domain = get_root_domain(host);
     let cookie = Cookie::build((&config::get().compute.cookie_name, value))
@@ -276,7 +276,7 @@ fn set_cookie(value: &str, response_parts: &mut Parts, host: &str) {
         .same_site(SameSite::Lax)
         .expires(OffsetDateTime::now_utc() + StdDuration::from_secs(365 * 24 * 60 * 60));
 
-    response_parts.headers.insert(
+    response.headers.insert(
         SET_COOKIE,
         HeaderValue::from_str(cookie.to_string().as_str()).unwrap(),
     );

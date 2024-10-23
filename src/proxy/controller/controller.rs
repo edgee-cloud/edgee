@@ -23,28 +23,28 @@ pub async fn edgee_client_event(ctx: IncomingContext) -> anyhow::Result<Response
         .header(header::CACHE_CONTROL, "private, no-store")
         .body(empty())?;
 
-    let (mut response_parts, _incoming) = res.into_parts();
+    let (mut response, _incoming) = res.into_parts();
     let request = &ctx.get_request().clone();
     let body = ctx.body.collect().await?.to_bytes();
 
     let mut data_collection_events: String = String::new();
     if body.len() > 0 {
         let data_collection_events_res =
-            compute::json_handler(&body, request, &mut response_parts).await;
+            compute::json_handler(&body, request, &mut response).await;
         if data_collection_events_res.is_some() {
             data_collection_events = data_collection_events_res.unwrap();
         }
     }
 
     if request.is_debug_mode() {
-        response_parts.status = StatusCode::OK;
+        response.status = StatusCode::OK;
         return Ok(build_response(
-            response_parts,
+            response,
             Bytes::from(data_collection_events),
         ));
     }
 
-    Ok(build_response(response_parts, Bytes::new()))
+    Ok(build_response(response, Bytes::new()))
 }
 
 pub async fn edgee_client_event_from_third_party_sdk(
@@ -56,7 +56,7 @@ pub async fn edgee_client_event_from_third_party_sdk(
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::CACHE_CONTROL, "private, no-store")
         .body(empty())?;
-    let (mut response_parts, _incoming) = res.into_parts();
+    let (mut response, _incoming) = res.into_parts();
 
     let request = &ctx.get_request().clone();
     let body = ctx.body.collect().await?.to_bytes();
@@ -86,7 +86,7 @@ pub async fn edgee_client_event_from_third_party_sdk(
     let mut data_collection_events: String = String::new();
     if body.len() > 0 {
         let data_collection_events_res =
-            compute::json_handler(&body, &request, &mut response_parts).await;
+            compute::json_handler(&body, &request, &mut response).await;
         if data_collection_events_res.is_some() {
             data_collection_events = data_collection_events_res.unwrap();
         }
@@ -102,7 +102,7 @@ pub async fn edgee_client_event_from_third_party_sdk(
         resp_body = Bytes::from(format!(r#"{{"e":"{}"}}"#, cookie_encrypted));
     }
 
-    Ok(build_response(response_parts, resp_body))
+    Ok(build_response(response, resp_body))
 }
 
 pub fn options(allow_methods: &str) -> anyhow::Result<Response> {

@@ -131,11 +131,11 @@ pub async fn handle_request(
             controller::bad_gateway_error(request, timer_start)
         }
         Ok(upstream) => {
-            let (mut response_parts, incoming) = upstream.into_parts();
+            let (mut response, incoming) = upstream.into_parts();
             let response_body = incoming.collect().await?.to_bytes();
             info!(
                 "{} - {} {}{} - {}ms",
-                response_parts.status.as_str(),
+                response.status.as_str(),
                 request.get_method(),
                 request.get_host(),
                 request.get_path(),
@@ -143,23 +143,23 @@ pub async fn handle_request(
             );
 
             // Only proxy in some cases
-            match do_only_proxy(request.get_method(), &response_body, &response_parts) {
+            match do_only_proxy(request.get_method(), &response_body, &response) {
                 Ok(_) => {}
                 Err(reason) => {
-                    set_edgee_header(&mut response_parts, reason);
+                    set_edgee_header(&mut response, reason);
                     set_duration_headers(
-                        &mut response_parts,
+                        &mut response,
                         request.is_debug_mode(),
                         timer_start.elapsed().as_millis(),
                         None,
                     );
-                    return Ok(controller::build_response(response_parts, response_body));
+                    return Ok(controller::build_response(response, response_body));
                 }
             }
 
-            set_edgee_header(&mut response_parts, "compute");
+            set_edgee_header(&mut response, "compute");
             let proxy_duration = timer_start.elapsed().as_millis();
-            let response_headers = response_parts.headers.clone();
+            let response_headers = response.headers.clone();
             let encoding = response_headers
                 .get(header::CONTENT_ENCODING)
                 .and_then(|h| h.to_str().ok());
@@ -189,7 +189,7 @@ pub async fn handle_request(
             };
 
             // interpret what's in the body
-            let _ = match compute::html_handler(&mut body_str, request, &mut response_parts).await {
+            let _ = match compute::html_handler(&mut body_str, request, &mut response).await {
                 Ok(document) => {
                     let mut client_side_param = r#" data-client-side="true""#;
                     let event_path_param = format!(
@@ -239,7 +239,7 @@ pub async fn handle_request(
                     }
                 }
                 Err(reason) => {
-                    set_edgee_header(&mut response_parts, reason);
+                    set_edgee_header(&mut response, reason);
                 }
             };
 
@@ -268,14 +268,14 @@ pub async fn handle_request(
             let full_duration = timer_start.elapsed().as_millis();
             let compute_duration = full_duration - proxy_duration;
             set_duration_headers(
-                &mut response_parts,
+                &mut response,
                 request.is_debug_mode(),
                 full_duration,
                 Some(compute_duration),
             );
 
             Ok(controller::build_response(
-                response_parts,
+                response,
                 Bytes::from(data),
             ))
         }
@@ -286,7 +286,7 @@ pub async fn handle_request(
 ///
 /// # Arguments
 ///
-/// * `response_parts` - A mutable reference to the response parts.
+/// * `response` - A mutable reference to the response parts.
 /// * `is_debug_mode` - A boolean indicating whether debug mode is enabled.
 /// * `full_duration` - The full duration of the request in milliseconds.
 /// * `compute_duration` - An optional duration of the compute phase in milliseconds.
@@ -297,25 +297,25 @@ pub async fn handle_request(
 /// If a compute duration is provided, it is inserted into the response headers.
 /// Additionally, if debug mode is enabled, the function calculates the proxy duration and inserts it into the response headers.
 fn set_duration_headers(
-    response_parts: &mut Parts,
+    response: &mut Parts,
     is_debug_mode: bool,
     full_duration: u128,
     compute_duration: Option<u128>,
 ) {
     if is_debug_mode {
-        response_parts.headers.insert(
+        response.headers.insert(
             HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
             HeaderValue::from_str(format!("{}ms", full_duration).as_str()).unwrap(),
         );
     }
     if let Some(duration) = compute_duration {
-        response_parts.headers.insert(
+        response.headers.insert(
             HeaderName::from_str(EDGEE_COMPUTE_DURATION_HEADER).unwrap(),
             HeaderValue::from_str(format!("{}ms", duration).as_str()).unwrap(),
         );
         if is_debug_mode {
             let proxy_duration = full_duration - duration;
-            response_parts.headers.insert(
+            response.headers.insert(
                 HeaderName::from_str(EDGEE_PROXY_DURATION_HEADER).unwrap(),
                 HeaderValue::from_str(format!("{}ms", proxy_duration).as_str()).unwrap(),
             );
@@ -327,14 +327,14 @@ fn set_duration_headers(
 ///
 /// # Arguments
 ///
-/// * `response_parts` - A mutable reference to the response parts.
+/// * `response` - A mutable reference to the response parts.
 /// * `process` - A string slice representing the process to be set in the header.
 ///
 /// # Logic
 ///
 /// The function inserts the process information into the response headers.
-pub fn set_edgee_header(response_parts: &mut Parts, process: &str) {
-    response_parts.headers.insert(
+pub fn set_edgee_header(response: &mut Parts, process: &str) {
+    response.headers.insert(
         HeaderName::from_str(EDGEE_HEADER).unwrap(),
         HeaderValue::from_str(process).unwrap(),
     );
@@ -346,7 +346,7 @@ pub fn set_edgee_header(response_parts: &mut Parts, process: &str) {
 ///
 /// * `method` - The HTTP method of the request.
 /// * `response_body` - The body of the response.
-/// * `response_parts` - The parts of the response.
+/// * `response` - The parts of the response.
 ///
 /// # Returns
 ///
@@ -368,9 +368,9 @@ pub fn set_edgee_header(response_parts: &mut Parts, process: &str) {
 fn do_only_proxy(
     method: &Method,
     response_body: &Bytes,
-    response_parts: &Parts,
+    response: &Parts,
 ) -> Result<bool, &'static str> {
-    let response_headers = response_parts.headers.clone();
+    let response_headers = response.headers.clone();
     let encoding = response_headers
         .get(header::CONTENT_ENCODING)
         .and_then(|h| h.to_str().ok());
@@ -393,12 +393,12 @@ fn do_only_proxy(
     }
 
     // if response is redirection
-    if response_parts.status.is_redirection() {
+    if response.status.is_redirection() {
         Err("proxy-only(3xx)")?;
     }
 
     // if response is informational
-    if response_parts.status.is_informational() {
+    if response.status.is_informational() {
         Err("proxy-only(1xx)")?;
     }
 
