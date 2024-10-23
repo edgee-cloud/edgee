@@ -1,27 +1,22 @@
 use crate::proxy::compute::compute;
 use crate::proxy::compute::html;
-use crate::proxy::context::incoming::IncomingContext;
+use crate::proxy::context::incoming::{IncomingContext, RequestHandle};
 use crate::tools::crypto::encrypt;
 use crate::tools::edgee_cookie;
 use crate::tools::edgee_cookie::EdgeeCookie;
 use bytes::Bytes;
-use http::uri::PathAndQuery;
-use http::{header, HeaderMap, StatusCode};
+use http::{header, StatusCode};
 use http_body_util::combinators::BoxBody;
 use http_body_util::BodyExt;
 use http_body_util::{Empty, Full};
 use std::collections::HashMap;
 use std::convert::Infallible;
+use std::time::Instant;
+use tracing::info;
 
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
-pub async fn edgee_client_event(
-    incoming_ctx: IncomingContext,
-    host: &str,
-    path: &PathAndQuery,
-    request_headers: &HeaderMap,
-    client_ip: &String,
-) -> anyhow::Result<Response> {
+pub async fn edgee_client_event(ctx: IncomingContext) -> anyhow::Result<Response> {
     let res = http::Response::builder()
         .status(StatusCode::NO_CONTENT)
         .header(header::CONTENT_TYPE, "application/json")
@@ -29,24 +24,19 @@ pub async fn edgee_client_event(
         .body(empty())?;
 
     let (mut response_parts, _incoming) = res.into_parts();
-    let body = incoming_ctx.incoming_body.collect().await?.to_bytes();
+    let request = &ctx.get_request().clone();
+    let body = ctx.body.collect().await?.to_bytes();
+
     let mut data_collection_events: String = String::new();
     if body.len() > 0 {
-        let data_collection_events_res = compute::json_handler(
-            &body,
-            path,
-            host,
-            request_headers,
-            client_ip,
-            &mut response_parts,
-        )
-        .await;
+        let data_collection_events_res =
+            compute::json_handler(&body, request, &mut response_parts).await;
         if data_collection_events_res.is_some() {
             data_collection_events = data_collection_events_res.unwrap();
         }
     }
 
-    if incoming_ctx.is_debug_mode {
+    if request.is_debug_mode() {
         response_parts.status = StatusCode::OK;
         return Ok(build_response(
             response_parts,
@@ -58,11 +48,7 @@ pub async fn edgee_client_event(
 }
 
 pub async fn edgee_client_event_from_third_party_sdk(
-    incoming_ctx: IncomingContext,
-    host: &str,
-    path: &PathAndQuery,
-    request_headers: &HeaderMap,
-    client_ip: &String,
+    ctx: IncomingContext,
 ) -> anyhow::Result<Response> {
     let res = http::Response::builder()
         .status(StatusCode::OK)
@@ -70,16 +56,16 @@ pub async fn edgee_client_event_from_third_party_sdk(
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::CACHE_CONTROL, "private, no-store")
         .body(empty())?;
-
     let (mut response_parts, _incoming) = res.into_parts();
-    let resp_body = incoming_ctx.incoming_body.collect().await?.to_bytes();
+
+    let request = &ctx.get_request().clone();
+    let body = ctx.body.collect().await?.to_bytes();
 
     let cookie: EdgeeCookie;
 
     // get "e" from query string
-    let map: HashMap<String, String> = path
-        .query()
-        .unwrap_or("")
+    let map: HashMap<String, String> = request
+        .get_query()
         .split('&')
         .map(|s| s.split('=').collect::<Vec<&str>>())
         .filter(|v| v.len() == 2)
@@ -98,32 +84,25 @@ pub async fn edgee_client_event_from_third_party_sdk(
     let cookie_encrypted = encrypt(&cookie_str).unwrap();
 
     let mut data_collection_events: String = String::new();
-    if resp_body.len() > 0 {
-        let data_collection_events_res = compute::json_handler(
-            &resp_body,
-            path,
-            host,
-            request_headers,
-            client_ip,
-            &mut response_parts,
-        )
-        .await;
+    if body.len() > 0 {
+        let data_collection_events_res =
+            compute::json_handler(&body, &request, &mut response_parts).await;
         if data_collection_events_res.is_some() {
             data_collection_events = data_collection_events_res.unwrap();
         }
     }
 
-    let body: Bytes;
-    if incoming_ctx.is_debug_mode && data_collection_events.len() > 0 {
-        body = Bytes::from(format!(
+    let resp_body: Bytes;
+    if request.is_debug_mode() && data_collection_events.len() > 0 {
+        resp_body = Bytes::from(format!(
             r#"{{"e":"{}", "events":{}}}"#,
             cookie_encrypted, data_collection_events
         ));
     } else {
-        body = Bytes::from(format!(r#"{{"e":"{}"}}"#, cookie_encrypted));
+        resp_body = Bytes::from(format!(r#"{{"e":"{}"}}"#, cookie_encrypted));
     }
 
-    Ok(build_response(response_parts, body))
+    Ok(build_response(response_parts, resp_body))
 }
 
 pub fn options(allow_methods: &str) -> anyhow::Result<Response> {
@@ -137,15 +116,16 @@ pub fn options(allow_methods: &str) -> anyhow::Result<Response> {
         .expect("response builder should never fail"))
 }
 
-pub fn redirect_to_https(
-    incoming_host: String,
-    incoming_path: PathAndQuery,
-) -> anyhow::Result<Response> {
+pub fn redirect_to_https(request: &RequestHandle) -> anyhow::Result<Response> {
     Ok(http::Response::builder()
         .status(StatusCode::MOVED_PERMANENTLY)
         .header(
             header::LOCATION,
-            format!("https://{}{}", incoming_host, incoming_path),
+            format!(
+                "https://{}{}",
+                request.get_host(),
+                request.get_path_and_query()
+            ),
         )
         .header(header::CONTENT_TYPE, "text/plain")
         .body(empty())
@@ -173,7 +153,17 @@ pub fn sdk(path: &str) -> anyhow::Result<Response> {
     }
 }
 
-pub fn bad_gateway_error() -> anyhow::Result<Response> {
+pub fn bad_gateway_error(
+    request: &RequestHandle,
+    timer_start: Instant,
+) -> anyhow::Result<Response> {
+    info!(
+        "502 - {} {}{} - {}ms",
+        request.get_method(),
+        request.get_host(),
+        request.get_path(),
+        timer_start.elapsed().as_millis()
+    );
     static HTML: &str = include_str!("../../../public/502.html");
     Ok(http::Response::builder()
         .status(StatusCode::BAD_GATEWAY)

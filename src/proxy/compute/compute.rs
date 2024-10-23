@@ -3,13 +3,13 @@ use std::str::FromStr;
 use bytes::Bytes;
 use http::header::CACHE_CONTROL;
 use http::response::Parts;
-use http::uri::PathAndQuery;
-use http::{HeaderMap, HeaderName, HeaderValue};
+use http::{HeaderName, HeaderValue};
 use tracing::warn;
 
 use super::data_collection::data_collection;
 use super::html::{parse_html, Document};
 use crate::config::config;
+use crate::proxy::context::incoming::RequestHandle;
 use crate::proxy::proxy::set_edgee_header;
 use crate::tools::{
     self,
@@ -18,11 +18,7 @@ use crate::tools::{
 
 pub async fn html_handler(
     body: &str,
-    host: &str,
-    path: &PathAndQuery,
-    request_headers: &HeaderMap,
-    proto: &str,
-    client_ip: &String,
+    request: &RequestHandle,
     response_parts: &mut Parts,
 ) -> Result<Document, &'static str> {
     // if the decompressed body is too large, abort the computation
@@ -55,21 +51,13 @@ pub async fn html_handler(
         );
     }
 
-    match do_process_payload(path, request_headers, response_parts) {
+    match do_process_payload(request, response_parts) {
         Ok(_) => {
-            if !edgee_cookie::has_cookie(request_headers) {
+            if !edgee_cookie::has_cookie(request) {
                 set_edgee_header(response_parts, "compute-aborted(no-cookie)");
             } else {
-                let data_collection_events = data_collection::process_from_html(
-                    &document,
-                    proto,
-                    host,
-                    path,
-                    request_headers,
-                    response_parts,
-                    client_ip,
-                )
-                .await;
+                let data_collection_events =
+                    data_collection::process_from_html(&document, request, response_parts).await;
                 if data_collection_events.is_some() {
                     document.data_collection_events = data_collection_events.unwrap();
                 }
@@ -85,14 +73,10 @@ pub async fn html_handler(
 
 pub async fn json_handler(
     body: &Bytes,
-    path: &PathAndQuery,
-    host: &str,
-    request_headers: &HeaderMap,
-    client_ip: &String,
+    request: &RequestHandle,
     response_parts: &mut Parts,
 ) -> Option<String> {
-    data_collection::process_from_json(body, path, host, request_headers, client_ip, response_parts)
-        .await
+    data_collection::process_from_json(body, request, response_parts).await
 }
 
 /// Processes the payload of a request under certain conditions.
@@ -118,12 +102,11 @@ pub async fn json_handler(
 /// * The response is cacheable.
 /// * The request is for prefetch (indicated by the `Purpose` or `Sec-Purpose` headers).
 fn do_process_payload(
-    path: &PathAndQuery,
-    request_headers: &HeaderMap,
+    request: &RequestHandle,
     response_parts: &mut Parts,
 ) -> Result<bool, &'static str> {
     // do not process the payload if disableEdgeDataCollection query param is present in the URL
-    let query = path.query().unwrap_or("");
+    let query = request.get_query().as_str();
     if query.contains("disableEdgeDataCollection") {
         Err("compute-aborted(disableEdgeDataCollection)")?;
     }
@@ -145,14 +128,8 @@ fn do_process_payload(
     }
 
     // do not process the payload if the request is for prefetch
-    let purpose = request_headers
-        .get("purpose")
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or("");
-    let sec_purpose = request_headers
-        .get("sec-purpose")
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or("");
+    let purpose = request.get_header("purpose").unwrap_or("".to_string());
+    let sec_purpose = request.get_header("sec-purpose").unwrap_or("".to_string());
     if purpose.contains("prefetch") || sec_purpose.contains("prefetch") {
         Err("compute-aborted(prefetch)")?;
     }
