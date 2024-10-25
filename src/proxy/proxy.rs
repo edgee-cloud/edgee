@@ -128,7 +128,7 @@ pub async fn handle_request(
     let proxy_ctx = ProxyContext::new(ctx, &routing_ctx);
 
     // send request and get response
-    let res = proxy_ctx.response().await;
+    let res = proxy_ctx.forward_request().await;
     match res {
         Err(err) => {
             error!("backend request failed: {}", err);
