@@ -1,12 +1,14 @@
 use http::{HeaderMap, HeaderValue, Uri};
+use http_body_util::Either;
 use hyper::body::Incoming;
 use hyper_rustls::ConfigBuilderExt;
-use hyper_util::{
-    client::legacy::{connect::HttpConnector, Client},
-    rt::TokioExecutor,
-};
+use hyper_util::{client::legacy::Client, rt::TokioExecutor};
+use tower_http::decompression::DecompressionBody;
 
 use super::{incoming::IncomingContext, routing::RoutingContext};
+
+pub type Body = Either<Incoming, DecompressionBody<Incoming>>;
+pub type Response = http::Response<Body>;
 
 pub struct ProxyContext<'a> {
     incoming_headers: HeaderMap,
@@ -82,8 +84,9 @@ impl<'a> ProxyContext<'a> {
         }
     }
 
-    pub async fn forward_request(self) -> anyhow::Result<http::Response<Incoming>> {
+    pub async fn forward_request(self) -> anyhow::Result<Response> {
         use tower::{Service, ServiceBuilder, ServiceExt};
+        use tower_http::ServiceBuilderExt;
 
         let backend = &self.routing_context.backend;
 
@@ -96,23 +99,24 @@ impl<'a> ProxyContext<'a> {
         let mut req = http::Request::builder()
             .uri(uri)
             .method(&self.incoming_method);
+
         let headers = req.headers_mut().expect("request should have headers");
-        for (name, value) in self.incoming_headers.iter() {
-            headers.insert(name, value.to_owned());
-        }
+        headers.extend(self.incoming_headers);
 
         headers.insert(
             "host",
             HeaderValue::from_str(&backend.address).expect("host should be valid"),
         );
 
-        let req = req.body(self.incoming_body).expect("request to be built");
+        if !backend.compress {
+            headers.remove("accept-encoding");
+        }
 
-        let service_builder = ServiceBuilder::new();
+        let req = req.body(self.incoming_body).expect("request to be built");
 
         let client_builder = Client::builder(TokioExecutor::new());
 
-        let mut client = if backend.enable_ssl {
+        let client = if backend.enable_ssl {
             let client_config = rustls::ClientConfig::builder()
                 .with_native_roots()?
                 .with_no_client_auth();
@@ -123,14 +127,22 @@ impl<'a> ProxyContext<'a> {
                 .enable_http2()
                 .build();
 
+            client_builder.build(connector).boxed()
+        } else {
+            client_builder.build_http().boxed()
+        };
+
+        let service_builder = ServiceBuilder::new();
+        let mut client = if !backend.compress {
             service_builder
-                .service(client_builder.build(connector))
+                .map_response_body(Either::Left)
+                .service(client)
                 .boxed()
         } else {
-            let connector = HttpConnector::new();
-
             service_builder
-                .service(client_builder.build(connector))
+                .map_response_body(Either::Right)
+                .decompression()
+                .service(client)
                 .boxed()
         };
 

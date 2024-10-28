@@ -1,3 +1,14 @@
+use std::convert::Infallible;
+use std::net::SocketAddr;
+use std::str::FromStr;
+
+use bytes::Bytes;
+use http::response::Parts;
+use http::{header, HeaderName, HeaderValue, Method};
+use http_body_util::{combinators::BoxBody, BodyExt};
+use hyper::body::Incoming;
+use tracing::{error, info, warn};
+
 use crate::config::config;
 use crate::proxy::compute::compute;
 use crate::proxy::context::incoming::IncomingContext;
@@ -5,20 +16,6 @@ use crate::proxy::context::proxy::ProxyContext;
 use crate::proxy::context::routing::RoutingContext;
 use crate::proxy::controller::controller;
 use crate::tools::path;
-use brotli::{CompressorWriter, Decompressor};
-use bytes::Bytes;
-use http::response::Parts;
-use http::{header, HeaderName, HeaderValue, Method};
-use http_body_util::{combinators::BoxBody, BodyExt};
-use hyper::body::Incoming;
-use libflate::{deflate, gzip};
-use std::{
-    convert::Infallible,
-    io::{Read, Write},
-    net::SocketAddr,
-    str::FromStr,
-};
-use tracing::{error, info, warn};
 
 const EDGEE_HEADER: &str = "x-edgee";
 const EDGEE_FULL_DURATION_HEADER: &str = "x-edgee-full-duration";
@@ -135,8 +132,12 @@ pub async fn handle_request(
             controller::bad_gateway_error(request, timer_start)
         }
         Ok(upstream) => {
-            let (mut response, incoming) = upstream.into_parts();
-            let response_body = incoming.collect().await?.to_bytes();
+            let (mut response, body) = upstream.into_parts();
+            let response_body = body
+                .collect()
+                .await
+                .map_err(|err| anyhow::anyhow!(err))?
+                .to_bytes();
             info!(
                 "{} - {} {}{} - {}ms",
                 response.status.as_str(),
@@ -163,37 +164,11 @@ pub async fn handle_request(
 
             set_edgee_header(&mut response, "compute");
             let proxy_duration = timer_start.elapsed().as_millis();
-            let response_headers = response.headers.clone();
-            let encoding = response_headers
-                .get(header::CONTENT_ENCODING)
-                .and_then(|h| h.to_str().ok());
 
-            // decompress the response body
-            let cursor = std::io::Cursor::new(response_body.clone());
-            let mut body_str = match encoding {
-                Some("gzip") => {
-                    let mut decoder = gzip::Decoder::new(cursor)?;
-                    let mut buf = Vec::new();
-                    decoder.read_to_end(&mut buf)?;
-                    String::from_utf8_lossy(&buf).to_string()
-                }
-                Some("deflate") => {
-                    let mut decoder = deflate::Decoder::new(cursor);
-                    let mut buf = Vec::new();
-                    decoder.read_to_end(&mut buf)?;
-                    String::from_utf8_lossy(&buf).to_string()
-                }
-                Some("br") => {
-                    let mut decoder = Decompressor::new(cursor, 4096);
-                    let mut buf = Vec::new();
-                    decoder.read_to_end(&mut buf)?;
-                    String::from_utf8_lossy(&buf).to_string()
-                }
-                Some(_) | None => String::from_utf8_lossy(&response_body).to_string(),
-            };
+            let mut body_str = String::from_utf8_lossy(&response_body).into_owned();
 
             // interpret what's in the body
-            match compute::html_handler(&mut body_str, request, &mut response).await {
+            match compute::html_handler(&body_str, request, &mut response).await {
                 Ok(document) => {
                     let mut client_side_param = r#" data-client-side="true""#;
                     let event_path_param = format!(
@@ -247,28 +222,6 @@ pub async fn handle_request(
                 }
             };
 
-            let data = match encoding {
-                Some("gzip") => {
-                    let mut encoder = gzip::Encoder::new(Vec::new())?;
-                    encoder.write_all(body_str.as_bytes())?;
-                    encoder.finish().into_result()?
-                }
-                Some("deflate") => {
-                    let mut encoder = deflate::Encoder::new(Vec::new());
-                    encoder.write_all(body_str.as_bytes())?;
-                    encoder.finish().into_result()?
-                }
-                Some("br") => {
-                    // handle brotli encoding
-                    // q: quality (range: 0-11), lgwin: window size (range: 10-24)
-                    let mut encoder = CompressorWriter::new(Vec::new(), 4096, 11, 24);
-                    encoder.write_all(body_str.as_bytes())?;
-                    encoder.flush()?;
-                    encoder.into_inner()
-                }
-                Some(_) | None => body_str.into(),
-            };
-
             let full_duration = timer_start.elapsed().as_millis();
             let compute_duration = full_duration - proxy_duration;
             set_duration_headers(
@@ -278,7 +231,7 @@ pub async fn handle_request(
                 Some(compute_duration),
             );
 
-            Ok(controller::build_response(response, Bytes::from(data)))
+            Ok(controller::build_response(response, Bytes::from(body_str)))
         }
     }
 }
