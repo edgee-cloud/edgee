@@ -74,8 +74,9 @@ pub async fn json_handler(
     body: &Bytes,
     request: &RequestHandle,
     response: &mut Parts,
+    from_third_party_sdk: bool,
 ) -> Option<String> {
-    data_collection::process_from_json(body, request, response).await
+    data_collection::process_from_json(body, request, response, from_third_party_sdk).await
 }
 
 /// Processes the payload of a request under certain conditions.

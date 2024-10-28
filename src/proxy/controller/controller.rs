@@ -27,7 +27,7 @@ pub async fn edgee_client_event(ctx: IncomingContext) -> anyhow::Result<Response
 
     let mut data_collection_events: String = String::new();
     if !body.is_empty() {
-        let events = compute::json_handler(&body, request, &mut response).await;
+        let events = compute::json_handler(&body, request, &mut response, false).await;
         if events.is_some() {
             data_collection_events = events.unwrap();
         }
@@ -59,7 +59,7 @@ pub async fn edgee_client_event_from_third_party_sdk(
     let body = ctx.body.collect().await?.to_bytes();
 
     if !body.is_empty() {
-        let events = compute::json_handler(&body, &request, &mut response).await;
+        let events = compute::json_handler(&body, &request, &mut response, true).await;
 
         let all_cookies = response.headers.get_all(SET_COOKIE).iter();
 
