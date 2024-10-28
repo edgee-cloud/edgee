@@ -134,6 +134,7 @@ pub async fn process_from_html(
                 .header("Content-Type", "application/json")
                 .header("Authorization", format!("Basic {}", b64))
                 .header("X-Edgee-Debug", debug)
+                .header("X-Edgee-From", "edge")
                 .body(events_json)
                 .send()
                 .await;
@@ -148,6 +149,7 @@ pub async fn process_from_json(
     body: &Bytes,
     request: &RequestHandle,
     response: &mut Parts,
+    from_third_party_sdk: bool,
 ) -> Option<String> {
     // populate the edgee payload from the json
     let payload_result = parse_payload(body.as_ref());
@@ -227,6 +229,11 @@ pub async fn process_from_json(
         } else {
             "false"
         };
+        let from = if from_third_party_sdk {
+            "third"
+        } else {
+            "client"
+        };
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         tokio::spawn(async move {
             let _ = reqwest::Client::new()
@@ -234,6 +241,7 @@ pub async fn process_from_json(
                 .header("Content-Type", "application/json")
                 .header("Authorization", format!("Basic {}", b64))
                 .header("X-Edgee-Debug", debug)
+                .header("X-Edgee-From", from)
                 .body(events_json)
                 .send()
                 .await;
