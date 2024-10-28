@@ -190,7 +190,7 @@ pub async fn handle_request(
             };
 
             // interpret what's in the body
-            let _ = match compute::html_handler(&mut body_str, request, &mut response).await {
+            match compute::html_handler(&mut body_str, request, &mut response).await {
                 Ok(document) => {
                     let mut client_side_param = r#" data-client-side="true""#;
                     let event_path_param = format!(
