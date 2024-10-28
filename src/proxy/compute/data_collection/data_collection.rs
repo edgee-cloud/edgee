@@ -123,11 +123,17 @@ pub async fn process_from_html(
         let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
         let events_json = events_json.clone();
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
+        let debug = if request.is_debug_mode() {
+            "true"
+        } else {
+            "false"
+        };
         tokio::spawn(async move {
             let _ = reqwest::Client::new()
                 .post(api_url)
                 .header("Content-Type", "application/json")
                 .header("Authorization", format!("Basic {}", b64))
+                .header("X-Edgee-Debug", debug)
                 .body(events_json)
                 .send()
                 .await;
@@ -216,12 +222,18 @@ pub async fn process_from_json(
 
         let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
         let events_json = events_json.clone();
+        let debug = if request.is_debug_mode() {
+            "true"
+        } else {
+            "false"
+        };
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         tokio::spawn(async move {
             let _ = reqwest::Client::new()
                 .post(api_url)
                 .header("Content-Type", "application/json")
                 .header("Authorization", format!("Basic {}", b64))
+                .header("X-Edgee-Debug", debug)
                 .body(events_json)
                 .send()
                 .await;
