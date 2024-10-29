@@ -1,13 +1,15 @@
+use std::convert::Infallible;
+
 use http::{HeaderMap, HeaderValue, Uri};
-use http_body_util::Either;
-use hyper::body::Incoming;
+use http_body_util::{Either, Full};
+use hyper::body::{Bytes, Incoming};
 use hyper_rustls::ConfigBuilderExt;
 use hyper_util::{client::legacy::Client, rt::TokioExecutor};
 use tower_http::decompression::DecompressionBody;
 
 use super::{incoming::IncomingContext, routing::RoutingContext};
 
-pub type Body = Either<Incoming, DecompressionBody<Incoming>>;
+pub type Body = Either<Incoming, DecompressionBody<Full<Bytes>>>;
 pub type Response = http::Response<Body>;
 
 pub struct ProxyContext<'a> {
@@ -86,7 +88,6 @@ impl<'a> ProxyContext<'a> {
 
     pub async fn forward_request(self) -> anyhow::Result<Response> {
         use tower::{Service, ServiceBuilder, ServiceExt};
-        use tower_http::ServiceBuilderExt;
 
         let backend = &self.routing_context.backend;
 
@@ -133,21 +134,33 @@ impl<'a> ProxyContext<'a> {
         };
 
         let service_builder = ServiceBuilder::new();
-        let mut client = if !backend.compress {
-            service_builder
-                .map_response_body(Either::Left)
-                .service(client)
-                .boxed()
-        } else {
-            service_builder
-                .map_response_body(Either::Right)
-                .decompression()
-                .service(client)
-                .boxed()
-        };
-
+        let mut client = service_builder.service(client);
         let client = client.ready().await?;
 
-        client.call(req).await.map_err(Into::into)
+        let res = client.call(req).await?;
+        let res = if !backend.compress {
+            res.map(Either::Left)
+        } else {
+            use http_body_util::BodyExt;
+            use tower_http::decompression::Decompression;
+
+            let moke_req = http::Request::builder().body(())?;
+
+            let (parts, body) = res.into_parts();
+            let data = body.collect().await?.to_bytes();
+            let res = http::Response::from_parts(parts.clone(), Full::new(data));
+
+            let mut decompression = Decompression::new(tower::service_fn(|_| {
+                let res = res.clone();
+                futures::future::ok::<_, Infallible>(res)
+            }));
+
+            // decompression.call(moke_req).await?.map(Either::Right)
+            let (_, body) = decompression.call(moke_req).await?.into_parts();
+
+            http::Response::from_parts(parts, Either::Right(body))
+        };
+
+        Ok(res)
     }
 }

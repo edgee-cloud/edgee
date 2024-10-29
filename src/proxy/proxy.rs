@@ -5,8 +5,8 @@ use std::str::FromStr;
 use bytes::Bytes;
 use http::response::Parts;
 use http::{header, HeaderName, HeaderValue, Method};
-use http_body_util::{combinators::BoxBody, BodyExt};
-use hyper::body::Incoming;
+use http_body_util::{combinators::BoxBody, BodyExt, Either};
+use hyper::body::{Body, Incoming};
 use tracing::{error, info, warn};
 
 use crate::config::config;
@@ -133,11 +133,6 @@ pub async fn handle_request(
         }
         Ok(upstream) => {
             let (mut response, body) = upstream.into_parts();
-            let response_body = body
-                .collect()
-                .await
-                .map_err(|err| anyhow::anyhow!(err))?
-                .to_bytes();
             info!(
                 "{} - {} {}{} - {}ms",
                 response.status.as_str(),
@@ -146,6 +141,43 @@ pub async fn handle_request(
                 request.get_path(),
                 timer_start.elapsed().as_millis()
             );
+
+            let response_body = match body {
+                Either::Left(incoming) => incoming.collect().await?.to_bytes(),
+                Either::Right(body) => {
+                    let content_length = {
+                        let data = body.get_ref();
+
+                        data.size_hint().exact().unwrap() as usize
+                    };
+
+                    if content_length > config::get().compute.max_compressed_body_size {
+                        warn!(
+                            "compressed body too large: {content_length} > {}",
+                            config::get().compute.max_compressed_body_size
+                        );
+
+                        let data = body.into_inner().collect().await?.to_bytes();
+
+                        set_edgee_header(&mut response, "proxy-only(compressed-body-too-large)");
+                        set_duration_headers(
+                            &mut response,
+                            request.is_debug_mode(),
+                            timer_start.elapsed().as_millis(),
+                            None,
+                        );
+                        return Ok(controller::build_response(response, data));
+                    } else {
+                        response.headers.remove("content-encoding");
+                        response.headers.remove("content-length");
+
+                        body.collect()
+                            .await
+                            .map_err(|err| anyhow::anyhow!(err))?
+                            .to_bytes()
+                    }
+                }
+            };
 
             // Only proxy in some cases
             match do_only_proxy(request.get_method(), &response_body, &response) {
@@ -325,9 +357,6 @@ fn do_only_proxy(
     response: &Parts,
 ) -> Result<bool, &'static str> {
     let response_headers = response.headers.clone();
-    let encoding = response_headers
-        .get(header::CONTENT_ENCODING)
-        .and_then(|h| h.to_str().ok());
     let content_type = response_headers
         .get(header::CONTENT_TYPE)
         .and_then(|h| h.to_str().ok());
@@ -369,24 +398,6 @@ fn do_only_proxy(
     // if the response doesn't have a body
     if response_body.is_empty() {
         Err("proxy-only(no-body)")?;
-    }
-
-    // if content-encoding is not supported
-    if !["gzip", "deflate", "identity", "br", ""].contains(&encoding.unwrap_or_default()) {
-        warn!("encoding not supported: {}", encoding.unwrap_or_default());
-        Err("proxy-only(encoding-not-supported)")?;
-    }
-
-    // if the response is compressed and if content length is greater than the max_compressed_body_size configuration
-    if ["gzip", "deflate", "br"].contains(&encoding.unwrap_or_default()) {
-        if response_body.len() > config::get().compute.max_compressed_body_size {
-            warn!(
-                "compressed body too large: {} > {}",
-                response_body.len(),
-                config::get().compute.max_compressed_body_size
-            );
-            Err("proxy-only(compressed-body-too-large)")?;
-        }
     }
 
     Ok(false)
