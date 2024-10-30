@@ -5,16 +5,16 @@ use std::str::FromStr;
 use bytes::Bytes;
 use http::response::Parts;
 use http::{header, HeaderName, HeaderValue, Method};
-use http_body_util::{combinators::BoxBody, BodyExt, Either};
-use hyper::body::{Body, Incoming};
+use http_body_util::combinators::BoxBody;
+use hyper::body::Incoming;
 use tracing::{error, info, warn};
 
+use super::compute::compute;
+use super::context::{
+    body::ProxyBody, incoming::IncomingContext, proxy::ProxyContext, routing::RoutingContext,
+};
+use super::controller::controller;
 use crate::config::config;
-use crate::proxy::compute::compute;
-use crate::proxy::context::incoming::IncomingContext;
-use crate::proxy::context::proxy::ProxyContext;
-use crate::proxy::context::routing::RoutingContext;
-use crate::proxy::controller::controller;
 use crate::tools::path;
 
 const EDGEE_HEADER: &str = "x-edgee";
@@ -142,57 +142,21 @@ pub async fn handle_request(
                 timer_start.elapsed().as_millis()
             );
 
-            let response_body = match body {
-                Either::Left(incoming) => incoming.collect().await?.to_bytes(),
-                Either::Right(body) => {
-                    let content_length = {
-                        let data = body.get_ref();
-
-                        data.size_hint().exact().unwrap() as usize
-                    };
-
-                    if content_length > config::get().compute.max_compressed_body_size {
-                        warn!(
-                            "compressed body too large: {content_length} > {}",
-                            config::get().compute.max_compressed_body_size
-                        );
-
-                        let data = body.into_inner().collect().await?.to_bytes();
-
-                        set_edgee_header(&mut response, "proxy-only(compressed-body-too-large)");
-                        set_duration_headers(
-                            &mut response,
-                            request.is_debug_mode(),
-                            timer_start.elapsed().as_millis(),
-                            None,
-                        );
-                        return Ok(controller::build_response(response, data));
-                    } else {
-                        response.headers.remove("content-encoding");
-                        response.headers.remove("content-length");
-
-                        body.collect()
-                            .await
-                            .map_err(|err| anyhow::anyhow!(err))?
-                            .to_bytes()
-                    }
-                }
-            };
-
             // Only proxy in some cases
-            match do_only_proxy(request.get_method(), &response_body, &response) {
-                Ok(_) => {}
-                Err(reason) => {
-                    set_edgee_header(&mut response, reason);
-                    set_duration_headers(
-                        &mut response,
-                        request.is_debug_mode(),
-                        timer_start.elapsed().as_millis(),
-                        None,
-                    );
-                    return Ok(controller::build_response(response, response_body));
-                }
+            if let Some(reason) = do_only_proxy(request.get_method(), &body, &response) {
+                set_edgee_header(&mut response, reason);
+                set_duration_headers(
+                    &mut response,
+                    request.is_debug_mode(),
+                    timer_start.elapsed().as_millis(),
+                    None,
+                );
+
+                let response_body = body.collect_raw().await?;
+                return Ok(controller::build_response(response, response_body));
             }
+
+            let response_body = body.collect_all().await?;
 
             set_edgee_header(&mut response, "compute");
             let proxy_duration = timer_start.elapsed().as_millis();
@@ -353,9 +317,9 @@ pub fn set_edgee_header(response: &mut Parts, process: &str) {
 /// - The response content length is greater than the maximum compressed body size.
 fn do_only_proxy(
     method: &Method,
-    response_body: &Bytes,
+    response_body: &ProxyBody,
     response: &Parts,
-) -> Result<bool, &'static str> {
+) -> Option<&'static str> {
     let response_headers = response.headers.clone();
     let content_type = response_headers
         .get(header::CONTENT_TYPE)
@@ -363,7 +327,7 @@ fn do_only_proxy(
 
     // if conf.proxy_only is true
     if config::get().compute.proxy_only {
-        Err("proxy-only(conf)")?;
+        return Some("proxy-only(conf)");
     }
 
     // if the request method is HEAD, OPTIONS, TRACE or CONNECT
@@ -372,33 +336,45 @@ fn do_only_proxy(
         || method == Method::TRACE
         || method == Method::CONNECT
     {
-        Err("proxy-only(method)")?;
+        return Some("proxy-only(method)");
     }
 
     // if response is redirection
     if response.status.is_redirection() {
-        Err("proxy-only(3xx)")?;
+        return Some("proxy-only(3xx)");
     }
 
     // if response is informational
     if response.status.is_informational() {
-        Err("proxy-only(1xx)")?;
+        return Some("proxy-only(1xx)");
     }
 
     // if the response doesn't have a content type
     if content_type.is_none() {
-        Err("proxy-only(no-content-type)")?;
+        return Some("proxy-only(no-content-type)");
     }
 
     // if the response content type is not text/html
     if content_type.is_some() && !content_type.unwrap().to_string().starts_with("text/html") {
-        Err("proxy-only(non-html)")?;
+        return Some("proxy-only(non-html)");
     }
 
     // if the response doesn't have a body
     if response_body.is_empty() {
-        Err("proxy-only(no-body)")?;
+        return Some("proxy-only(no-body)");
     }
 
-    Ok(false)
+    if response_body.is_compressed()
+        && response_body.len() > config::get().compute.max_compressed_body_size
+    {
+        warn!(
+            "compressed body too large: {} > {}",
+            response_body.len(),
+            config::get().compute.max_compressed_body_size
+        );
+
+        return Some("proxy-only(compressed-body-too-large)");
+    }
+
+    None
 }
