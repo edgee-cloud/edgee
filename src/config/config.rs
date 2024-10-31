@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+use crate::Options;
 use serde::Deserialize;
 use tracing::level_filters::LevelFilter;
 
@@ -91,6 +92,7 @@ pub struct LogConfiguration {
     #[serde_as(as = "serde_with::DisplayFromStr")]
     pub level: LevelFilter,
     pub span: Option<String>,
+    pub debug_component: Option<String>,
 }
 
 impl Default for LogConfiguration {
@@ -98,6 +100,7 @@ impl Default for LogConfiguration {
         Self {
             level: LevelFilter::INFO,
             span: None,
+            debug_component: None,
         }
     }
 }
@@ -258,11 +261,14 @@ fn read_config(path: Option<&Path>) -> Result<StaticConfiguration, String> {
     }
 }
 
-// TODO: Add more configuration validations
-// TODO: Improve error messages for configuration errors
-pub fn init(path: Option<&Path>) {
-    let config = read_config(path).expect("should read config file");
+pub fn init(options: &Options) {
+    let path = options.config_path.as_deref();
+    let mut config = read_config(path).expect("should read config file");
     config.validate().unwrap();
+
+    if let Some(component) = options.debug_component.as_deref() {
+        config.log.debug_component = Some(component.to_string());
+    }
 
     CONFIG.set(config).expect("Should initialize config");
 }

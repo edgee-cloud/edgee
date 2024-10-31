@@ -939,6 +939,7 @@ dependencies = [
  "hyper-util",
  "ipnetwork",
  "json_comments",
+ "json_pretty",
  "libflate",
  "log",
  "openssl",
@@ -1630,6 +1631,12 @@ name = "json_comments"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9dbbfed4e59ba9750e15ba154fdfd9329cee16ff3df539c2666b70f58cc32105"
+
+[[package]]
+name = "json_pretty"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c9fe3f290d2cb8660e3e051352ea55a404788d213a106a33ec8802447c4a762"
 
 [[package]]
 name = "lazy_static"

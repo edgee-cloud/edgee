@@ -2,7 +2,8 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use http::{HeaderMap, HeaderName, HeaderValue};
-use tracing::{error, info, Instrument};
+use json_pretty::PrettyFormatter;
+use tracing::{error, info, span, Instrument, Level};
 
 use crate::config::config;
 use crate::proxy::compute::data_collection::payload::Event;
@@ -50,6 +51,14 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
         let user_agent = HeaderValue::from_str(&provider_event.context.client.user_agent)?;
 
         for cfg in config.components.data_collection.iter() {
+            let span = span!(
+                Level::INFO,
+                "component",
+                name = cfg.name.as_str(),
+                event = event_str
+            );
+            let _enter = span.enter();
+
             if !event.is_component_enabled(&cfg.name) {
                 continue;
             }
@@ -80,8 +89,7 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
                 Ok(Ok(request)) => request,
                 Ok(Err(err)) => {
                     error!(
-                        provider = cfg.name,
-                        event = event_str,
+                        step = "request",
                         err = err.to_string(),
                         "failed to handle data collection payload"
                     );
@@ -89,8 +97,7 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
                 }
                 Err(err) => {
                     error!(
-                        provider = cfg.name,
-                        event = event_str,
+                        step = "request",
                         err = err.to_string(),
                         "failed to handle data collection payload"
                     );
@@ -110,24 +117,25 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
 
             let client = client.clone();
 
+            let method_str = match request.method {
+                provider::HttpMethod::Get => "GET",
+                provider::HttpMethod::Put => "PUT",
+                provider::HttpMethod::Post => "POST",
+                provider::HttpMethod::Delete => "DELETE",
+            };
+
+            info!(
+                step = "request",
+                method = method_str,
+                url = request.url,
+                body = request.body
+            );
+            debug_request(&request, cfg.name.as_str());
+
             // spawn a separated async thread
             tokio::spawn(
                 async move {
-                    let method_str = match request.method {
-                        provider::HttpMethod::Get => "GET",
-                        provider::HttpMethod::Put => "PUT",
-                        provider::HttpMethod::Post => "POST",
-                        provider::HttpMethod::Delete => "DELETE",
-                    };
-                    info!(
-                        step = "request",
-                        provider = cfg.name,
-                        event = event_str,
-                        method = method_str,
-                        url = request.url,
-                        body = request.body
-                    );
-
+                    let timer_start = std::time::Instant::now();
                     let res = match request.method {
                         provider::HttpMethod::Get => {
                             client.get(request.url).headers(headers).send().await
@@ -155,37 +163,31 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
 
                     match res {
                         Ok(res) => {
-                            if res.status().is_success() {
-                                let status_str = format!("{:?}", res.status());
-                                let body_res_str = res.text().await.unwrap_or_default();
-                                info!(
-                                    step = "response",
-                                    provider = cfg.name,
-                                    event = event_str,
-                                    method = method_str,
-                                    status = status_str,
-                                    body = body_res_str
-                                );
+                            let is_success = res.status().is_success();
+                            let status_str = format!("{:?}", res.status());
+                            let body_res_str = res.text().await.unwrap_or_default();
+
+                            if is_success {
+                                info!(step = "response", status = status_str, body = body_res_str);
                             } else {
-                                let status_str = format!("{:?}", res.status());
-                                let body_res_str = res.text().await.unwrap_or_default();
-                                error!(
-                                    step = "response",
-                                    provider = cfg.name,
-                                    event = event_str,
-                                    method = method_str,
-                                    status = status_str,
-                                    body = body_res_str
-                                );
+                                error!(step = "response", status = status_str, body = body_res_str);
                             }
+                            debug_response(
+                                cfg.name.as_str(),
+                                &status_str,
+                                timer_start,
+                                body_res_str,
+                                "".to_string(),
+                            );
                         }
                         Err(err) => {
-                            error!(
-                                step = "response",
-                                provider = cfg.name,
-                                event = event_str,
-                                method = method_str,
-                                err = err.to_string()
+                            error!(step = "response", status = "500", err = err.to_string());
+                            debug_response(
+                                cfg.name.as_str(),
+                                "500",
+                                timer_start,
+                                "".to_string(),
+                                err.to_string(),
                             );
                         }
                     }
@@ -195,4 +197,77 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+fn debug_request(request: &provider::EdgeeRequest, component_name: &str) {
+    let config = config::get();
+
+    let method_str = match request.method {
+        provider::HttpMethod::Get => "GET",
+        provider::HttpMethod::Put => "PUT",
+        provider::HttpMethod::Post => "POST",
+        provider::HttpMethod::Delete => "DELETE",
+    };
+
+    if config.log.debug_component.is_some()
+        && config.log.debug_component.as_ref().unwrap() == component_name
+    {
+        println!("-----------");
+        println!("  REQUEST  ");
+        println!("-----------\n");
+        println!("Method:   {}", method_str);
+        println!("Url:      {}", request.url);
+        if !request.headers.is_empty() {
+            print!("Headers:  ");
+            for (i, (key, value)) in request.headers.iter().enumerate() {
+                if i == 0 {
+                    println!("{}: {}", key, value);
+                } else {
+                    println!("          {}: {}", key, value);
+                }
+            }
+        } else {
+            println!("Headers:  None");
+        }
+
+        if !request.body.is_empty() {
+            println!("Body:");
+            let formatter = PrettyFormatter::from_str(request.body.as_str());
+            let result = formatter.pretty();
+            println!("{}", result);
+        } else {
+            println!("Body:     None");
+        }
+        println!();
+    }
+}
+
+fn debug_response(
+    component_name: &str,
+    status: &str,
+    timer_start: std::time::Instant,
+    body: String,
+    error: String,
+) {
+    let config = config::get();
+
+    if config.log.debug_component.is_some()
+        && config.log.debug_component.as_ref().unwrap() == component_name
+    {
+        println!("------------");
+        println!("  RESPONSE  ");
+        println!("------------\n");
+        println!("Status:   {}", status);
+        println!("Duration: {}ms", timer_start.elapsed().as_millis());
+        if !body.is_empty() {
+            println!("Body:");
+            let formatter = PrettyFormatter::from_str(body.as_str());
+            let result = formatter.pretty();
+            println!("{}", result);
+        }
+        if !error.is_empty() {
+            println!("Error:    {}", error);
+        }
+        println!();
+    }
 }
