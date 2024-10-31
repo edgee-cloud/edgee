@@ -18,14 +18,29 @@ struct Options {
 
     #[arg(short = 'f', long = "config", env = "EDGEE_CONFIG_PATH")]
     config_path: Option<PathBuf>,
+
+    #[arg(
+        short = 'c',
+        long = "debug-component",
+        help = "Launch Edgee and log only the specified component requests and responses to debug.",
+        id = "COMPONENT_NAME"
+    )]
+    debug_component: Option<String>,
 }
 
 #[tokio::main]
 async fn main() {
     let options = Options::parse();
 
-    config::config::init(options.config_path.as_deref());
-    logger::init(options.log_format);
+    config::config::init(&options);
+    // if debug_component is set, we only want to log the specified component. We change the options.log_format to do it.
+    let mut log_filter = None;
+    if options.debug_component.is_some() {
+        // We disable all logs because component will print things to stdout directly
+        log_filter = Some("[none]".to_string());
+    }
+
+    logger::init(options.log_format, log_filter);
     proxy::compute::data_collection::components::init();
 
     tokio::select! {

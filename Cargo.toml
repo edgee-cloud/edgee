@@ -31,6 +31,7 @@ hyper-rustls = { version = "0.27.2", features = ["http2", "ring"] }
 hyper-util = { version = "0.1.5", features = ["full"] }
 ipnetwork = "0.20.0"
 json_comments = "0.2.2"
+json_pretty = "0.1.2"
 libflate = "2.1.0"
 log = "0.4"
 openssl = "0.10"

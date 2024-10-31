@@ -16,7 +16,7 @@ use json_comments::StripComments;
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::io::Read;
-use tracing::{info, warn, Instrument};
+use tracing::{info, warn};
 
 #[tracing::instrument(name = "data_collection", skip(document, request, response))]
 pub async fn process_from_html(
@@ -104,14 +104,11 @@ pub async fn process_from_html(
     info!(events = events_json.as_str());
 
     // send the payload to the data collection components
-    tokio::spawn(
-        async move {
-            if let Err(err) = components::send_data_collection(&events).await {
-                warn!(?err, "failed to send data collection payload");
-            }
+    tokio::spawn(async move {
+        if let Err(err) = components::send_data_collection(&events).await {
+            warn!(?err, "failed to send data collection payload");
         }
-        .in_current_span(),
-    );
+    });
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
     if config::get().compute.data_collection_api_key.is_some()
@@ -198,14 +195,11 @@ pub async fn process_from_json(
     info!(events = events_json.as_str());
 
     // send the payload to the data collection components
-    tokio::spawn(
-        async move {
-            if let Err(err) = components::send_data_collection(&events).await {
-                warn!(?err, "failed to send data collection payload");
-            }
+    tokio::spawn(async move {
+        if let Err(err) = components::send_data_collection(&events).await {
+            warn!(?err, "failed to send data collection payload");
         }
-        .in_current_span(),
-    );
+    });
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
     if config::get().compute.data_collection_api_key.is_some()
