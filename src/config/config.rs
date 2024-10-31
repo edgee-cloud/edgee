@@ -158,6 +158,8 @@ pub struct BackendConfiguration {
     pub default: bool,
     pub address: String,
     pub enable_ssl: bool,
+    #[serde(default)]
+    pub compress: bool,
 }
 
 #[derive(Deserialize, Debug, Default, Clone)]

@@ -1,11 +1,13 @@
-use super::{incoming::IncomingContext, routing::RoutingContext};
 use http::{HeaderMap, HeaderValue, Uri};
 use hyper::body::Incoming;
 use hyper_rustls::ConfigBuilderExt;
-use hyper_util::{
-    client::legacy::{connect::HttpConnector, Client},
-    rt::TokioExecutor,
-};
+use hyper_util::{client::legacy::Client, rt::TokioExecutor};
+
+use super::body::ProxyBody;
+use super::incoming::IncomingContext;
+use super::routing::RoutingContext;
+
+pub type Response = http::Response<ProxyBody>;
 
 pub struct ProxyContext<'a> {
     incoming_headers: HeaderMap,
@@ -81,76 +83,75 @@ impl<'a> ProxyContext<'a> {
         }
     }
 
-    pub async fn response(self) -> anyhow::Result<http::Response<Incoming>> {
-        if self.routing_context.backend.enable_ssl {
-            self.forward_https_request().await
+    pub async fn forward_request(self) -> anyhow::Result<Response> {
+        use tower::{Service, ServiceBuilder, ServiceExt};
+
+        use crate::config::config::BackendConfiguration;
+
+        let BackendConfiguration {
+            enable_ssl,
+            compress,
+            ..
+        } = self.routing_context.backend;
+
+        let client_builder = Client::builder(TokioExecutor::new());
+
+        let client = if enable_ssl {
+            let client_config = rustls::ClientConfig::builder()
+                .with_native_roots()?
+                .with_no_client_auth();
+            let connector = hyper_rustls::HttpsConnectorBuilder::new()
+                .with_tls_config(client_config)
+                .https_or_http()
+                .enable_http1()
+                .enable_http2()
+                .build();
+
+            client_builder.build(connector).boxed()
         } else {
-            self.forward_http_request().await
-        }
+            client_builder.build_http().boxed()
+        };
+
+        let service_builder = ServiceBuilder::new();
+        let mut client = service_builder.service(client);
+        let client = client.ready().await?;
+
+        let req = self.build_request();
+        let (parts, body) = client.call(req).await?.into_parts();
+        let body = if !compress {
+            ProxyBody::uncompressed(body).await?
+        } else {
+            ProxyBody::compressed(&parts, body).await?
+        };
+
+        Ok(http::Response::from_parts(parts, body))
     }
 
-    async fn forward_http_request(self) -> anyhow::Result<http::Response<Incoming>> {
+    fn build_request(self) -> http::Request<Incoming> {
         let backend = &self.routing_context.backend;
+
         let path = &self.routing_context.path;
-        let uri: Uri = format!("http://{}{}", &backend.address, path)
+        let proto = if backend.enable_ssl { "https" } else { "http" };
+        let uri: Uri = format!("{proto}://{}{path}", &backend.address)
             .parse()
             .expect("uri should be valid");
 
         let mut req = http::Request::builder()
             .uri(uri)
             .method(&self.incoming_method);
+
         let headers = req.headers_mut().expect("request should have headers");
-        for (name, value) in self.incoming_headers.iter() {
-            headers.insert(name, value.to_owned());
-        }
+        headers.extend(self.incoming_headers);
 
         headers.insert(
             "host",
             HeaderValue::from_str(&backend.address).expect("host should be valid"),
         );
 
-        let req = req.body(self.incoming_body).expect("request to be built");
-        let client = Client::builder(TokioExecutor::new()).build(HttpConnector::new());
-        client
-            .request(req)
-            .await
-            .map_err(|err| anyhow::Error::new(err))
-    }
-
-    async fn forward_https_request(self) -> anyhow::Result<http::Response<Incoming>> {
-        let backend = &self.routing_context.backend;
-        let path = &self.routing_context.path;
-        let uri: Uri = format!("https://{}{}", &backend.address, path)
-            .parse()
-            .expect("uri should be valid");
-
-        let mut req = http::Request::builder()
-            .uri(uri)
-            .method(&self.incoming_method);
-        let headers = req.headers_mut().expect("request should have headers");
-        for (name, value) in self.incoming_headers.iter() {
-            headers.insert(name, value.to_owned());
+        if !backend.compress {
+            headers.remove("accept-encoding");
         }
 
-        headers.insert(
-            "host",
-            HeaderValue::from_str(&backend.address).expect("host should be valid"),
-        );
-
-        let req = req.body(self.incoming_body).expect("request to be built");
-        let client_config = rustls::ClientConfig::builder()
-            .with_native_roots()?
-            .with_no_client_auth();
-        let connector = hyper_rustls::HttpsConnectorBuilder::new()
-            .with_tls_config(client_config)
-            .https_or_http()
-            .enable_http1()
-            .enable_http2()
-            .build();
-        let client = Client::builder(TokioExecutor::new()).build(connector);
-        client
-            .request(req)
-            .await
-            .map_err(|err| anyhow::Error::new(err))
+        req.body(self.incoming_body).expect("request to be built")
     }
 }
