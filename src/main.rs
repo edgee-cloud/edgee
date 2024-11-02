@@ -37,7 +37,7 @@ async fn main() {
     let mut log_filter = None;
     if options.debug_component.is_some() {
         // We disable all logs because component will print things to stdout directly
-        log_filter = Some("[none]".to_string());
+        log_filter = Some("off".to_string());
     }
 
     logger::init(options.log_format, log_filter);
