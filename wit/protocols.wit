@@ -1,4 +1,4 @@
-package edgee:protocols@0.2.0;
+package edgee:protocols@0.2.1;
 
 world data-collection {
     export provider: interface {
@@ -61,6 +61,7 @@ world data-collection {
             user-agent: string,
             user-agent-architecture: string,
             user-agent-bitness: string,
+            user-agent-version-list: string,
             user-agent-full-version-list: string,
             user-agent-mobile: string,
             user-agent-model: string,

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::time::Duration;
 
-use http::{HeaderMap, HeaderName, HeaderValue};
+use http::{header, HeaderMap, HeaderName, HeaderValue};
 use json_pretty::PrettyFormatter;
 use tracing::{error, info, span, Instrument, Level};
 
@@ -109,11 +109,7 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
             for (key, value) in request.headers.iter() {
                 headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
             }
-            headers.insert(
-                HeaderName::from_str("x-forwarded-for")?,
-                anonymized_client_ip.clone(),
-            );
-            headers.insert(http::header::USER_AGENT, user_agent.clone());
+            insert_expected_headers(&mut headers, event, &anonymized_client_ip, &user_agent)?;
 
             let client = client.clone();
 
@@ -130,7 +126,7 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
                 url = request.url,
                 body = request.body
             );
-            debug_request(&request, cfg.name.as_str());
+            debug_request(&request, &headers, cfg.name.as_str());
 
             // spawn a separated async thread
             tokio::spawn(
@@ -184,7 +180,7 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
                             error!(step = "response", status = "500", err = err.to_string());
                             debug_response(
                                 cfg.name.as_str(),
-                                "500",
+                                "502",
                                 timer_start,
                                 "".to_string(),
                                 err.to_string(),
@@ -199,7 +195,98 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn debug_request(request: &provider::EdgeeRequest, component_name: &str) {
+fn insert_expected_headers(
+    headers: &mut HeaderMap,
+    event: &Event,
+    anonymized_client_ip: &HeaderValue,
+    user_agent: &HeaderValue,
+) -> anyhow::Result<()> {
+    // Insert client ip in the x-forwarded-for header
+    headers.insert(
+        HeaderName::from_str("x-forwarded-for")?,
+        anonymized_client_ip.clone(),
+    );
+
+    // Insert User-Agent in the user-agent header
+    headers.insert(header::USER_AGENT, user_agent.clone());
+
+    // Insert referrer in the referer header
+    if event
+        .context
+        .as_ref()
+        .unwrap()
+        .page
+        .as_ref()
+        .unwrap()
+        .referrer
+        .is_some()
+    {
+        headers.insert(
+            header::REFERER,
+            HeaderValue::from_str(
+                event
+                    .context
+                    .as_ref()
+                    .unwrap()
+                    .page
+                    .as_ref()
+                    .unwrap()
+                    .referrer
+                    .as_ref()
+                    .unwrap(),
+            )?,
+        );
+    } else {
+        // If referer is empty, insert the current page path in the referer header, like an analytics client-side collect does
+        headers.insert(
+            header::REFERER,
+            HeaderValue::from_str(
+                event
+                    .context
+                    .as_ref()
+                    .unwrap()
+                    .page
+                    .as_ref()
+                    .unwrap()
+                    .url
+                    .as_ref()
+                    .unwrap(),
+            )?,
+        );
+    }
+
+    // Insert Accept-Language in the accept-language header
+    if event
+        .context
+        .as_ref()
+        .unwrap()
+        .client
+        .as_ref()
+        .unwrap()
+        .accept_language
+        .is_some()
+    {
+        headers.insert(
+            header::ACCEPT_LANGUAGE,
+            HeaderValue::from_str(
+                event
+                    .context
+                    .as_ref()
+                    .unwrap()
+                    .client
+                    .as_ref()
+                    .unwrap()
+                    .accept_language
+                    .as_ref()
+                    .unwrap(),
+            )?,
+        );
+    }
+
+    Ok(())
+}
+
+fn debug_request(request: &provider::EdgeeRequest, headers: &HeaderMap, component_name: &str) {
     let config = config::get();
 
     let method_str = match request.method {
@@ -217,13 +304,13 @@ fn debug_request(request: &provider::EdgeeRequest, component_name: &str) {
         println!("-----------\n");
         println!("Method:   {}", method_str);
         println!("Url:      {}", request.url);
-        if !request.headers.is_empty() {
+        if !headers.is_empty() {
             print!("Headers:  ");
-            for (i, (key, value)) in request.headers.iter().enumerate() {
+            for (i, (key, value)) in headers.iter().enumerate() {
                 if i == 0 {
-                    println!("{}: {}", key, value);
+                    println!("{}: {:?}", key, value);
                 } else {
-                    println!("          {}: {}", key, value);
+                    println!("          {}: {:?}", key, value);
                 }
             }
         } else {

@@ -361,36 +361,51 @@ pub struct Client {
     #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
     pub locale: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
+    pub accept_language: Option<String>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timezone: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
     pub user_agent: Option<String>,
 
-    // User Agent Architecture. ex: arm
+    // Low Entropy Client Hint Data - from sec-ch-ua header
+    // The brand and version information for each brand associated with the browser, in a comma-separated list. ex: "Chromium;130|Google Chrome;130|Not?A_Brand;99"
     #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
-    pub user_agent_architecture: Option<String>,
+    pub user_agent_version_list: Option<String>,
 
-    // The "bitness" of the user-agent's underlying CPU architecture. This is the size in bits of an integer or memory address—typically 64 or 32 bits. ex: 64
-    #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
-    pub user_agent_bitness: Option<String>,
-
-    // The brand and full version information for each brand associated with the browser, in a comma-separated list. ex: Chromium;112.0.5615.49|Google%20Chrome;112.0.5615.49|Not%3AA-Brand;99.0.0.0
-    #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
-    pub user_agent_full_version_list: Option<String>,
-
+    // Low Entropy Client Hint Data - from Sec-Ch-Ua-Mobile header
     // Indicates whether the browser is on a mobile device. ex: 0
     #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
     pub user_agent_mobile: Option<String>,
 
-    // The device model on which the browser is running. Will likely be empty for desktop browsers. ex: Nexus 6
-    #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
-    pub user_agent_model: Option<String>,
-
+    // Low Entropy Client Hint Data - from Sec-Ch-Ua-Platform header
     // The platform or operating system on which the user agent is running. Ex: macOS
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
     pub os_name: Option<String>,
 
+    // High Entropy Client Hint Data - from Sec-Ch-Ua-Arch header
+    // User Agent Architecture. ex: arm
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_agent_architecture: Option<String>,
+
+    // High Entropy Client Hint Data - from Sec-Ch-Ua-Bitness header
+    // The "bitness" of the user-agent's underlying CPU architecture. This is the size in bits of an integer or memory address—typically 64 or 32 bits. ex: 64
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_agent_bitness: Option<String>,
+
+    // High Entropy Client Hint Data - from Sec-Ch-Ua-Full-Version-List header
+    // The brand and full version information for each brand associated with the browser, in a comma-separated list. ex: Chromium;112.0.5615.49|Google Chrome;112.0.5615.49|Not?A-Brand;99.0.0.0
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_agent_full_version_list: Option<String>,
+
+    // High Entropy Client Hint Data - from Sec-Ch-Ua-Model header
+    // The device model on which the browser is running. Will likely be empty for desktop browsers. ex: Nexus 6
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_agent_model: Option<String>,
+
+    // High Entropy Client Hint Data - from Sec-Ch-Ua-Platform-Version header
     // The version of the operating system on which the user agent is running. Ex: 12.2.1
     #[serde(skip_serializing_if = "Option::is_none")]
     pub os_version: Option<String>,
