@@ -136,20 +136,22 @@ impl From<payload::Session> for provider::Session {
 }
 
 fn convert_dict(dict: Option<HashMap<String, serde_json::Value>>) -> Vec<(String, String)> {
-    let mut vec: Vec<(String, String)> = vec![];
-    if dict.is_none() {
-        return vec![];
-    }
-    for (k, v) in dict.unwrap().iter() {
-        if v.is_object() || v.is_array() {
-            continue;
-        }
-        let s = v.as_str();
-        if let Some(s) = s {
-            vec.push((k.clone(), s.to_string()));
-        } else {
-            vec.push((k.clone(), v.to_string()));
-        }
-    }
-    vec
+    use serde_json::Value;
+
+    let Some(dict) = dict else {
+        return Vec::new();
+    };
+
+    dict.into_iter()
+        .filter(|(_, value)| !(value.is_array() || value.is_object()))
+        .map(|(k, v)| {
+            let value = if let Value::String(s) = v {
+                s
+            } else {
+                v.to_string()
+            };
+
+            (k, value)
+        })
+        .collect()
 }
