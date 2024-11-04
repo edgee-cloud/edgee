@@ -940,6 +940,7 @@ dependencies = [
  "ipnetwork",
  "json_comments",
  "json_pretty",
+ "lazy_static",
  "libflate",
  "log",
  "openssl",
