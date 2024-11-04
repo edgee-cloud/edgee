@@ -44,7 +44,7 @@ impl From<payload::Page> for provider::PageData {
             path: value.path.unwrap_or_default(),
             search: value.search.unwrap_or_default(),
             referrer: value.referrer.unwrap_or_default(),
-            properties: convert_dict(value.properties.unwrap_or_default()),
+            properties: convert_dict(value.properties),
         }
     }
 }
@@ -55,7 +55,7 @@ impl From<payload::User> for provider::UserData {
             user_id: value.user_id.unwrap_or_default(),
             anonymous_id: value.anonymous_id.unwrap_or_default(),
             edgee_id: value.edgee_id,
-            properties: convert_dict(value.properties.unwrap_or_default()),
+            properties: convert_dict(value.properties),
         }
     }
 }
@@ -64,7 +64,7 @@ impl From<payload::Track> for provider::TrackData {
     fn from(value: payload::Track) -> Self {
         Self {
             name: value.name.unwrap_or_default(),
-            properties: convert_dict(value.properties.unwrap_or_default()),
+            properties: convert_dict(value.properties),
         }
     }
 }
@@ -105,6 +105,7 @@ impl From<payload::Client> for provider::Client {
             user_agent_architecture: value.user_agent_architecture.unwrap_or_default(),
             user_agent_bitness: value.user_agent_bitness.unwrap_or_default(),
             user_agent_full_version_list: value.user_agent_full_version_list.unwrap_or_default(),
+            user_agent_version_list: value.user_agent_version_list.unwrap_or_default(),
             user_agent_mobile: value.user_agent_mobile.unwrap_or_default(),
             user_agent_model: value.user_agent_model.unwrap_or_default(),
             os_name: value.os_name.unwrap_or_default(),
@@ -134,8 +135,21 @@ impl From<payload::Session> for provider::Session {
     }
 }
 
-fn convert_dict<T: ToString>(dict: HashMap<String, T>) -> Vec<(String, String)> {
-    dict.into_iter()
-        .map(|(key, value)| (key, value.to_string()))
-        .collect()
+fn convert_dict(dict: Option<HashMap<String, serde_json::Value>>) -> Vec<(String, String)> {
+    let mut vec: Vec<(String, String)> = vec![];
+    if dict.is_none() {
+        return vec![];
+    }
+    for (k, v) in dict.unwrap().iter() {
+        if v.is_object() || v.is_array() {
+            continue;
+        }
+        let s = v.as_str();
+        if let Some(s) = s {
+            vec.push((k.clone(), s.to_string()));
+        } else {
+            vec.push((k.clone(), v.to_string()));
+        }
+    }
+    vec
 }

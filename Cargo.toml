@@ -56,8 +56,8 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
 url = "2.5.2"
 uuid = { version = "1.9.1", features = ["v4", "serde"] }
-wasmtime = "25.0.2"
-wasmtime-wasi = "25.0.2"
+wasmtime = "26.0.0"
+wasmtime-wasi = "26.0.0"
 
 [features]
 bundled = [

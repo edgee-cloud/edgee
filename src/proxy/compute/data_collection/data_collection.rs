@@ -17,7 +17,7 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::io::Read;
-use tracing::{info, warn};
+use tracing::{info, warn, Instrument};
 
 #[tracing::instrument(name = "data_collection", skip(document, request, response))]
 pub async fn process_from_html(
@@ -105,11 +105,14 @@ pub async fn process_from_html(
     info!(events = events_json.as_str());
 
     // send the payload to the data collection components
-    tokio::spawn(async move {
-        if let Err(err) = components::send_data_collection(&events).await {
-            warn!(?err, "failed to send data collection payload");
+    tokio::spawn(
+        async move {
+            if let Err(err) = components::send_data_collection(&events).await {
+                warn!(?err, "failed to send data collection payload");
+            }
         }
-    });
+        .in_current_span(),
+    );
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
     if config::get().compute.data_collection_api_key.is_some()
@@ -196,11 +199,14 @@ pub async fn process_from_json(
     info!(events = events_json.as_str());
 
     // send the payload to the data collection components
-    tokio::spawn(async move {
-        if let Err(err) = components::send_data_collection(&events).await {
-            warn!(?err, "failed to send data collection payload");
+    tokio::spawn(
+        async move {
+            if let Err(err) = components::send_data_collection(&events).await {
+                warn!(?err, "failed to send data collection payload");
+            }
         }
-    });
+        .in_current_span(),
+    );
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
     if config::get().compute.data_collection_api_key.is_some()
@@ -385,6 +391,74 @@ fn add_session(request: &RequestHandle, response: &mut Parts, mut payload: Paylo
             }
         }
     }
+
+    payload
+        .data_collection
+        .as_mut()
+        .unwrap()
+        .context
+        .as_mut()
+        .unwrap()
+        .client
+        .as_mut()
+        .unwrap()
+        .user_agent_architecture = edgee_cookie.uaa.clone();
+    payload
+        .data_collection
+        .as_mut()
+        .unwrap()
+        .context
+        .as_mut()
+        .unwrap()
+        .client
+        .as_mut()
+        .unwrap()
+        .user_agent_bitness = edgee_cookie.uab.clone();
+    payload
+        .data_collection
+        .as_mut()
+        .unwrap()
+        .context
+        .as_mut()
+        .unwrap()
+        .client
+        .as_mut()
+        .unwrap()
+        .user_agent_model = edgee_cookie.uam.clone();
+    payload
+        .data_collection
+        .as_mut()
+        .unwrap()
+        .context
+        .as_mut()
+        .unwrap()
+        .client
+        .as_mut()
+        .unwrap()
+        .os_version = edgee_cookie.uapv.clone();
+    payload
+        .data_collection
+        .as_mut()
+        .unwrap()
+        .context
+        .as_mut()
+        .unwrap()
+        .client
+        .as_mut()
+        .unwrap()
+        .user_agent_full_version_list = edgee_cookie.uafvl.clone();
+    payload
+        .data_collection
+        .as_mut()
+        .unwrap()
+        .context
+        .as_mut()
+        .unwrap()
+        .client
+        .as_mut()
+        .unwrap()
+        .timezone = edgee_cookie.tz.clone();
+
     payload
 }
 
@@ -769,6 +843,24 @@ fn add_more_info_from_request(request: &RequestHandle, mut payload: Payload) -> 
         .unwrap()
         .locale = Some(locale);
 
+    // Accept-Language
+    let accept_language = request
+        .get_header("Accept-Language")
+        .unwrap_or("".to_string());
+    if !accept_language.is_empty() {
+        payload
+            .data_collection
+            .as_mut()
+            .unwrap()
+            .context
+            .as_mut()
+            .unwrap()
+            .client
+            .as_mut()
+            .unwrap()
+            .accept_language = Some(accept_language);
+    }
+
     // sec-ch-ua-arch (user_agent_architecture)
     if let Some(sec_ch_ua_arch) = request.get_header("Sec-Ch-Ua-Arch") {
         payload
@@ -799,7 +891,7 @@ fn add_more_info_from_request(request: &RequestHandle, mut payload: Payload) -> 
             .user_agent_bitness = Some(sec_ch_ua_bitness.replace("\"", ""));
     }
 
-    // sec-ch-ua (user_agent_full_version_list)
+    // sec-ch-ua (user_agent_version_list)
     if let Some(sec_ch_ua) = request.get_header("Sec-Ch-Ua") {
         payload
             .data_collection
@@ -811,7 +903,49 @@ fn add_more_info_from_request(request: &RequestHandle, mut payload: Payload) -> 
             .client
             .as_mut()
             .unwrap()
-            .user_agent_full_version_list = Some(process_sec_ch_ua(sec_ch_ua.as_str()));
+            .user_agent_version_list = Some(process_sec_ch_ua(sec_ch_ua.as_str(), false));
+
+        // if user_agent_full_version_list is not set, we set it to the same value
+        if payload
+            .data_collection
+            .as_ref()
+            .unwrap()
+            .context
+            .as_ref()
+            .unwrap()
+            .client
+            .as_ref()
+            .unwrap()
+            .user_agent_full_version_list
+            .is_none()
+        {
+            payload
+                .data_collection
+                .as_mut()
+                .unwrap()
+                .context
+                .as_mut()
+                .unwrap()
+                .client
+                .as_mut()
+                .unwrap()
+                .user_agent_full_version_list = Some(process_sec_ch_ua(sec_ch_ua.as_str(), true));
+        }
+    }
+
+    // Sec-Ch-Ua-Full-Version-List (user_agent_full_version_list)
+    if let Some(sec_ch_ua) = request.get_header("Sec-Ch-Ua-Full-Version-List") {
+        payload
+            .data_collection
+            .as_mut()
+            .unwrap()
+            .context
+            .as_mut()
+            .unwrap()
+            .client
+            .as_mut()
+            .unwrap()
+            .user_agent_full_version_list = Some(process_sec_ch_ua(sec_ch_ua.as_str(), true));
     }
 
     // sec-ch-ua-mobile (user_agent_mobile)
@@ -1006,6 +1140,7 @@ fn add_more_info_from_request(request: &RequestHandle, mut payload: Payload) -> 
 ///
 /// # Arguments
 /// - `header`: A string slice that holds the value of the `Sec-CH-UA` header.
+/// - `full`: A boolean flag that indicates whether the full version string should be included.
 ///
 /// # Returns
 /// - `String`: A formatted string containing the user agent information, with each key-value pair separated by a semicolon,
@@ -1014,7 +1149,7 @@ fn add_more_info_from_request(request: &RequestHandle, mut payload: Payload) -> 
 /// The function uses a regular expression to capture the key and version from the header.
 /// It ensures that the version string has four parts by appending ".0" if necessary.
 /// The formatted key-version pairs are then concatenated into a single string.
-fn process_sec_ch_ua(header: &str) -> String {
+fn process_sec_ch_ua(header: &str, full: bool) -> String {
     lazy_static::lazy_static! {
         static ref VALUE_REGEX: Regex = Regex::new(r#""([^"]+)";v="([^"]+)""#).unwrap();
     }
@@ -1032,7 +1167,11 @@ fn process_sec_ch_ua(header: &str) -> String {
         while parts.len() < 4 {
             parts.push("0");
         }
-        let version_str = parts.join(".");
+        let mut version_str = parts.join(".");
+        if !full {
+            // get only the major version
+            version_str = parts[0].to_string();
+        }
 
         // Add the key and version to the output string
         write!(output, "{};{}", key, version_str).unwrap(); // Using write! macro to append formatted string

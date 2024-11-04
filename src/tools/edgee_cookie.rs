@@ -29,6 +29,18 @@ pub struct EdgeeCookie {
     pub sc: u32,           // session count
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sz: Option<String>, // screen size
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uaa: Option<String>, // user agent architecture
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uab: Option<String>, // user agent bitness
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uam: Option<String>, // user agent model
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uapv: Option<String>, // user agent platform version
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uafvl: Option<String>, // user agent full version list
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tz: Option<String>, // timezone
 }
 
 impl EdgeeCookie {
@@ -42,6 +54,12 @@ impl EdgeeCookie {
             ps: None,
             sc: 1,
             sz: None,
+            uaa: None,
+            uab: None,
+            uam: None,
+            uapv: None,
+            uafvl: None,
+            tz: None,
         }
     }
 
@@ -52,9 +70,9 @@ impl EdgeeCookie {
             .and_then(|dc| dc.context.as_ref())
             .and_then(|ctx| ctx.client.as_ref())
         {
-            let screen_width = client.screen_width.clone();
-            let screen_height = client.screen_height.clone();
-            let screen_density = client.screen_density.clone();
+            let screen_width = client.screen_width;
+            let screen_height = client.screen_height;
+            let screen_density = client.screen_density;
 
             if screen_width.is_none() || screen_height.is_none() || screen_density.is_none() {
                 return;
@@ -66,6 +84,34 @@ impl EdgeeCookie {
                 screen_height.unwrap(),
                 screen_density.unwrap()
             ));
+        }
+    }
+
+    fn set_client_hints(&mut self, payload: &Payload) {
+        if let Some(client) = payload
+            .data_collection
+            .as_ref()
+            .and_then(|dc| dc.context.as_ref())
+            .and_then(|ctx| ctx.client.as_ref())
+        {
+            if client.user_agent_architecture.is_some() {
+                self.uaa = client.user_agent_architecture.clone();
+            }
+            if client.user_agent_bitness.is_some() {
+                self.uab = client.user_agent_bitness.clone();
+            }
+            if client.user_agent_model.is_some() {
+                self.uam = client.user_agent_model.clone();
+            }
+            if client.os_version.is_some() {
+                self.uapv = client.os_version.clone();
+            }
+            if client.user_agent_full_version_list.is_some() {
+                self.uafvl = client.user_agent_full_version_list.clone();
+            }
+            if client.timezone.is_some() {
+                self.tz = client.timezone.clone();
+            }
         }
     }
 }
@@ -158,6 +204,7 @@ pub fn get(
         }
         let mut edgee_cookie = edgee_cookie_result.unwrap();
         edgee_cookie.set_screen_size(payload);
+        edgee_cookie.set_client_hints(payload);
 
         let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
         let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
@@ -225,6 +272,7 @@ fn decrypt_and_update(
         edgee_cookie.ss = now;
     }
     edgee_cookie.set_screen_size(payload);
+    edgee_cookie.set_client_hints(payload);
 
     Ok(edgee_cookie)
 }
@@ -247,6 +295,7 @@ fn init_and_set_cookie(
 ) -> EdgeeCookie {
     let mut edgee_cookie = EdgeeCookie::new();
     edgee_cookie.set_screen_size(payload);
+    edgee_cookie.set_client_hints(payload);
     let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
     let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
     set_cookie(
