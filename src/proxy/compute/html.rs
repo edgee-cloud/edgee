@@ -1,5 +1,3 @@
-use regex::Regex;
-
 #[derive(Debug)]
 pub struct Document {
     pub data_collection_events: String,
@@ -296,26 +294,24 @@ fn extract_content_value(tag: &str) -> Option<String> {
 /// assert!(sdk_content.is_ok());
 /// ```
 pub fn get_sdk_from_url(url: &str) -> Result<String, &'static str> {
-    // Extract the version of the SDK from the URL using a regular expression.
-    let regex_pattern = r#"(v[0-9\.]+)\.js$"#;
-    let re = Regex::new(&regex_pattern).unwrap();
-    let captures = re.captures(url);
-    if captures.is_none() {
-        if url.ends_with("sdk.js") {
-            return Ok(include_str!("../../../public/sdk.js").trim().to_string());
-        } else {
-            return Err("Failed to read the JS SDK file");
-        }
+    if url.ends_with("sdk.js") {
+        return Ok(include_str!("../../../public/sdk.js").trim().to_string());
     }
 
-    // Retrieve the SDK content based on the extracted version.
-    let sdk_content = match captures.unwrap()[1].to_string().as_str() {
-        "v1.0.0" => include_str!("../../../public/edgee.v1.0.0.js"),
-        "v1.0.1" => include_str!("../../../public/edgee.v1.0.1.js"),
-        "v1.0.2" => include_str!("../../../public/edgee.v1.0.2.js"),
+    let Some((_, part)) = url.rsplit_once('v') else {
+        return Err("Failed to read the JS SDK file");
+    };
+    let Some(part) = part.strip_suffix(".js") else {
+        return Err("Failed to read the JS SDK file");
+    };
+
+    let content = match part {
+        "1.0.0" => include_str!("../../../public/edgee.v1.0.0.js"),
+        "1.0.1" => include_str!("../../../public/edgee.v1.0.1.js"),
+        "1.0.2" => include_str!("../../../public/edgee.v1.0.2.js"),
         // Add more versions as needed
         _ => return Err("Failed to read the JS SDK file"),
     };
 
-    Ok(sdk_content.trim().to_string())
+    Ok(content.trim().to_string())
 }

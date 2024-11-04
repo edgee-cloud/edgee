@@ -8,6 +8,7 @@ use base64::alphabet::STANDARD;
 use base64::engine::general_purpose::PAD;
 use base64::engine::GeneralPurpose;
 use base64::Engine;
+use regex::Regex;
 use bytes::Bytes;
 use html_escape;
 use http::response::Parts;
@@ -1014,10 +1015,13 @@ fn add_more_info_from_request(request: &RequestHandle, mut payload: Payload) -> 
 /// It ensures that the version string has four parts by appending ".0" if necessary.
 /// The formatted key-version pairs are then concatenated into a single string.
 fn process_sec_ch_ua(header: &str) -> String {
-    let mut output = String::new();
-    let re = regex::Regex::new(r#""([^"]+)";v="([^"]+)""#).unwrap();
+    lazy_static::lazy_static! {
+        static ref VALUE_REGEX: Regex = Regex::new(r#""([^"]+)";v="([^"]+)""#).unwrap();
+    }
 
-    let matches: Vec<_> = re.captures_iter(header).collect();
+    let mut output = String::new();
+
+    let matches: Vec<_> = VALUE_REGEX.captures_iter(header).collect();
 
     for (i, cap) in matches.iter().enumerate() {
         let key = &cap[1];
