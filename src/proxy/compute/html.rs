@@ -289,7 +289,7 @@ fn extract_content_value(tag: &str) -> Option<String> {
 /// # Example
 ///
 /// ```
-/// let url = "https://example.com/sdk/v1.0.0.js";
+/// let url = "https://example.com/sdk/v1.1.0.js";
 /// let sdk_content = get_sdk_from_url(url);
 /// assert!(sdk_content.is_ok());
 /// ```
@@ -298,7 +298,7 @@ pub fn get_sdk_from_url(url: &str) -> Result<String, &'static str> {
         return Ok(include_str!("../../../public/sdk.js").trim().to_string());
     }
 
-    let Some((_, part)) = url.rsplit_once('v') else {
+    let Some((_, part)) = url.rsplit_once("edgee.v") else {
         return Err("Failed to read the JS SDK file");
     };
     let Some(part) = part.strip_suffix(".js") else {
@@ -306,9 +306,7 @@ pub fn get_sdk_from_url(url: &str) -> Result<String, &'static str> {
     };
 
     let content = match part {
-        "1.0.0" => include_str!("../../../public/edgee.v1.0.0.js"),
-        "1.0.1" => include_str!("../../../public/edgee.v1.0.1.js"),
-        "1.0.2" => include_str!("../../../public/edgee.v1.0.2.js"),
+        "1.1.0" => include_str!("../../../public/edgee.v1.1.0.js"),
         // Add more versions as needed
         _ => return Err("Failed to read the JS SDK file"),
     };
