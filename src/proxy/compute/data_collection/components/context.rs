@@ -8,7 +8,7 @@ use wasmtime::{
 use wasmtime_wasi::{WasiCtx, WasiView};
 
 use super::{DataCollection, DataCollectionPre};
-use crate::config::config;
+use crate::config;
 
 static COMPONENTS_CONTEXT: OnceCell<ComponentsContext> = OnceCell::const_new();
 

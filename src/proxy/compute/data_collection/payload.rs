@@ -29,10 +29,10 @@ pub struct Context {
 impl Context {
     pub fn fill_in(&mut self, other: &Context) {
         if let Some(page) = &mut self.page {
-            page.fill_in(&other.page.as_ref().unwrap());
+            page.fill_in(other.page.as_ref().unwrap());
         }
         if let Some(user) = &mut self.user {
-            user.fill_in(&other.user.as_ref().unwrap());
+            user.fill_in(other.user.as_ref().unwrap());
         }
     }
 }
@@ -194,7 +194,7 @@ impl Event {
         }
 
         // iterate over all components and check if there is at least one enabled
-        for (_, enabled) in self.components.as_ref().unwrap() {
+        for enabled in self.components.as_ref().unwrap().values() {
             if *enabled {
                 return false;
             }

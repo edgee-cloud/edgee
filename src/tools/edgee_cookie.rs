@@ -1,8 +1,7 @@
-use crate::config::config;
-use crate::proxy::compute::data_collection::payload::Payload;
-use crate::proxy::context::incoming::RequestHandle;
-use crate::proxy::proxy::DATA_COLLECTION_ENDPOINT_FROM_THIRD_PARTY_SDK;
-use crate::tools::crypto::{decrypt, encrypt};
+use std::collections::HashMap;
+use std::io::Read;
+use std::time::Duration as StdDuration;
+
 use chrono::{DateTime, Duration, Utc};
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, SameSite};
@@ -11,10 +10,13 @@ use http::response::Parts;
 use http::{HeaderValue, Method};
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
-use std::collections::HashMap;
-use std::io::Read;
-use std::time::Duration as StdDuration;
 use uuid::Uuid;
+
+use super::crypto::{decrypt, encrypt};
+use crate::config;
+use crate::proxy::compute::data_collection::payload::Payload;
+use crate::proxy::context::incoming::RequestHandle;
+use crate::proxy::DATA_COLLECTION_ENDPOINT_FROM_THIRD_PARTY_SDK;
 
 static SESSION_DURATION: Duration = Duration::minutes(30);
 
@@ -245,7 +247,7 @@ fn decrypt_and_update(
     encrypted_edgee_cookie: &str,
     payload: &Payload,
 ) -> Result<EdgeeCookie, &'static str> {
-    let edgee_cookie_decrypted = decrypt(&encrypted_edgee_cookie);
+    let edgee_cookie_decrypted = decrypt(encrypted_edgee_cookie);
     if edgee_cookie_decrypted.is_err() {
         return Err("Failed to decrypt edgee_cookie");
     }
@@ -265,7 +267,7 @@ fn decrypt_and_update(
 
     // if lastSeen is older than 30 minutes, update ls (last seen) and session start (ss) and set cookie
     if Utc::now().signed_duration_since(edgee_cookie.ls) >= SESSION_DURATION {
-        edgee_cookie.sc = edgee_cookie.sc + 1;
+        edgee_cookie.sc += 1;
         edgee_cookie.ps = Some(edgee_cookie.ss);
         let now = Utc::now();
         edgee_cookie.ls = now;
@@ -354,10 +356,9 @@ fn get_root_domain(host: &str) -> String {
         // If the domain name was successfully parsed
         Ok(domain) => {
             // Attempt to get the root of the domain
-            let domain = domain.root();
             // If the root domain is present, return it as a string
-            if domain.is_some() {
-                return domain.unwrap().to_string();
+            if let Some(domain) = domain.root() {
+                return domain.to_string();
             }
             // If the root domain is not present, return the original host string
             host.to_string()

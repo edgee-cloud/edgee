@@ -21,7 +21,7 @@ impl Realip {
     /// The function then iterates over `cidr_blocks`, attempts to parse each CIDR block string into an `IpNetwork` instance, and collects the successful results into a new vector `cidrs`.
     /// Finally, the function constructs a new `Realip` instance with `cidrs` as its `cidrs` field and returns it.
     pub fn new() -> Self {
-        let cidr_blocks = vec![
+        let cidr_blocks = [
             "127.0.0.1/8",    // localhost
             "10.0.0.0/8",     // 24-bit block
             "172.16.0.0/12",  // 20-bit block
@@ -29,7 +29,7 @@ impl Realip {
             "169.254.0.0/16", // link local address
             "::1/128",        // localhost IPv6
             "fc00::/7",       // unique local address IPv6
-            "fe80::/10",      // link local address IPv6
+            "fe80::/10",
         ];
 
         let cidrs = cidr_blocks

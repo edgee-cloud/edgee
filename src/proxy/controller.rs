@@ -1,16 +1,17 @@
-use crate::config::config;
-use crate::proxy::compute::compute;
-use crate::proxy::compute::html;
-use crate::proxy::context::incoming::{IncomingContext, RequestHandle};
+use std::convert::Infallible;
+use std::time::Instant;
+
 use bytes::Bytes;
 use http::header::SET_COOKIE;
 use http::{header, StatusCode};
 use http_body_util::combinators::BoxBody;
 use http_body_util::BodyExt;
 use http_body_util::{Empty, Full};
-use std::convert::Infallible;
-use std::time::Instant;
 use tracing::info;
+
+use super::compute::{self, html};
+use super::context::incoming::{IncomingContext, RequestHandle};
+use crate::config;
 
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
@@ -59,7 +60,7 @@ pub async fn edgee_client_event_from_third_party_sdk(
     let body = ctx.body.collect().await?.to_bytes();
 
     if !body.is_empty() {
-        let events = compute::json_handler(&body, &request, &mut response, true).await;
+        let events = compute::json_handler(&body, request, &mut response, true).await;
 
         let all_cookies = response.headers.get_all(SET_COOKIE).iter();
 
@@ -149,8 +150,7 @@ pub fn redirect_to_https(request: &RequestHandle) -> anyhow::Result<Response> {
 }
 
 pub fn sdk(path: &str) -> anyhow::Result<Response> {
-    let inlined_sdk = html::get_sdk_from_url(path);
-    if inlined_sdk.is_ok() {
+    if let Ok(inlined_sdk) = html::get_sdk_from_url(path) {
         Ok(http::Response::builder()
             .status(StatusCode::OK)
             .header(
@@ -158,7 +158,7 @@ pub fn sdk(path: &str) -> anyhow::Result<Response> {
                 "application/javascript; charset=utf-8",
             )
             .header(header::CACHE_CONTROL, "public, max-age=300")
-            .body(Full::from(Bytes::from(inlined_sdk.unwrap())).boxed())
+            .body(Full::from(Bytes::from(inlined_sdk)).boxed())
             .expect("serving sdk should never fail"))
     } else {
         Ok(http::Response::builder()
@@ -173,6 +173,8 @@ pub fn bad_gateway_error(
     request: &RequestHandle,
     timer_start: Instant,
 ) -> anyhow::Result<Response> {
+    static HTML: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/public/502.html"));
+
     info!(
         "502 - {} {}{} - {}ms",
         request.get_method(),
@@ -180,7 +182,7 @@ pub fn bad_gateway_error(
         request.get_path(),
         timer_start.elapsed().as_millis()
     );
-    static HTML: &str = include_str!("../../../public/502.html");
+
     Ok(http::Response::builder()
         .status(StatusCode::BAD_GATEWAY)
         .body(Full::from(Bytes::from(HTML)).boxed())

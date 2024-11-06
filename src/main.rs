@@ -32,7 +32,7 @@ struct Options {
 async fn main() {
     let options = Options::parse();
 
-    config::config::init(&options);
+    config::init(&options);
     // if debug_component is set, we only want to log the specified component. We change the options.log_format to do it.
     let mut log_filter = None;
     if options.debug_component.is_some() {

@@ -1,5 +1,5 @@
 use super::incoming::RequestHandle;
-use crate::config::config;
+use crate::config;
 use http::uri::PathAndQuery;
 use regex::Regex;
 use std::str::FromStr;

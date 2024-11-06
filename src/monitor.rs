@@ -1,4 +1,4 @@
-use crate::config::config;
+use crate::config;
 use bytes::Bytes;
 use http::{Request, Response, StatusCode};
 use http_body_util::{combinators::BoxBody, BodyExt, Empty};
