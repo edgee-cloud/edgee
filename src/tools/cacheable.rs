@@ -89,10 +89,8 @@ fn is_cacheable_by_shared_cache(headers: &HashMap<String, String>) -> bool {
             return false;
         }
 
-        if !is_private {
-            if max_age.unwrap_or(0) > 0 {
-                return true;
-            }
+        if !is_private && max_age.unwrap_or(0) > 0 {
+            return true;
         }
         if s_max_age.unwrap_or(0) > 0 {
             return true;

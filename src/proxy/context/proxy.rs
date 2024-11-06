@@ -35,7 +35,7 @@ impl<'a> ProxyContext<'a> {
         } else {
             incoming_headers.insert(
                 FORWARDED_FOR,
-                HeaderValue::from_str(&client_ip).expect("header value should be valid"),
+                HeaderValue::from_str(client_ip).expect("header value should be valid"),
             );
         }
 
@@ -86,7 +86,7 @@ impl<'a> ProxyContext<'a> {
     pub async fn forward_request(self) -> anyhow::Result<Response> {
         use tower::{Service, ServiceBuilder, ServiceExt};
 
-        use crate::config::config::BackendConfiguration;
+        use crate::config::BackendConfiguration;
 
         let BackendConfiguration {
             enable_ssl,

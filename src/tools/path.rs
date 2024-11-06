@@ -161,15 +161,13 @@ fn encrypt_string(input: &str) -> String {
         .chars()
         .map(|c| {
             // Find the index of the character in the original array
-            let index = ORIGINAL.iter().position(|&x| x == c);
-
             // If the character exists in the original array, replace it with the corresponding character from the CORRESPONDENCE array
             // If the character does not exist in the original array, leave it unchanged
-            if index.is_none() {
-                c
-            } else {
-                CORRESPONDENCE[pick][index.unwrap()]
-            }
+            ORIGINAL
+                .iter()
+                .position(|&x| x == c)
+                .map(|index| CORRESPONDENCE[pick][index])
+                .unwrap_or(c)
         })
         .collect();
 
@@ -204,17 +202,13 @@ fn decrypt_string(input: &str, correspondence_index: usize) -> String {
         .chars()
         .map(|c| {
             // Find the index of the character in the correspondence array
-            let index = CORRESPONDENCE[correspondence_index]
-                .iter()
-                .position(|&x| x == c);
-
             // If the character exists in the correspondence array, replace it with the corresponding character from the ORIGINAL array
             // If the character does not exist in the correspondence array, leave it unchanged
-            if index.is_none() {
-                c
-            } else {
-                ORIGINAL[index.unwrap()]
-            }
+            CORRESPONDENCE[correspondence_index]
+                .iter()
+                .position(|&x| x == c)
+                .map(|index| ORIGINAL[index])
+                .unwrap_or(c)
         })
         .collect();
 
@@ -390,7 +384,7 @@ pub fn validate(hostname: &str, path: &str) -> bool {
 
     if new_path_len < (hostname_len * 2) {
         for _ in 0..(new_path_len - hostname_len) {
-            if let Some(_) = new_path_iter.next() {
+            if new_path_iter.next().is_some() {
                 if let Some(encrypted_char) = new_path_iter.next() {
                     encrypted_hostname.push(encrypted_char);
                 }
@@ -404,7 +398,7 @@ pub fn validate(hostname: &str, path: &str) -> bool {
         }
     } else {
         for _ in 0..hostname_len {
-            if let Some(_) = new_path_iter.next() {
+            if new_path_iter.next().is_some() {
                 if let Some(encrypted_char) = new_path_iter.next() {
                     encrypted_hostname.push(encrypted_char);
                 }

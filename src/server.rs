@@ -14,8 +14,7 @@ use tower::util::BoxCloneService;
 use tower_http::compression::CompressionBody;
 use tracing::{error, info};
 
-use crate::config::config;
-use crate::proxy::proxy;
+use crate::{config, proxy};
 
 type Body = CompressionBody<BoxBody<Bytes, Infallible>>;
 

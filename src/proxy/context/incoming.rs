@@ -12,58 +12,54 @@ pub struct IncomingContext {
 
 impl IncomingContext {
     pub fn new(request: http::Request<Incoming>, remote_addr: SocketAddr, proto: &str) -> Self {
-        let (head, body) = request.into_parts();
-
-        let mut req = RequestHandle::default();
-
-        req.host = match (head.headers.get(HOST), head.uri.host()) {
-            (None, Some(value)) => Some(String::from(value)),
-            (Some(value), _) => Some(value.to_str().unwrap().to_string()),
-            (None, None) => None,
-        }
-        .and_then(|host| host.split(':').next().map(|s| s.to_string()))
-        .context("extracting hostname from request")
-        .unwrap();
+        let (parts, body) = request.into_parts();
 
         let root_path = PathAndQuery::from_str("/").expect("'/' should be a valid path");
-        let path = head.uri.path_and_query().unwrap_or(&root_path).to_owned();
+        let path = parts.uri.path_and_query().unwrap_or(&root_path).to_owned();
 
-        req.path_and_query = path.clone();
-        req.path = path.path().to_string();
-        req.query = path.query().unwrap_or("").to_string();
-        req.method = head.method.clone();
-        req.headers = head.headers.clone();
-
-        // is_https
-        let mut is_https = proto == "https";
-        // check if the x-forwarded-proto header is set
-        if let Some(forwarded_proto) = head.headers.get("x-forwarded-proto") {
-            if let Ok(value) = forwarded_proto.to_str() {
-                if value == "https" {
-                    is_https = true;
-                }
-            }
-        }
-
-        req.is_https = is_https;
-        if is_https {
-            req.proto = "https".to_string();
+        // Compute if HTTPS is used using the x-forwarded-proto header is set
+        let is_https = if let Some(forwarded_proto) = parts
+            .headers
+            .get("x-forwarded-proto")
+            .and_then(|value| value.to_str().ok())
+        {
+            forwarded_proto == "https"
         } else {
-            req.proto = "http".to_string();
-        }
+            proto == "https"
+        };
 
         // debug mode
-        let all_cookies = head.headers.get_all(COOKIE);
+        let all_cookies = parts.headers.get_all(COOKIE);
         let is_debug_mode = all_cookies
             .iter()
             .filter_map(|cookie| cookie.to_str().ok())
             .any(|cookie| cookie.contains("_edgeedebug=true"));
 
-        req.is_debug_mode = is_debug_mode;
+        let client_ip = Realip::new().get_from_request(&remote_addr, &parts.headers);
 
-        // client ip
-        let client_ip = Realip::new().get_from_request(&remote_addr, &head.headers);
-        req.client_ip = client_ip;
+        let req = RequestHandle {
+            host: match (parts.headers.get(HOST), parts.uri.host()) {
+                (None, Some(value)) => Some(String::from(value)),
+                (Some(value), _) => Some(value.to_str().unwrap().to_string()),
+                (None, None) => None,
+            }
+            .and_then(|host| host.split(':').next().map(|s| s.to_string()))
+            .context("extracting hostname from request")
+            .unwrap(),
+            path: path.path().to_string(),
+            query: path.query().unwrap_or("").to_string(),
+            method: parts.method,
+            path_and_query: path,
+            headers: parts.headers,
+            is_https,
+            proto: if is_https {
+                "https".to_string()
+            } else {
+                "http".to_string()
+            },
+            is_debug_mode,
+            client_ip,
+        };
 
         Self { body, request: req }
     }
@@ -153,6 +149,6 @@ impl RequestHandle {
 
     pub fn get_content_type(&self) -> String {
         self.get_header(http::header::CONTENT_TYPE)
-            .unwrap_or_else(|| "".to_string())
+            .unwrap_or_default()
     }
 }

@@ -1,4 +1,4 @@
-use crate::config::config;
+use crate::config;
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 
 type Aes128CbcEnc = cbc::Encryptor<aes::Aes128>;
@@ -27,7 +27,7 @@ type Aes128CbcDec = cbc::Decryptor<aes::Aes128>;
 /// ```
 pub fn encrypt(text: &str) -> Result<String, &'static str> {
     if text.is_empty() {
-        return Err("Empty string".into());
+        return Err("Empty string");
     }
     let sec = &config::get().compute;
     let data = Aes128CbcEnc::new(sec.aes_key.as_bytes().into(), sec.aes_iv.as_bytes().into())
@@ -58,18 +58,18 @@ pub fn encrypt(text: &str) -> Result<String, &'static str> {
 /// ```
 pub fn decrypt(text: &str) -> Result<String, &'static str> {
     if text.is_empty() {
-        return Err("Empty string".into());
+        return Err("Empty string");
     }
 
     let hex = hex::decode(text);
     if hex.is_err() {
-        return Err("Invalid hex".into());
+        return Err("Invalid hex");
     }
     let sec = &config::get().compute;
     let res = Aes128CbcDec::new(sec.aes_key.as_bytes().into(), sec.aes_iv.as_bytes().into())
         .decrypt_padded_vec_mut::<Pkcs7>(&hex.unwrap());
     if res.is_err() {
-        return Err("Failed to decrypt".into());
+        return Err("Failed to decrypt");
     }
     Ok(String::from_utf8(res.unwrap()).unwrap())
 }
@@ -77,7 +77,7 @@ pub fn decrypt(text: &str) -> Result<String, &'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::config::init_test_config;
+    use crate::config::init_test_config;
 
     #[test]
     fn decrypt_valid_text() {

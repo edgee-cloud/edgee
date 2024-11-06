@@ -26,7 +26,7 @@ pub fn init(log_format: LogFormat, log_filter: Option<String>) {
     use tracing_subscriber::prelude::*;
     use tracing_subscriber::{fmt, EnvFilter};
 
-    use crate::config::config;
+    use crate::config;
 
     let config = &config::get().log;
 

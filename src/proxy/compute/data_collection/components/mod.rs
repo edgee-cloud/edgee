@@ -5,7 +5,7 @@ use http::{header, HeaderMap, HeaderName, HeaderValue};
 use json_pretty::PrettyFormatter;
 use tracing::{error, info, span, Instrument, Level};
 
-use crate::config::config;
+use crate::config;
 use crate::proxy::compute::data_collection::payload::Event;
 use context::ComponentsContext;
 use exports::provider;
