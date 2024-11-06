@@ -129,6 +129,7 @@ pub async fn process_from_html(
         } else {
             "false"
         };
+        let host = request.get_host().to_string();
         tokio::spawn(async move {
             let _ = reqwest::Client::new()
                 .post(api_url)
@@ -136,6 +137,7 @@ pub async fn process_from_html(
                 .header("Authorization", format!("Basic {}", b64))
                 .header("X-Edgee-Debug", debug)
                 .header("X-Edgee-From", "edge")
+                .header("X-Edgee-Host", host)
                 .body(events_json)
                 .send()
                 .await;
@@ -235,6 +237,7 @@ pub async fn process_from_json(
         } else {
             "client"
         };
+        let host = request.get_host().to_string();
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         tokio::spawn(async move {
             let _ = reqwest::Client::new()
@@ -243,6 +246,7 @@ pub async fn process_from_json(
                 .header("Authorization", format!("Basic {}", b64))
                 .header("X-Edgee-Debug", debug)
                 .header("X-Edgee-From", from)
+                .header("X-Edgee-Host", host)
                 .body(events_json)
                 .send()
                 .await;
