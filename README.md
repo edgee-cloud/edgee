@@ -175,6 +175,7 @@ The Edgee proxy is designed for performance and extensibility, so you can easily
 - [Amplitude](https://github.com/edgee-cloud/amplitude-component)
 - [Google Analytics](https://github.com/edgee-cloud/ga-component)
 - [Segment](https://github.com/edgee-cloud/segment-component)
+- [Piano Analytics](https://github.com/edgee-cloud/piano-analytics-component)
 
 You just need point to the WebAssembly implementation in your proxy configuration. You may also build your
 own components for integrations we don't provide yet.
@@ -191,6 +192,14 @@ You simply need to add a new session to your configuration pointing to the WebAs
 name = "amplitude"
 component = "/var/edgee/wasm/amplitude.wasm"
 credentials.amplitude_api_key = "YOUR-API-KEY"
+```
+
+### Debugging a component
+
+You can enable debug logs for a specific component by setting the `debug` flag to `true`:
+
+```bash
+./edgee --debug-component amplitude
 ```
 
 
