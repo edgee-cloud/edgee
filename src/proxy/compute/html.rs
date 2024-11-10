@@ -151,7 +151,10 @@ pub(crate) fn parse_html(html: &str) -> Document {
                         }
                     }
                     // get only what is between the tags
-                    results.title = temp.chars().skip(7).take(temp.len() - 15).collect();
+                    let mut title_tag = temp.clone();
+                    title_tag = title_tag.replace("</title>", "");
+                    title_tag = title_tag.replace("<title>", "");
+                    results.title = title_tag;
                 } else if temp.contains(r#"rel="canonical""#) {
                     // get only what is in the href attribute
                     let href = extract_href_value(&temp);
