@@ -1,3 +1,5 @@
+use crate::tools::path;
+
 #[derive(Debug)]
 pub struct Document {
     pub data_collection_events: String,
@@ -32,7 +34,7 @@ pub struct Document {
 ///
 /// * `Document` - A struct containing the extracted information.
 ///
-pub(crate) fn parse_html(html: &str) -> Document {
+pub(crate) fn parse_html(html: &str, host: &str) -> Document {
     let recorded_tags: Vec<&str> = vec!["script", "title", "meta", "link"];
     let mut results = Document {
         data_collection_events: String::new(),
@@ -110,7 +112,7 @@ pub(crate) fn parse_html(html: &str) -> Document {
 
                         // if inline is true, then we need to inline the SDK
                         if inline && !results.sdk_src.is_empty() {
-                            let inlined_sdk = get_sdk_from_url(&results.sdk_src);
+                            let inlined_sdk = get_sdk_from_url(results.sdk_src.as_str(), host);
                             if inlined_sdk.is_ok() {
                                 results.inlined_sdk = inlined_sdk.unwrap();
                             }
@@ -296,9 +298,10 @@ fn extract_content_value(tag: &str) -> Option<String> {
 /// let sdk_content = get_sdk_from_url(url);
 /// assert!(sdk_content.is_ok());
 /// ```
-pub fn get_sdk_from_url(url: &str) -> Result<String, &'static str> {
+pub fn get_sdk_from_url(url: &str, host: &str) -> Result<String, &'static str> {
     if url.ends_with("sdk.js") {
-        return Ok(include_str!("../../../public/sdk.js").trim().to_string());
+        let sdk = include_str!("../../../public/sdk.js").trim();
+        return Ok(dynamize_sdk(sdk, host));
     }
 
     let Some((_, part)) = url.rsplit_once("edgee.v") else {
@@ -314,5 +317,10 @@ pub fn get_sdk_from_url(url: &str) -> Result<String, &'static str> {
         _ => return Err("Failed to read the JS SDK file"),
     };
 
-    Ok(content.trim().to_string())
+    Ok(dynamize_sdk(content, host))
+}
+
+fn dynamize_sdk(sdk: &str, host: &str) -> String {
+    let new_path = path::generate(host);
+    sdk.replace("/_edgee/event", new_path.as_str())
 }

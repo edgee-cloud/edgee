@@ -149,21 +149,25 @@ pub fn redirect_to_https(request: &RequestHandle) -> anyhow::Result<Response> {
         .expect("response builder should never fail"))
 }
 
-pub fn sdk(path: &str) -> anyhow::Result<Response> {
-    if let Ok(inlined_sdk) = html::get_sdk_from_url(path) {
+pub fn sdk(ctx: IncomingContext) -> anyhow::Result<Response> {
+    if let Ok(mut inlined_sdk) = html::get_sdk_from_url(
+        ctx.request.get_path().as_str(),
+        ctx.request.get_host().as_str(),
+    ) {
+        inlined_sdk = inlined_sdk.replace("/_edgee/side", "c");
         Ok(http::Response::builder()
             .status(StatusCode::OK)
             .header(
                 header::CONTENT_TYPE,
                 "application/javascript; charset=utf-8",
             )
-            .header(header::CACHE_CONTROL, "public, max-age=300")
+            .header(header::CACHE_CONTROL, "private, no-store")
             .body(Full::from(Bytes::from(inlined_sdk)).boxed())
             .expect("serving sdk should never fail"))
     } else {
         Ok(http::Response::builder()
             .status(StatusCode::NOT_FOUND)
-            .header(header::CACHE_CONTROL, "public, max-age=300")
+            .header(header::CACHE_CONTROL, "public, max-age=60")
             .body(Full::from(Bytes::from("Not found")).boxed())
             .expect("serving sdk should never fail"))
     }
