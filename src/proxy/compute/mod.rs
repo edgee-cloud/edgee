@@ -38,7 +38,7 @@ pub async fn html_handler(
         Err("compute-aborted(no-sdk)")?;
     }
 
-    let mut document = parse_html(body);
+    let mut document = parse_html(body, request.get_host().as_str());
 
     // verify if document.sdk_full_tag is present, otherwise SDK is probably commented in the page
     if document.sdk_full_tag.is_empty() {

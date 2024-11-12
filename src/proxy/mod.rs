@@ -70,7 +70,7 @@ pub async fn handle_request(
             request.get_path(),
             timer_start.elapsed().as_millis()
         );
-        return controller::sdk(request.get_path().as_str());
+        return controller::sdk(ctx);
     }
 
     // event path, method POST and content-type application/json
@@ -167,14 +167,10 @@ pub async fn handle_request(
 
             // interpret what's in the body
             match compute::html_handler(&body_str, request, &mut response).await {
-                Ok(document) => {
-                    let mut client_side_param = r#" data-client-side="true""#;
-                    let event_path_param = format!(
-                        r#" data-event-path="{}""#,
-                        path::generate(request.get_host().as_str())
-                    );
-
+                Ok(mut document) => {
+                    let mut side_value = "c";
                     let mut debug_script = "".to_string();
+
                     if !document.data_collection_events.is_empty() {
                         if request.is_debug_mode() {
                             debug_script = format!(
@@ -182,7 +178,7 @@ pub async fn handle_request(
                                 document.data_collection_events
                             );
                         }
-                        client_side_param = r#" data-client-side="false""#;
+                        side_value = "e";
                     }
 
                     // if the data_layer is empty, we need to add an empty data_layer script tag
@@ -192,23 +188,21 @@ pub async fn handle_request(
                     }
 
                     if !document.inlined_sdk.is_empty() {
+                        document.inlined_sdk =
+                            document.inlined_sdk.replace("/_edgee/side", side_value);
                         let new_tag = format!(
-                            r#"{}{}<script{}{}>{}</script>"#,
+                            r#"{}{}<script>{}</script>"#,
                             debug_script,
                             empty_data_layer,
-                            client_side_param,
-                            event_path_param,
                             document.inlined_sdk.as_str(),
                         );
                         body_str =
                             body_str.replace(document.sdk_full_tag.as_str(), new_tag.as_str());
                     } else {
                         let new_tag = format!(
-                            r#"{}{}<script{}{} async src="{}"></script>"#,
+                            r#"{}{}<script async src="{}"></script>"#,
                             debug_script,
                             empty_data_layer,
-                            client_side_param,
-                            event_path_param,
                             document.sdk_src.as_str()
                         );
                         body_str =
