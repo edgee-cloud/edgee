@@ -313,6 +313,7 @@ pub fn get_sdk_from_url(url: &str, host: &str) -> Result<String, &'static str> {
 
     let content = match part {
         "1.1.0" => include_str!("../../../public/edgee.v1.1.0.js"),
+        "1.2.0" => include_str!("../../../public/edgee.v1.2.0.js"),
         // Add more versions as needed
         _ => return Err("Failed to read the JS SDK file"),
     };
