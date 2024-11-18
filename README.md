@@ -20,10 +20,11 @@
 
 </div>
 
-⚠️ Edgee OSS Edition (v0.3.X) is in Development
+⚠️ Edgee OSS Edition (v0.4.X) is in Development
 
-Edgee OSS is currently in version 0.3.X and is considered unstable as we continue to enhance and refine the platform. 
+Edgee OSS is currently in version 0.4.X and is considered unstable as we continue to enhance and refine the platform.
 We're actively working towards a stable v1.0.0 release, which will be available in the coming months. 
+
 We welcome feedback and contributions during this development phase, and appreciate your patience as we work hard to bring you a robust edge computing solution.
 
 <!-- TODO: Add FAQ -->
@@ -32,8 +33,9 @@ We welcome feedback and contributions during this development phase, and appreci
 - [Official Website](https://www.edgee.cloud)
 - [Official Documentation](https://docs.edgee.cloud)
 
-## Contact
+## Contacts
 - [Twitter](https://x.com/edgee_cloud)
+- [LinkedIn](https://www.linkedin.com/company/edgee-cloud/)
 - [Slack](https://www.edgee.cloud/slack)
 
 Check out [the official docs](https://docs.edgee.cloud) to dive into Edgee's main concepts and architecture.
@@ -42,7 +44,7 @@ Check out [the official docs](https://docs.edgee.cloud) to dive into Edgee's mai
 
 Once you have a valid configuration file (see next section), you can run Edgee in different ways, using the installer, Docker or running as a Rust crate.
 
-⚠️ Note: all the examples below assume that TLS certificates and WebAssembly components can be found in `/var/edgee/cert` and  in `/var/edgee/wasm` respectively.
+⚠️ Note: all the examples below assume that TLS certificates and WebAssembly components can be found in `/var/edgee/cert` and  `/var/edgee/wasm` respectively. Feel free to use `/local/cert` and `/local/wasm` for local development.
 
 ## Using the installer
 
@@ -100,7 +102,13 @@ cargo run --release
 
 # Configuration
 
-Edgee proxy is customized through the `edgee.toml` file (or `edgee.yaml`), which is expected to be present in the same directory where edgee is running from.
+Edgee proxy is customized through the `edgee.toml` file (or `edgee.yaml`), which is expected in the same directory where edgee is running from.
+
+You can get started by coping the existing `edgee.sample.toml` file:
+
+```bash
+cp edgee.sample.toml edgee.toml
+```
 
 Here's a minimal configuration sample that sets Edgee to work as a regular reverse proxy. Later we'll see how to enable edge components.
 
@@ -114,7 +122,7 @@ address = "0.0.0.0:80"
 force_https = true
 
 [https]
-address = "0.0.0.0:80"
+address = "0.0.0.0:443"
 cert = "/var/edgee/cert/server.pem"
 key = "/var/edgee/cert/edgee.key"
 
@@ -165,6 +173,8 @@ path_prefix = "/api/"
 rewrite = "/v1/"
 backend = "api"
 ```
+
+This way, calling `/api/test` on port `80` will result in calling `/v1/test` on the API backend.
 
 ## Integrating with edgee components
 
