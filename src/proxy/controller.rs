@@ -202,10 +202,9 @@ pub fn build_response(mut parts: http::response::Parts, body: Bytes) -> Response
     parts.headers.insert("content-length", body.len().into());
 
     let mut builder = http::Response::builder();
-    for (name, value) in parts.headers {
-        if name.is_some() {
-            builder = builder.header(name.unwrap(), value);
-        }
+
+    for (name, value) in parts.headers.iter() {
+        builder = builder.header(name, value);
     }
     builder
         .status(parts.status)
