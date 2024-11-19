@@ -330,7 +330,7 @@ fn set_cookie(value: &str, response: &mut Parts, host: &str) {
         .same_site(SameSite::Lax)
         .expires(OffsetDateTime::now_utc() + StdDuration::from_secs(365 * 24 * 60 * 60));
 
-    response.headers.insert(
+    response.headers.append(
         SET_COOKIE,
         HeaderValue::from_str(cookie.to_string().as_str()).unwrap(),
     );
