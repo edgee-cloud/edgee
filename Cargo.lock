@@ -923,6 +923,8 @@ dependencies = [
  "chrono",
  "clap",
  "cookie",
+ "edgee-path",
+ "edgee-sdk",
  "futures",
  "hex",
  "html-escape",
@@ -960,6 +962,24 @@ dependencies = [
  "uuid",
  "wasmtime",
  "wasmtime-wasi",
+]
+
+[[package]]
+name = "edgee-path"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3554c7d421dab323cda42f297fc1591f1d89049f7e67d477f4dc1caf735b5ead"
+dependencies = [
+ "rand",
+]
+
+[[package]]
+name = "edgee-sdk"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd3cfb834ddb90f237008cff3941b27637b4c66f03b976b4f37bdef681520feb"
+dependencies = [
+ "edgee-path",
 ]
 
 [[package]]

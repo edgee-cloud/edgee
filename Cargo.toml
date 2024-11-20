@@ -58,7 +58,8 @@ url = "2.5.2"
 uuid = { version = "1.9.1", features = ["v4", "serde"] }
 wasmtime = "27.0.0"
 wasmtime-wasi = "27.0.0"
-
+edgee-sdk = "1.2.0"
+edgee-path = "0.1.0"
 [features]
 bundled = [
     "openssl/vendored",
