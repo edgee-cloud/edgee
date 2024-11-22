@@ -1,6 +1,6 @@
 use crate::tools::path;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Document {
     pub data_collection_events: String,
     pub sdk_full_tag: String,
@@ -10,6 +10,59 @@ pub struct Document {
     pub title: String,
     pub canonical: String,
     pub keywords: String,
+}
+
+#[derive(Debug, Default)]
+struct DocumentBuilder {
+    sdk_full_tag: Option<String>,
+    sdk_src: Option<String>,
+    inlined_sdk: Option<String>,
+    data_layer: Option<String>,
+    title: Option<String>,
+    canonical: Option<String>,
+    keywords: Option<String>,
+}
+
+impl DocumentBuilder {
+    fn is_complete(&self) -> bool {
+        matches!(
+            *self,
+            DocumentBuilder {
+                sdk_full_tag: Some(_),
+                sdk_src: Some(_),
+                inlined_sdk: Some(_),
+                data_layer: Some(_),
+                title: Some(_),
+                canonical: Some(_),
+                keywords: Some(_),
+            }
+        )
+    }
+
+    fn build(self) -> Document {
+        Document {
+            sdk_full_tag: self.sdk_full_tag.unwrap_or_default(),
+            sdk_src: self.sdk_src.unwrap_or_default(),
+            inlined_sdk: self.inlined_sdk.unwrap_or_default(),
+            data_layer: self.data_layer.unwrap_or_default(),
+            title: self.title.unwrap_or_default(),
+            canonical: self.canonical.unwrap_or_default(),
+            keywords: self.keywords.unwrap_or_default(),
+            ..Default::default()
+        }
+    }
+}
+
+macro_rules! set_document_field {
+    ($builder:expr, $field:ident, $value:expr) => {
+        set_document_field!($builder, $field, ?Some($value));
+    };
+    ($builder:expr, $field:ident, ?$value:expr) => {
+        $builder.$field = $value;
+        if $builder.is_complete() {
+            return $builder.build();
+        }
+    };
 }
 
 /// Parses an HTML document and extracts specific information.
@@ -34,18 +87,14 @@ pub struct Document {
 ///
 /// * `Document` - A struct containing the extracted information.
 ///
-pub(crate) fn parse_html(html: &str, host: &str) -> Document {
-    let recorded_tags: Vec<&str> = vec!["script", "title", "meta", "link"];
-    let mut results = Document {
-        data_collection_events: String::new(),
-        sdk_full_tag: String::new(),
-        sdk_src: String::new(),
-        inlined_sdk: String::new(),
-        data_layer: String::new(),
-        title: String::new(),
-        canonical: String::new(),
-        keywords: String::new(),
-    };
+pub fn parse_html(html: &str, host: &str) -> Document {
+    static RECORDED_TAGS: &[&str] = &["script", "title", "meta", "link"];
+
+    let mut builder = DocumentBuilder::default();
+    if !html.contains("__EDGEE_DATA_LAYER__") {
+        builder.data_layer = Some(String::new());
+    }
+
     let mut temp = String::new();
     let mut recording = false;
 
@@ -76,7 +125,7 @@ pub(crate) fn parse_html(html: &str, host: &str) -> Document {
                 let next_chars: String = chars.clone().take(6).collect();
                 if !recording {
                     // if next_chars start with RECORDED_TAGS list
-                    for tag in recorded_tags.iter() {
+                    for tag in RECORDED_TAGS.iter() {
                         if next_chars.starts_with(tag) {
                             recording = true;
                             temp.clear();
@@ -84,14 +133,22 @@ pub(crate) fn parse_html(html: &str, host: &str) -> Document {
                         }
                     }
                 }
+                if next_chars.starts_with("/head") {
+                    builder.title.get_or_insert_with(String::new);
+                    builder.canonical.get_or_insert_with(String::new);
+                    builder.keywords.get_or_insert_with(String::new);
+                    if builder.is_complete() {
+                        return builder.build();
+                    }
+                }
                 temp.push(c);
             }
             '>' if recording => {
                 temp.push(c);
 
-                if temp.contains(r#"__EDGEE_SDK__"#) {
+                if temp.contains("__EDGEE_SDK__") {
                     if temp.ends_with("/>") {
-                        results.sdk_full_tag = temp.clone();
+                        set_document_field!(builder, sdk_full_tag, temp.clone());
                     } else {
                         // This is a start tag, so we need to get the full tag with the closing tag as well
                         while let Some(&next_c) = chars.peek() {
@@ -105,21 +162,20 @@ pub(crate) fn parse_html(html: &str, host: &str) -> Document {
                             }
                         }
                         // get only what is in the src attribute
-                        results.sdk_src = extract_src_value(&temp).unwrap_or_default();
+                        set_document_field!(builder, sdk_src, ?extract_src_value(&temp));
 
                         // check if data-inline="false" is present
                         let inline = !temp.contains(r#"data-inline="false""#);
 
                         // if inline is true, then we need to inline the SDK
-                        if inline && !results.sdk_src.is_empty() {
-                            let inlined_sdk = get_sdk_from_url(results.sdk_src.as_str(), host);
-                            if inlined_sdk.is_ok() {
-                                results.inlined_sdk = inlined_sdk.unwrap();
+                        if let (true, Some(sdk_url)) = (inline, &builder.sdk_src) {
+                            if let Ok(inlined_sdk) = get_sdk_from_url(sdk_url, host) {
+                                set_document_field!(builder, inlined_sdk, inlined_sdk);
                             }
                         }
-                        results.sdk_full_tag = temp.clone();
+                        set_document_field!(builder, sdk_full_tag, temp.clone());
                     }
-                } else if temp.contains(r#"__EDGEE_DATA_LAYER__"#) {
+                } else if temp.contains("__EDGEE_DATA_LAYER__") {
                     // first, remove the opening tag
                     temp.clear();
 
@@ -139,7 +195,7 @@ pub(crate) fn parse_html(html: &str, host: &str) -> Document {
                     temp = temp.replace("</script>", "");
 
                     // get only what is between the tags
-                    results.data_layer = temp.clone();
+                    set_document_field!(builder, data_layer, temp.clone());
                 } else if temp == "<title>" {
                     // This is the start tag of the title, so we need to get the full tag with the closing tag as well
                     while let Some(&next_c) = chars.peek() {
@@ -156,19 +212,13 @@ pub(crate) fn parse_html(html: &str, host: &str) -> Document {
                     let mut title_tag = temp.clone();
                     title_tag = title_tag.replace("</title>", "");
                     title_tag = title_tag.replace("<title>", "");
-                    results.title = title_tag;
+                    set_document_field!(builder, title, title_tag);
                 } else if temp.contains(r#"rel="canonical""#) {
                     // get only what is in the href attribute
-                    let href = extract_href_value(&temp);
-                    if href.is_some() {
-                        results.canonical = href.unwrap();
-                    }
+                    set_document_field!(builder, canonical, ?extract_href_value(&temp));
                 } else if temp.contains(r#"name="keywords""#) {
                     // get only what is in the content attribute
-                    let content = extract_content_value(&temp);
-                    if content.is_some() {
-                        results.keywords = content.unwrap();
-                    }
+                    set_document_field!(builder, keywords, ?extract_content_value(&temp));
                 }
 
                 recording = false;
@@ -181,7 +231,7 @@ pub(crate) fn parse_html(html: &str, host: &str) -> Document {
         }
     }
 
-    results
+    builder.build()
 }
 
 /// Extracts the value of the `href` attribute from a given HTML tag.
