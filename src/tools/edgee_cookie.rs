@@ -321,9 +321,13 @@ fn init_and_set_cookie(
 /// This function will panic if the `HeaderValue::from_str` function fails to convert the cookie string to a `HeaderValue`.
 fn set_cookie(value: &str, response: &mut Parts, host: &str) {
     let secure = config::get().http.is_some() && config::get().http.as_ref().unwrap().force_https;
-    let root_domain = get_root_domain(host);
+    let cookie_domain = config::get()
+        .compute
+        .cookie_domain
+        .clone()
+        .unwrap_or_else(|| get_root_domain(host));
     let cookie = Cookie::build((&config::get().compute.cookie_name, value))
-        .domain(root_domain)
+        .domain(cookie_domain)
         .path("/")
         .http_only(false)
         .secure(secure)

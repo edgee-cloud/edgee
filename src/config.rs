@@ -35,6 +35,7 @@ pub struct StaticConfiguration {
 fn default_compute_config() -> ComputeConfiguration {
     ComputeConfiguration {
         cookie_name: default_cookie_name(),
+        cookie_domain: None,
         aes_key: default_aes_key(),
         aes_iv: default_aes_iv(),
         behind_proxy_cache: false,
@@ -182,6 +183,7 @@ pub struct DataCollectionConfiguration {
 pub struct ComputeConfiguration {
     #[serde(default = "default_cookie_name")]
     pub cookie_name: String,
+    pub cookie_domain: Option<String>,
     #[serde(default = "default_aes_key")]
     pub aes_key: String,
     #[serde(default = "default_aes_iv")]
