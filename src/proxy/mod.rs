@@ -10,7 +10,6 @@ use hyper::body::Incoming;
 use tracing::{error, info, warn};
 
 use crate::config;
-use crate::tools::path;
 use context::{
     body::ProxyBody, incoming::IncomingContext, proxy::ProxyContext, routing::RoutingContext,
 };
@@ -77,7 +76,7 @@ pub async fn handle_request(
     if request.get_method() == Method::POST
         && request.get_content_type() == "application/json"
         && (request.get_path() == DATA_COLLECTION_ENDPOINT
-            || path::validate(request.get_host().as_str(), request.get_path()))
+            || edgee_path::validate(request.get_host().as_str(), request.get_path()))
     {
         info!(
             "204 - {} {}{} - {}ms",

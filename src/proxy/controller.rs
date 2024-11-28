@@ -9,7 +9,7 @@ use http_body_util::BodyExt;
 use http_body_util::{Empty, Full};
 use tracing::info;
 
-use super::compute::{self, html};
+use super::compute::{self};
 use super::context::incoming::{IncomingContext, RequestHandle};
 use crate::config;
 
@@ -150,7 +150,7 @@ pub fn redirect_to_https(request: &RequestHandle) -> anyhow::Result<Response> {
 }
 
 pub fn sdk(ctx: IncomingContext) -> anyhow::Result<Response> {
-    if let Ok(mut inlined_sdk) = html::get_sdk_from_url(
+    if let Ok(mut inlined_sdk) = edgee_sdk::get_sdk_from_url(
         ctx.request.get_path().as_str(),
         ctx.request.get_host().as_str(),
     ) {
