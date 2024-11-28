@@ -1,5 +1,3 @@
-use crate::tools::path;
-
 #[derive(Debug, Default)]
 pub struct Document {
     pub data_collection_events: String,
@@ -169,7 +167,7 @@ pub fn parse_html(html: &str, host: &str) -> Document {
 
                         // if inline is true, then we need to inline the SDK
                         if let (true, Some(sdk_url)) = (inline, &builder.sdk_src) {
-                            if let Ok(inlined_sdk) = get_sdk_from_url(sdk_url, host) {
+                            if let Ok(inlined_sdk) = edgee_sdk::get_sdk_from_url(sdk_url, host) {
                                 set_document_field!(builder, inlined_sdk, inlined_sdk);
                             }
                         }
@@ -325,53 +323,4 @@ fn extract_content_value(tag: &str) -> Option<String> {
 
     // Extract the value between the quotes
     Some(rest_of_tag[..end_quote].to_string())
-}
-
-/// Retrieves the SDK content from a given URL.
-///
-/// This function extracts the version of the SDK from the URL using a regular expression.
-/// Then, it retrieves the SDK content based on the extracted version.
-/// The function returns a `Result` that contains the SDK content wrapped in a `<script>` tag if successful, or an error message if not.
-///
-/// # Arguments
-///
-/// * `url` - A string slice that holds the URL.
-///
-/// # Returns
-///
-/// * `Result<String, &'static str>` - The SDK content wrapped in a `<script>` tag if successful, or an error message if not.
-///
-/// # Example
-///
-/// ```
-/// let url = "https://example.com/sdk/v1.1.0.js";
-/// let sdk_content = get_sdk_from_url(url);
-/// assert!(sdk_content.is_ok());
-/// ```
-pub fn get_sdk_from_url(url: &str, host: &str) -> Result<String, &'static str> {
-    if url.ends_with("sdk.js") {
-        let sdk = include_str!("../../../public/sdk.js").trim();
-        return Ok(dynamize_sdk(sdk, host));
-    }
-
-    let Some((_, part)) = url.rsplit_once("edgee.v") else {
-        return Err("Failed to read the JS SDK file");
-    };
-    let Some(part) = part.strip_suffix(".js") else {
-        return Err("Failed to read the JS SDK file");
-    };
-
-    let content = match part {
-        "1.1.0" => include_str!("../../../public/edgee.v1.1.0.js"),
-        "1.2.0" => include_str!("../../../public/edgee.v1.2.0.js"),
-        // Add more versions as needed
-        _ => return Err("Failed to read the JS SDK file"),
-    };
-
-    Ok(dynamize_sdk(content, host))
-}
-
-fn dynamize_sdk(sdk: &str, host: &str) -> String {
-    let new_path = path::generate(host);
-    sdk.replace("/_edgee/event", new_path.as_str())
 }
