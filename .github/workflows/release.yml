@@ -28,9 +28,9 @@ jobs:
       - name: Setup cache
         uses: Swatinem/rust-cache@v2
       - name: Build binary
-        uses: houseabsolute/actions-rust-cross@v0
+        uses: houseabsolute/actions-rust-cross@v0.0.17
         with:
-          command: ${{ matrix.platform.command }}
+          command: build
           target: ${{ matrix.platform.target }}
           args: '--release --features "${{ matrix.platform.features }}"'
       - name: Save binary
