@@ -5,10 +5,6 @@ use tracing::error;
 
 mod config;
 mod logger;
-mod monitor;
-mod proxy;
-mod server;
-mod tools;
 
 #[derive(Debug, Parser)]
 #[command(about, author, version)]
@@ -41,10 +37,11 @@ async fn main() {
     }
 
     logger::init(options.log_format, log_filter);
-    proxy::compute::data_collection::components::init();
+
+    edgee_server::init();
 
     tokio::select! {
-        Err(err) = monitor::start() => error!(?err, "Monitor failed"),
-        Err(err) = server::start() => error!(?err, "Server failed to start"),
+        Err(err) = edgee_server::monitor::start() => error!(?err, "Monitor failed"),
+        Err(err) = edgee_server::start() => error!(?err, "Server failed to start"),
     }
 }

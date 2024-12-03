@@ -1,9 +1,0 @@
-[package]
-name = "edgee-proxy"
-edition.workspace = true
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-keywords.workspace = true
-repository.workspace = true
-homepage.workspace = true
