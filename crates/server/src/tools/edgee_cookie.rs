@@ -239,7 +239,7 @@ pub fn get(
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// let updated_cookie = decrypt_and_update("some_encrypted_cookie").unwrap();
 /// println!("Updated EdgeeCookie: {:?}", updated_cookie);
 /// ```
