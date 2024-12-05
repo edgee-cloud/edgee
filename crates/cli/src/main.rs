@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use tracing::error;
 
+mod commands;
 mod config;
 mod logger;
 
@@ -22,6 +22,9 @@ struct Options {
         id = "COMPONENT_NAME"
     )]
     debug_component: Option<String>,
+
+    #[command(subcommand)]
+    command: commands::Command,
 }
 
 #[tokio::main]
@@ -38,10 +41,5 @@ async fn main() {
 
     logger::init(options.log_format, log_filter);
 
-    edgee_server::init();
-
-    tokio::select! {
-        Err(err) = edgee_server::monitor::start() => error!(?err, "Monitor failed"),
-        Err(err) = edgee_server::start() => error!(?err, "Server failed to start"),
-    }
+    options.command.run().await
 }
