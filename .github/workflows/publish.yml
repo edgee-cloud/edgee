@@ -9,8 +9,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - name: cargo publish
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
+      - uses: katyo/publish-crates@v2
+        with:
+          registry-token: ${{ secrets.CRATES_IO_TOKEN }}
   docker:
     name: Publish to DockerHub
     strategy:
