@@ -23,7 +23,7 @@
 ⚠️ Edgee OSS Edition (v0.4.X) is in Development
 
 Edgee OSS is currently in version 0.4.X and is considered unstable as we continue to enhance and refine the platform.
-We're actively working towards a stable v1.0.0 release, which will be available in the coming months. 
+We're actively working towards a stable v1.0.0 release, which will be available in the coming months.
 
 We welcome feedback and contributions during this development phase, and appreciate your patience as we work hard to bring you a robust edge computing solution.
 
@@ -53,7 +53,7 @@ You can install and run `edgee` locally using the installer script:
 ```shell
 $ curl https://install.edgee.cloud | sh
 [...]
-$ ./edgee
+$ ./edgee serve
 ```
 
 
@@ -209,7 +209,7 @@ credentials.amplitude_api_key = "YOUR-API-KEY"
 You can enable debug logs for a specific component by setting the `debug` flag to `true`:
 
 ```bash
-./edgee --debug-component amplitude
+./edgee --debug-component amplitude serve
 ```
 
 
