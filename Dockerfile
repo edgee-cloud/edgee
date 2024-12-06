@@ -7,5 +7,5 @@ RUN cargo build --release
 FROM debian:bookworm
 RUN apt-get update && apt-get install -y libssl-dev
 WORKDIR /app
-COPY --from=builder /app/target/release/edgee .
-ENTRYPOINT ["./edgee"]
+COPY --from=builder /app/target/release/edgee /app/edgee
+ENTRYPOINT ["/app/edgee", "serve"]

@@ -14,9 +14,16 @@ use tower::util::BoxCloneService;
 use tower_http::compression::CompressionBody;
 use tracing::{error, info};
 
-use crate::{config, proxy};
+pub mod config;
+pub mod monitor;
+mod proxy;
+mod tools;
 
 type Body = CompressionBody<BoxBody<Bytes, Infallible>>;
+
+pub fn init() {
+    proxy::compute::data_collection::components::init();
+}
 
 pub async fn start() -> anyhow::Result<()> {
     use futures::future::try_join_all;

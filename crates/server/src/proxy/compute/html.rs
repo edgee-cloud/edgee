@@ -244,7 +244,7 @@ pub fn parse_html(html: &str, host: &str) -> Document {
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// let tag = r#"<a href="https://example.com">Example</a>"#;
 /// let href_value = extract_href_value(tag);
 /// assert_eq!(href_value, Some("https://example.com".to_string()));
@@ -275,7 +275,7 @@ fn extract_href_value(tag: &str) -> Option<String> {
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// let tag = r#"<img src="https://example.com/image.jpg">"#;
 /// let src_value = extract_src_value(tag);
 /// assert_eq!(src_value, Some("https://example.com/image.jpg".to_string()));
@@ -306,7 +306,7 @@ fn extract_src_value(tag: &str) -> Option<String> {
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// let tag = r#"<meta name="description" content="This is an example.">"#;
 /// let content_value = extract_content_value(tag);
 /// assert_eq!(content_value, Some("This is an example.".to_string()));

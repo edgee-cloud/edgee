@@ -1,14 +1,10 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use tracing::error;
 
+mod commands;
 mod config;
 mod logger;
-mod monitor;
-mod proxy;
-mod server;
-mod tools;
 
 #[derive(Debug, Parser)]
 #[command(about, author, version)]
@@ -26,6 +22,9 @@ struct Options {
         id = "COMPONENT_NAME"
     )]
     debug_component: Option<String>,
+
+    #[command(subcommand)]
+    command: commands::Command,
 }
 
 #[tokio::main]
@@ -41,10 +40,6 @@ async fn main() {
     }
 
     logger::init(options.log_format, log_filter);
-    proxy::compute::data_collection::components::init();
 
-    tokio::select! {
-        Err(err) = monitor::start() => error!(?err, "Monitor failed"),
-        Err(err) = server::start() => error!(?err, "Server failed to start"),
-    }
+    options.command.run().await
 }
