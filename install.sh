@@ -135,7 +135,7 @@ ${_bold}${_blue}Edgee${_normal} ${_green}$_edgee_version${_normal} binary succes
 
 ${_underline}Run it:${_normal}
 
-${_gray}$ ./edgee${_normal}
+${_gray}$ ./edgee serve${_normal}
 
 ${_underline}Usage:${_normal}
 
