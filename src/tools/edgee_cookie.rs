@@ -138,8 +138,14 @@ pub fn get_or_set(request: &RequestHandle, response: &mut Parts, payload: &Paylo
     edgee_cookie.unwrap()
 }
 
-pub fn has_cookie(request: &RequestHandle) -> bool {
-    get_cookie(request).is_some()
+pub fn has_cookie(request: &RequestHandle, response: &mut Parts) -> bool {
+    let cookie = get_cookie(request).is_some();
+    if cookie {
+        true
+    } else {
+        set_cookie("1", response, request.get_host().as_str());
+        false
+    }
 }
 
 pub fn get_cookie(request: &RequestHandle) -> Option<String> {
@@ -247,6 +253,10 @@ fn decrypt_and_update(
     encrypted_edgee_cookie: &str,
     payload: &Payload,
 ) -> Result<EdgeeCookie, &'static str> {
+    if encrypted_edgee_cookie == "1" {
+        return Err("No cookie found");
+    }
+
     let edgee_cookie_decrypted = decrypt(encrypted_edgee_cookie);
     if edgee_cookie_decrypted.is_err() {
         return Err("Failed to decrypt edgee_cookie");

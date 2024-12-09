@@ -55,7 +55,7 @@ pub async fn html_handler(
 
     match do_process_payload(request, response) {
         Ok(_) => {
-            if !edgee_cookie::has_cookie(request) {
+            if !edgee_cookie::has_cookie(request, response) {
                 set_edgee_header(response, "compute-aborted(no-cookie)");
             } else {
                 let events = data_collection::process_from_html(&document, request, response).await;
