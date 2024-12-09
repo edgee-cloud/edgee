@@ -73,19 +73,21 @@ pub async fn handle_request(
     }
 
     // event path, method POST and content-type application/json
-    if request.get_method() == Method::POST
-        && request.get_content_type() == "application/json"
-        && (request.get_path() == DATA_COLLECTION_ENDPOINT
-            || edgee_path::validate(request.get_host().as_str(), request.get_path()))
+    if request.get_path() == DATA_COLLECTION_ENDPOINT
+        || edgee_path::validate(request.get_host().as_str(), request.get_path())
     {
-        info!(
-            "204 - {} {}{} - {}ms",
-            request.get_method(),
-            request.get_host(),
-            request.get_path(),
-            timer_start.elapsed().as_millis()
-        );
-        return controller::edgee_client_event(ctx).await;
+        if request.get_method() == Method::POST && request.get_content_type() == "application/json"
+        {
+            info!(
+                "204 - {} {}{} - {}ms",
+                request.get_method(),
+                request.get_host(),
+                request.get_path(),
+                timer_start.elapsed().as_millis()
+            );
+            return controller::edgee_client_event(ctx).await;
+        }
+        return controller::empty_json_response();
     }
 
     // event path for third party integration (Edgee installed like a third party, and use localstorage)
@@ -111,6 +113,7 @@ pub async fn handle_request(
             );
             return controller::edgee_client_event_from_third_party_sdk(ctx).await;
         }
+        return controller::empty_json_response();
     }
 
     // define the backend

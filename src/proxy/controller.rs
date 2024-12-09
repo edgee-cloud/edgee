@@ -20,6 +20,7 @@ pub async fn edgee_client_event(ctx: IncomingContext) -> anyhow::Result<Response
         .status(StatusCode::NO_CONTENT)
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::CACHE_CONTROL, "private, no-store")
+        .header("X-Robots-Tag", "noindex, nofollow")
         .body(empty())?;
 
     let (mut response, _incoming) = res.into_parts();
@@ -53,6 +54,7 @@ pub async fn edgee_client_event_from_third_party_sdk(
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::CACHE_CONTROL, "private, no-store")
+        .header("X-Robots-Tag", "noindex, nofollow")
         .body(empty())?;
     let (mut response, _incoming) = res.into_parts();
 
@@ -117,6 +119,15 @@ pub async fn edgee_client_event_from_third_party_sdk(
     }
 
     Ok(build_response(response, Bytes::new()))
+}
+
+pub fn empty_json_response() -> anyhow::Result<Response> {
+    Ok(http::Response::builder()
+        .status(StatusCode::GONE)
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::CACHE_CONTROL, "private, no-store")
+        .header("X-Robots-Tag", "noindex, nofollow")
+        .body(empty())?)
 }
 
 pub fn options(allow_methods: &str) -> anyhow::Result<Response> {
