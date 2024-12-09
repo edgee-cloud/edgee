@@ -417,7 +417,7 @@ pub struct Client {
     pub screen_height: Option<i32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub screen_density: Option<i32>,
+    pub screen_density: Option<f32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub continent: Option<String>,

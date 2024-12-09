@@ -360,7 +360,7 @@ fn add_session(request: &RequestHandle, response: &mut Parts, mut payload: Paylo
                 if let (Ok(width), Ok(height), Ok(density)) = (
                     size_vec[0].parse::<i32>(),
                     size_vec[1].parse::<i32>(),
-                    size_vec[2].parse::<i32>(),
+                    size_vec[2].parse::<f32>(),
                 ) {
                     payload
                         .data_collection
