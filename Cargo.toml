@@ -3,7 +3,7 @@ members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
-version = "0.5.1"
+version = "0.6.0"
 authors = ["Edgee <opensource@edgee.cloud>"]
 license = "Apache-2.0"
 keywords = ["edgee"]
@@ -61,6 +61,6 @@ wasmtime = "27.0.0"
 wasmtime-wasi = "27.0.0"
 
 edgee-sdk = "1.2.0"
-edgee-path = "0.1.0"
+edgee-path = "0.1.1"
 
-edgee-server = { version = "0.5.0", path = "crates/server" }
+edgee-server = { version = "0.6.0", path = "crates/server" }
