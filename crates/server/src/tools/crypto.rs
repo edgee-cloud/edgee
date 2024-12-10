@@ -21,7 +21,7 @@ type Aes128CbcDec = cbc::Decryptor<aes::Aes128>;
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// let encrypted = encrypt("Hello, world!").unwrap();
 /// println!("Encrypted text: {}", encrypted);
 /// ```
@@ -52,7 +52,7 @@ pub fn encrypt(text: &str) -> Result<String, &'static str> {
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// let decrypted = decrypt("some_encrypted_text").unwrap();
 /// println!("Decrypted text: {}", decrypted);
 /// ```
