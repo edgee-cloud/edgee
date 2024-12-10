@@ -872,7 +872,7 @@ checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
 name = "edgee"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -886,9 +886,9 @@ dependencies = [
 
 [[package]]
 name = "edgee-path"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3554c7d421dab323cda42f297fc1591f1d89049f7e67d477f4dc1caf735b5ead"
+checksum = "d27186522959c93bb0679c2cf3b3e982321673761d7947ce891bfab39ca6c0fe"
 dependencies = [
  "rand",
 ]
@@ -904,7 +904,7 @@ dependencies = [
 
 [[package]]
 name = "edgee-server"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "addr",
  "aes",
