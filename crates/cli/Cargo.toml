@@ -12,6 +12,7 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
+openssl.workspace = true
 serde_yml.workspace = true
 tracing.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
@@ -19,3 +20,8 @@ toml.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
 
 edgee-server.workspace = true
+
+[features]
+bundled = [
+    "openssl/vendored",
+]

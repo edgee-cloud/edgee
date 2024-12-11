@@ -1,5 +1,6 @@
 [package]
 name = "edgee-server"
+description = "The full-stack edge platform for your edge oriented applications (server part)"
 edition.workspace = true
 version.workspace = true
 authors.workspace = true
@@ -29,7 +30,6 @@ ipnetwork.workspace = true
 json_comments.workspace = true
 json_pretty.workspace = true
 lazy_static.workspace = true
-openssl.workspace = true
 pin-project.workspace = true
 regex.workspace = true
 reqwest.workspace = true
@@ -51,8 +51,3 @@ wasmtime-wasi.workspace = true
 
 edgee-path.workspace = true
 edgee-sdk.workspace = true
-
-[features]
-bundled = [
-    "openssl/vendored",
-]
