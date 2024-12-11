@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use tracing::warn;
 
 use super::exports::provider;
 use crate::proxy::compute::data_collection::payload;
@@ -168,20 +169,24 @@ fn convert_products(
     let Some(dict) = properties else {
         return Vec::new();
     };
-    
 
     // if the key is products, then we need to convert the value to a list of tuples
     if let Some(products) = dict.get("products") {
         // if products is not an array, return an empty vector
         if !products.is_array() {
+            warn!("data.properties.products is not an array, skipping");
             return Vec::new();
         }
 
         let mut results: Vec<Vec<(String, String)>> = Vec::new();
         let items = products.as_array().unwrap();
-        items.iter().for_each(|product| {
+        items.iter().enumerate().for_each(|(index, product)| {
             // if product is not an object, go to the next product
             if !product.is_object() {
+                warn!(
+                    "data.properties.products[{}] is not an object, skipping",
+                    index
+                );
                 return;
             }
 
@@ -198,7 +203,7 @@ fn convert_products(
                     (k, value)
                 })
                 .for_each(|tuple| i.push(tuple));
-            
+
             results.push(i);
         });
         results
