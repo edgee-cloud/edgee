@@ -12,15 +12,11 @@ struct Options {
     #[arg(long, env = "EDGEE_LOG_FORMAT", value_enum, default_value_t)]
     log_format: logger::LogFormat,
 
-    #[arg(short = 'f', long = "config", env = "EDGEE_CONFIG_PATH")]
+    #[arg(short, long = "config", env = "EDGEE_CONFIG_PATH")]
     config_path: Option<PathBuf>,
 
-    #[arg(
-        short = 'c',
-        long = "debug-component",
-        help = "Launch Edgee and log only the specified component requests and responses to debug.",
-        id = "COMPONENT_NAME"
-    )]
+    /// Log only the specified component's requests and responses to debug.
+    #[arg(short, long, id = "COMPONENT_NAME")]
     debug_component: Option<String>,
 
     #[command(subcommand)]
