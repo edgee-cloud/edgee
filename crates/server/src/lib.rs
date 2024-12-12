@@ -24,7 +24,6 @@ mod tools;
 type Body = CompressionBody<BoxBody<Bytes, Infallible>>;
 static COMPONENTS_CONTEXT: OnceCell<ComponentsContext> = OnceCell::const_new();
 
-
 pub fn init() -> anyhow::Result<()> {
     let components_configuration = &config::get().components;
     let ctx = ComponentsContext::new(components_configuration)?;

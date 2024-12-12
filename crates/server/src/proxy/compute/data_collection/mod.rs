@@ -16,10 +16,10 @@ use tracing::{info, warn, Instrument};
 use wasmtime_runtime::components::{self};
 use wasmtime_runtime::payload::{self, EventData, EventType, Payload};
 
-use crate::{config, get};
 use crate::proxy::compute::html::Document;
 use crate::proxy::context::incoming::RequestHandle;
 use crate::tools::edgee_cookie;
+use crate::{config, get};
 
 #[tracing::instrument(name = "data_collection", skip(document, request, response))]
 pub async fn process_from_html(
@@ -110,7 +110,14 @@ pub async fn process_from_html(
     tokio::spawn(
         async move {
             let config = config::get();
-            if let Err(err) = components::send_data_collection(get(), &events, &config.components, &config.log.debug_component).await {
+            if let Err(err) = components::send_data_collection(
+                get(),
+                &events,
+                &config.components,
+                &config.log.debug_component,
+            )
+            .await
+            {
                 warn!(?err, "failed to send data collection payload");
             }
         }
@@ -207,7 +214,14 @@ pub async fn process_from_json(
     tokio::spawn(
         async move {
             let config = config::get();
-            if let Err(err) = components::send_data_collection(get(), &events,&config.components, &config.log.debug_component).await {
+            if let Err(err) = components::send_data_collection(
+                get(),
+                &events,
+                &config.components,
+                &config.log.debug_component,
+            )
+            .await
+            {
                 warn!(?err, "failed to send data collection payload");
             }
         }

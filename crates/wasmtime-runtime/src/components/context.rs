@@ -10,8 +10,6 @@ use crate::{DataCollection, DataCollectionPre};
 
 use super::ComponentsConfiguration;
 
-
-
 pub struct ComponentsContext {
     pub engine: Engine,
     pub components: HashMap<String, DataCollectionPre<HostState>>,
@@ -57,7 +55,6 @@ impl ComponentsContext {
 
         Ok(Self { engine, components })
     }
-
 
     pub fn empty_store(&self) -> Store<HostState> {
         Store::new(&self.engine, HostState::new())

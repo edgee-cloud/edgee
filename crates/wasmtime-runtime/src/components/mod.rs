@@ -15,8 +15,6 @@ use crate::{exports::provider, payload::Event};
 pub mod context;
 mod convert;
 
-
-
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct ComponentsConfiguration {
     pub data_collection: Vec<DataCollectionConfiguration>,
@@ -30,12 +28,16 @@ pub struct DataCollectionConfiguration {
     pub credentials: HashMap<String, String>,
 }
 
-
 // pub fn init(components_configuration: &ComponentsConfiguration) {
 //     ComponentsContext::init(components_configuration).unwrap();
 // }
 
-pub async fn send_data_collection(ctx: &ComponentsContext, events: &Vec<Event>, component_config: &ComponentsConfiguration, log_component: &Option<String>) -> anyhow::Result<()> {
+pub async fn send_data_collection(
+    ctx: &ComponentsContext,
+    events: &Vec<Event>,
+    component_config: &ComponentsConfiguration,
+    log_component: &Option<String>,
+) -> anyhow::Result<()> {
     if events.is_empty() {
         return Ok(());
     }
@@ -135,11 +137,12 @@ pub async fn send_data_collection(ctx: &ComponentsContext, events: &Vec<Event>, 
                 url = request.url,
                 body = request.body
             );
-            let log = log_component.is_some() && log_component.as_ref().unwrap() == cfg.name.as_str();
+            let log =
+                log_component.is_some() && log_component.as_ref().unwrap() == cfg.name.as_str();
 
             if log {
                 debug_request(&request, &headers);
-            }    
+            }
 
             // spawn a separated async thread
             tokio::spawn(
@@ -188,19 +191,13 @@ pub async fn send_data_collection(ctx: &ComponentsContext, events: &Vec<Event>, 
                                     body_res_str,
                                     "".to_string(),
                                 );
-                                }
+                            }
                         }
                         Err(err) => {
                             error!(step = "response", status = "500", err = err.to_string());
                             if log {
-
-                            debug_response(
-                                "502",
-                                timer_start,
-                                "".to_string(),
-                                err.to_string(),
-                            );
-                        }
+                                debug_response("502", timer_start, "".to_string(), err.to_string());
+                            }
                         }
                     }
                 }
@@ -303,7 +300,6 @@ fn insert_expected_headers(
 }
 
 fn debug_request(request: &provider::EdgeeRequest, headers: &HeaderMap) {
-
     let method_str = match request.method {
         provider::HttpMethod::Get => "GET",
         provider::HttpMethod::Put => "PUT",
@@ -340,26 +336,20 @@ fn debug_request(request: &provider::EdgeeRequest, headers: &HeaderMap) {
     println!();
 }
 
-fn debug_response(
-    status: &str,
-    timer_start: std::time::Instant,
-    body: String,
-    error: String,
-) {
-
-        println!("------------");
-        println!("  RESPONSE  ");
-        println!("------------\n");
-        println!("Status:   {}", status);
-        println!("Duration: {}ms", timer_start.elapsed().as_millis());
-        if !body.is_empty() {
-            println!("Body:");
-            let formatter = PrettyFormatter::from_str(body.as_str());
-            let result = formatter.pretty();
-            println!("{}", result);
-        }
-        if !error.is_empty() {
-            println!("Error:    {}", error);
-        }
-        println!();
+fn debug_response(status: &str, timer_start: std::time::Instant, body: String, error: String) {
+    println!("------------");
+    println!("  RESPONSE  ");
+    println!("------------\n");
+    println!("Status:   {}", status);
+    println!("Duration: {}ms", timer_start.elapsed().as_millis());
+    if !body.is_empty() {
+        println!("Body:");
+        let formatter = PrettyFormatter::from_str(body.as_str());
+        let result = formatter.pretty();
+        println!("{}", result);
+    }
+    if !error.is_empty() {
+        println!("Error:    {}", error);
+    }
+    println!();
 }
