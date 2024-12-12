@@ -46,7 +46,6 @@ impl From<payload::Page> for provider::PageData {
             search: value.search.unwrap_or_default(),
             referrer: value.referrer.unwrap_or_default(),
             properties: convert_properties(value.properties.clone()),
-            products: convert_products(value.properties.clone()),
         }
     }
 }
