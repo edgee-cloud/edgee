@@ -1,5 +1,6 @@
 [package]
 name = "edgee-wasmtime"
+description = "A library to run edgee WASM components using wasmtime"
 version.workspace = true
 authors.workspace = true
 license.workspace = true

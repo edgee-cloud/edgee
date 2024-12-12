@@ -64,4 +64,4 @@ edgee-sdk = "1.2.0"
 edgee-path = "0.1.1"
 
 edgee-server = { version = "0.6.0", path = "crates/server" }
-edgee-wasmtime = { path = "crates/wasmtime"}
+edgee-wasmtime = { version = "0.6.0", path = "crates/wasmtime"}
