@@ -28,10 +28,6 @@ pub struct DataCollectionConfiguration {
     pub credentials: HashMap<String, String>,
 }
 
-// pub fn init(components_configuration: &ComponentsConfiguration) {
-//     ComponentsContext::init(components_configuration).unwrap();
-// }
-
 pub async fn send_data_collection(
     ctx: &ComponentsContext,
     events: &Vec<Event>,

@@ -917,6 +917,7 @@ dependencies = [
  "cookie",
  "edgee-path",
  "edgee-sdk",
+ "edgee-wasmtime",
  "futures",
  "hex",
  "html-escape",
@@ -945,7 +946,24 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
- "wasmtime-runtime",
+]
+
+[[package]]
+name = "edgee-wasmtime"
+version = "0.6.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "http",
+ "json_pretty",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+ "wasmtime",
+ "wasmtime-wasi",
 ]
 
 [[package]]
@@ -3489,24 +3507,6 @@ dependencies = [
  "cfg-if",
  "libc",
  "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "wasmtime-runtime"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "http",
- "json_pretty",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "uuid",
- "wasmtime",
- "wasmtime-wasi",
 ]
 
 [[package]]

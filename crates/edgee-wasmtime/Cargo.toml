@@ -1,5 +1,5 @@
 [package]
-name = "wasmtime-runtime"
+name = "edgee-wasmtime"
 version.workspace = true
 authors.workspace = true
 license.workspace = true

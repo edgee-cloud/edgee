@@ -17,8 +17,6 @@ pub struct ComponentsContext {
 
 impl ComponentsContext {
     pub fn new(config: &ComponentsConfiguration) -> anyhow::Result<Self> {
-        // let config = config.components;
-
         let mut engine_config = wasmtime::Config::new();
         engine_config
             .wasm_backtrace_details(wasmtime::WasmBacktraceDetails::Enable)

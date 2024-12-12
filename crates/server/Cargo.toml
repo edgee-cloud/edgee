@@ -49,4 +49,4 @@ uuid = { workspace = true, features = ["v4", "serde"] }
 
 edgee-path.workspace = true
 edgee-sdk.workspace = true
-wasmtime-runtime.workspace = true
+edgee-wasmtime.workspace = true
