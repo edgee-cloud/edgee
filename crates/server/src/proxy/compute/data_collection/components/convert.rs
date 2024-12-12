@@ -20,6 +20,7 @@ impl From<payload::Event> for provider::Event {
             event_type: value.event_type.into(),
             data,
             context: value.context.unwrap_or_default().into(),
+            consent: provider::Consent::Pending,
         }
     }
 }
