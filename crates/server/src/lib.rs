@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::{convert::Infallible, fs, io, net::SocketAddr};
 
 use bytes::Bytes;
+use edgee_wasmtime::components::context::ComponentsContext;
 use http_body_util::combinators::BoxBody;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto::Builder;
@@ -14,7 +15,6 @@ use tokio_rustls::TlsAcceptor;
 use tower::util::BoxCloneService;
 use tower_http::compression::CompressionBody;
 use tracing::{error, info};
-use edgee_wasmtime::components::context::ComponentsContext;
 
 pub mod config;
 pub mod monitor;

@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 use std::sync::OnceLock;
 
+use edgee_wasmtime::components::ComponentsConfiguration;
 use serde::Deserialize;
 use tracing::level_filters::LevelFilter;
-use edgee_wasmtime::components::ComponentsConfiguration;
 
 static CONFIG: OnceLock<StaticConfiguration> = OnceLock::new();
 

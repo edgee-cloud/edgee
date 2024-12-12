@@ -7,14 +7,14 @@ use base64::engine::general_purpose::PAD;
 use base64::engine::GeneralPurpose;
 use base64::Engine;
 use bytes::Bytes;
+use edgee_wasmtime::components::{self};
+use edgee_wasmtime::payload::{self, EventData, EventType, Payload};
 use html_escape;
 use http::response::Parts;
 use http::{header, HeaderMap};
 use json_comments::StripComments;
 use regex::Regex;
 use tracing::{info, warn, Instrument};
-use edgee_wasmtime::components::{self};
-use edgee_wasmtime::payload::{self, EventData, EventType, Payload};
 
 use crate::proxy::compute::html::Document;
 use crate::proxy::context::incoming::RequestHandle;
