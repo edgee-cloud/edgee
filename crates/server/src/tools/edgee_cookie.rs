@@ -5,13 +5,13 @@ use std::time::Duration as StdDuration;
 use chrono::{DateTime, Duration, Utc};
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, SameSite};
+use edgee_wasmtime::payload::Payload;
 use http::header::{COOKIE, SET_COOKIE};
 use http::response::Parts;
 use http::{HeaderValue, Method};
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
 use uuid::Uuid;
-use wasmtime_runtime::payload::Payload;
 
 use super::crypto::{decrypt, encrypt};
 use crate::config;

@@ -14,7 +14,7 @@ use tokio_rustls::TlsAcceptor;
 use tower::util::BoxCloneService;
 use tower_http::compression::CompressionBody;
 use tracing::{error, info};
-use wasmtime_runtime::components::context::ComponentsContext;
+use edgee_wasmtime::components::context::ComponentsContext;
 
 pub mod config;
 pub mod monitor;

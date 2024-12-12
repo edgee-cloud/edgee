@@ -13,8 +13,8 @@ use http::{header, HeaderMap};
 use json_comments::StripComments;
 use regex::Regex;
 use tracing::{info, warn, Instrument};
-use wasmtime_runtime::components::{self};
-use wasmtime_runtime::payload::{self, EventData, EventType, Payload};
+use edgee_wasmtime::components::{self};
+use edgee_wasmtime::payload::{self, EventData, EventType, Payload};
 
 use crate::proxy::compute::html::Document;
 use crate::proxy::context::incoming::RequestHandle;

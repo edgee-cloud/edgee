@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 
 use serde::Deserialize;
 use tracing::level_filters::LevelFilter;
-use wasmtime_runtime::components::ComponentsConfiguration;
+use edgee_wasmtime::components::ComponentsConfiguration;
 
 static CONFIG: OnceLock<StaticConfiguration> = OnceLock::new();
 
