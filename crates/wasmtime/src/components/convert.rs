@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use tracing::warn;
 
-use super::exports::provider;
-use crate::proxy::compute::data_collection::payload;
+use crate::{exports::provider, payload};
 
 impl From<payload::Event> for provider::Event {
     fn from(value: payload::Event) -> Self {

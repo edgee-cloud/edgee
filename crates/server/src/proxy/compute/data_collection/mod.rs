@@ -7,6 +7,8 @@ use base64::engine::general_purpose::PAD;
 use base64::engine::GeneralPurpose;
 use base64::Engine;
 use bytes::Bytes;
+use edgee_wasmtime::components::{self};
+use edgee_wasmtime::payload::{self, EventData, EventType, Payload};
 use html_escape;
 use http::response::Parts;
 use http::{header, HeaderMap};
@@ -14,14 +16,10 @@ use json_comments::StripComments;
 use regex::Regex;
 use tracing::{info, warn, Instrument};
 
-use super::html::Document;
-use crate::config;
+use crate::proxy::compute::html::Document;
 use crate::proxy::context::incoming::RequestHandle;
 use crate::tools::edgee_cookie;
-use payload::{EventData, EventType, Payload};
-
-pub mod components;
-pub mod payload;
+use crate::{config, get};
 
 #[tracing::instrument(name = "data_collection", skip(document, request, response))]
 pub async fn process_from_html(
@@ -111,7 +109,15 @@ pub async fn process_from_html(
     // send the payload to the data collection components
     tokio::spawn(
         async move {
-            if let Err(err) = components::send_data_collection(&events).await {
+            let config = config::get();
+            if let Err(err) = components::send_data_collection(
+                get(),
+                &events,
+                &config.components,
+                &config.log.debug_component,
+            )
+            .await
+            {
                 warn!(?err, "failed to send data collection payload");
             }
         }
@@ -207,7 +213,15 @@ pub async fn process_from_json(
     // send the payload to the data collection components
     tokio::spawn(
         async move {
-            if let Err(err) = components::send_data_collection(&events).await {
+            let config = config::get();
+            if let Err(err) = components::send_data_collection(
+                get(),
+                &events,
+                &config.components,
+                &config.log.debug_component,
+            )
+            .await
+            {
                 warn!(?err, "failed to send data collection payload");
             }
         }

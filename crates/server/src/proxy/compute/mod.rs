@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use bytes::Bytes;
+use data_collection::{process_from_html, process_from_json};
 use http::header::CACHE_CONTROL;
 use http::response::Parts;
 use http::{HeaderName, HeaderValue};
@@ -58,7 +59,7 @@ pub async fn html_handler(
             if !edgee_cookie::has_cookie(request) {
                 set_edgee_header(response, "compute-aborted(no-cookie)");
             } else {
-                let events = data_collection::process_from_html(&document, request, response).await;
+                let events = process_from_html(&document, request, response).await;
                 if events.is_some() {
                     document.data_collection_events = events.unwrap();
                 }
@@ -78,7 +79,7 @@ pub async fn json_handler(
     response: &mut Parts,
     from_third_party_sdk: bool,
 ) -> Option<String> {
-    data_collection::process_from_json(body, request, response, from_third_party_sdk).await
+    process_from_json(body, request, response, from_third_party_sdk).await
 }
 
 /// Processes the payload of a request under certain conditions.

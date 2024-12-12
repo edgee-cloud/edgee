@@ -1,36 +1,43 @@
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
 use http::{header, HeaderMap, HeaderName, HeaderValue};
 use json_pretty::PrettyFormatter;
+use serde::Deserialize;
 use tracing::{error, info, span, Instrument, Level};
 
-use crate::config;
-use crate::proxy::compute::data_collection::payload::Event;
 use context::ComponentsContext;
-use exports::provider;
 
-mod context;
+use crate::{exports::provider, payload::Event};
+
+pub mod context;
 mod convert;
 
-wasmtime::component::bindgen!({
-    world: "data-collection",
-    path: "wit/protocols.wit",
-    async: true,
-});
-
-pub fn init() {
-    ComponentsContext::init().unwrap();
+#[derive(Deserialize, Debug, Default, Clone)]
+pub struct ComponentsConfiguration {
+    pub data_collection: Vec<DataCollectionConfiguration>,
+    pub cache: Option<PathBuf>,
 }
 
-pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
+#[derive(Deserialize, Debug, Default, Clone)]
+pub struct DataCollectionConfiguration {
+    pub name: String,
+    pub component: String,
+    pub credentials: HashMap<String, String>,
+}
+
+pub async fn send_data_collection(
+    ctx: &ComponentsContext,
+    events: &Vec<Event>,
+    component_config: &ComponentsConfiguration,
+    log_component: &Option<String>,
+) -> anyhow::Result<()> {
     if events.is_empty() {
         return Ok(());
     }
 
-    let config = config::get();
-
-    let ctx = ComponentsContext::get();
     let mut store = ctx.empty_store();
 
     for event in events {
@@ -50,7 +57,7 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
         let anonymized_client_ip = HeaderValue::from_str(&provider_event.context.client.ip)?;
         let user_agent = HeaderValue::from_str(&provider_event.context.client.user_agent)?;
 
-        for cfg in config.components.data_collection.iter() {
+        for cfg in component_config.data_collection.iter() {
             let span = span!(
                 Level::INFO,
                 "component",
@@ -126,7 +133,12 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
                 url = request.url,
                 body = request.body
             );
-            debug_request(&request, &headers, cfg.name.as_str());
+            let log =
+                log_component.is_some() && log_component.as_ref().unwrap() == cfg.name.as_str();
+
+            if log {
+                debug_request(&request, &headers);
+            }
 
             // spawn a separated async thread
             tokio::spawn(
@@ -168,23 +180,20 @@ pub async fn send_data_collection(events: &Vec<Event>) -> anyhow::Result<()> {
                             } else {
                                 error!(step = "response", status = status_str, body = body_res_str);
                             }
-                            debug_response(
-                                cfg.name.as_str(),
-                                &status_str,
-                                timer_start,
-                                body_res_str,
-                                "".to_string(),
-                            );
+                            if log {
+                                debug_response(
+                                    &status_str,
+                                    timer_start,
+                                    body_res_str,
+                                    "".to_string(),
+                                );
+                            }
                         }
                         Err(err) => {
                             error!(step = "response", status = "500", err = err.to_string());
-                            debug_response(
-                                cfg.name.as_str(),
-                                "502",
-                                timer_start,
-                                "".to_string(),
-                                err.to_string(),
-                            );
+                            if log {
+                                debug_response("502", timer_start, "".to_string(), err.to_string());
+                            }
                         }
                     }
                 }
@@ -286,9 +295,7 @@ fn insert_expected_headers(
     Ok(())
 }
 
-fn debug_request(request: &provider::EdgeeRequest, headers: &HeaderMap, component_name: &str) {
-    let config = config::get();
-
+fn debug_request(request: &provider::EdgeeRequest, headers: &HeaderMap) {
     let method_str = match request.method {
         provider::HttpMethod::Get => "GET",
         provider::HttpMethod::Put => "PUT",
@@ -296,65 +303,49 @@ fn debug_request(request: &provider::EdgeeRequest, headers: &HeaderMap, componen
         provider::HttpMethod::Delete => "DELETE",
     };
 
-    if config.log.debug_component.is_some()
-        && config.log.debug_component.as_ref().unwrap() == component_name
-    {
-        println!("-----------");
-        println!("  REQUEST  ");
-        println!("-----------\n");
-        println!("Method:   {}", method_str);
-        println!("Url:      {}", request.url);
-        if !headers.is_empty() {
-            print!("Headers:  ");
-            for (i, (key, value)) in headers.iter().enumerate() {
-                if i == 0 {
-                    println!("{}: {:?}", key, value);
-                } else {
-                    println!("          {}: {:?}", key, value);
-                }
+    println!("-----------");
+    println!("  REQUEST  ");
+    println!("-----------\n");
+    println!("Method:   {}", method_str);
+    println!("Url:      {}", request.url);
+    if !headers.is_empty() {
+        print!("Headers:  ");
+        for (i, (key, value)) in headers.iter().enumerate() {
+            if i == 0 {
+                println!("{}: {:?}", key, value);
+            } else {
+                println!("          {}: {:?}", key, value);
             }
-        } else {
-            println!("Headers:  None");
         }
-
-        if !request.body.is_empty() {
-            println!("Body:");
-            let formatter = PrettyFormatter::from_str(request.body.as_str());
-            let result = formatter.pretty();
-            println!("{}", result);
-        } else {
-            println!("Body:     None");
-        }
-        println!();
+    } else {
+        println!("Headers:  None");
     }
+
+    if !request.body.is_empty() {
+        println!("Body:");
+        let formatter = PrettyFormatter::from_str(request.body.as_str());
+        let result = formatter.pretty();
+        println!("{}", result);
+    } else {
+        println!("Body:     None");
+    }
+    println!();
 }
 
-fn debug_response(
-    component_name: &str,
-    status: &str,
-    timer_start: std::time::Instant,
-    body: String,
-    error: String,
-) {
-    let config = config::get();
-
-    if config.log.debug_component.is_some()
-        && config.log.debug_component.as_ref().unwrap() == component_name
-    {
-        println!("------------");
-        println!("  RESPONSE  ");
-        println!("------------\n");
-        println!("Status:   {}", status);
-        println!("Duration: {}ms", timer_start.elapsed().as_millis());
-        if !body.is_empty() {
-            println!("Body:");
-            let formatter = PrettyFormatter::from_str(body.as_str());
-            let result = formatter.pretty();
-            println!("{}", result);
-        }
-        if !error.is_empty() {
-            println!("Error:    {}", error);
-        }
-        println!();
+fn debug_response(status: &str, timer_start: std::time::Instant, body: String, error: String) {
+    println!("------------");
+    println!("  RESPONSE  ");
+    println!("------------\n");
+    println!("Status:   {}", status);
+    println!("Duration: {}ms", timer_start.elapsed().as_millis());
+    if !body.is_empty() {
+        println!("Body:");
+        let formatter = PrettyFormatter::from_str(body.as_str());
+        let result = formatter.pretty();
+        println!("{}", result);
     }
+    if !error.is_empty() {
+        println!("Error:    {}", error);
+    }
+    println!();
 }

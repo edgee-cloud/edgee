@@ -1,7 +1,7 @@
-use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::collections::HashSet;
 use std::sync::OnceLock;
 
+use edgee_wasmtime::components::ComponentsConfiguration;
 use serde::Deserialize;
 use tracing::level_filters::LevelFilter;
 
@@ -157,19 +157,6 @@ pub struct BackendConfiguration {
     pub enable_ssl: bool,
     #[serde(default)]
     pub compress: bool,
-}
-
-#[derive(Deserialize, Debug, Default, Clone)]
-pub struct ComponentsConfiguration {
-    pub data_collection: Vec<DataCollectionConfiguration>,
-    pub cache: Option<PathBuf>,
-}
-
-#[derive(Deserialize, Debug, Default, Clone)]
-pub struct DataCollectionConfiguration {
-    pub name: String,
-    pub component: String,
-    pub credentials: HashMap<String, String>,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
