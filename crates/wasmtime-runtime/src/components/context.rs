@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
-use tokio::sync::OnceCell;
 use wasmtime::{
     component::{Component, Linker, ResourceTable},
     Engine, Store,
 };
 use wasmtime_wasi::{WasiCtx, WasiView};
 
-use super::{DataCollection, DataCollectionPre};
-use crate::config;
+use crate::{DataCollection, DataCollectionPre};
 
-static COMPONENTS_CONTEXT: OnceCell<ComponentsContext> = OnceCell::const_new();
+use super::ComponentsConfiguration;
+
+
 
 pub struct ComponentsContext {
     pub engine: Engine,
@@ -18,8 +18,8 @@ pub struct ComponentsContext {
 }
 
 impl ComponentsContext {
-    fn new() -> anyhow::Result<Self> {
-        let config = &config::get().components;
+    pub fn new(config: &ComponentsConfiguration) -> anyhow::Result<Self> {
+        // let config = config.components;
 
         let mut engine_config = wasmtime::Config::new();
         engine_config
@@ -36,9 +36,7 @@ impl ComponentsContext {
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
-        let config = config::get();
         let components = config
-            .components
             .data_collection
             .iter()
             .map(|entry| {
@@ -60,19 +58,6 @@ impl ComponentsContext {
         Ok(Self { engine, components })
     }
 
-    pub fn init() -> anyhow::Result<()> {
-        let ctx = Self::new()?;
-
-        COMPONENTS_CONTEXT
-            .set(ctx)
-            .map_err(|err| anyhow::anyhow!("Failed to register ComponentsContext: {err}"))
-    }
-
-    pub fn get() -> &'static ComponentsContext {
-        COMPONENTS_CONTEXT
-            .get()
-            .expect("ComponentsContext should be registered")
-    }
 
     pub fn empty_store(&self) -> Store<HostState> {
         Store::new(&self.engine, HostState::new())

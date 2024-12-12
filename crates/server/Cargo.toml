@@ -46,8 +46,7 @@ tower-http = { workspace = true, features = ["compression-full", "decompression-
 tracing.workspace = true
 url.workspace = true
 uuid = { workspace = true, features = ["v4", "serde"] }
-wasmtime.workspace = true
-wasmtime-wasi.workspace = true
 
 edgee-path.workspace = true
 edgee-sdk.workspace = true
+wasmtime-runtime.workspace = true

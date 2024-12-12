@@ -9,10 +9,12 @@ use hyper_util::service::TowerToHyperService;
 use rustls::ServerConfig;
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use tokio::net::TcpListener;
+use tokio::sync::OnceCell;
 use tokio_rustls::TlsAcceptor;
 use tower::util::BoxCloneService;
 use tower_http::compression::CompressionBody;
 use tracing::{error, info};
+use wasmtime_runtime::components::context::ComponentsContext;
 
 pub mod config;
 pub mod monitor;
@@ -20,9 +22,22 @@ mod proxy;
 mod tools;
 
 type Body = CompressionBody<BoxBody<Bytes, Infallible>>;
+static COMPONENTS_CONTEXT: OnceCell<ComponentsContext> = OnceCell::const_new();
 
-pub fn init() {
-    proxy::compute::data_collection::components::init();
+
+pub fn init() -> anyhow::Result<()> {
+    let components_configuration = &config::get().components;
+    let ctx = ComponentsContext::new(components_configuration)?;
+
+    COMPONENTS_CONTEXT
+        .set(ctx)
+        .map_err(|err| anyhow::anyhow!("Failed to register ComponentsContext: {err}"))
+}
+
+pub fn get() -> &'static ComponentsContext {
+    COMPONENTS_CONTEXT
+        .get()
+        .expect("ComponentsContext should be registered")
 }
 
 pub async fn start() -> anyhow::Result<()> {

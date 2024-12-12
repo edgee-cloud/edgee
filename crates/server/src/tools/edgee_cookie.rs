@@ -11,10 +11,10 @@ use http::{HeaderValue, Method};
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
 use uuid::Uuid;
+use wasmtime_runtime::payload::Payload;
 
 use super::crypto::{decrypt, encrypt};
 use crate::config;
-use crate::proxy::compute::data_collection::payload::Payload;
 use crate::proxy::context::incoming::RequestHandle;
 use crate::proxy::DATA_COLLECTION_ENDPOINT_FROM_THIRD_PARTY_SDK;
 

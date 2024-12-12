@@ -945,8 +945,7 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
- "wasmtime",
- "wasmtime-wasi",
+ "wasmtime-runtime",
 ]
 
 [[package]]
@@ -3490,6 +3489,24 @@ dependencies = [
  "cfg-if",
  "libc",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "wasmtime-runtime"
+version = "0.6.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "http",
+ "json_pretty",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+ "wasmtime",
+ "wasmtime-wasi",
 ]
 
 [[package]]
