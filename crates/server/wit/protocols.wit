@@ -32,7 +32,6 @@ world data-collection {
             search: string,
             referrer: string,
             properties: dict,
-            products: list<dict>,
         }
 
         record user-data {
