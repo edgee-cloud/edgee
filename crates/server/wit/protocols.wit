@@ -5,6 +5,7 @@ world data-collection {
         type dict = list<tuple<string,string>>;
 
         enum event-type { page, track, user }
+        enum consent { pending, granted, denied }
 
         record event {
             uuid: string,
@@ -14,6 +15,7 @@ world data-collection {
             event-type: event-type,
             data: data,
             context: context,
+            consent: consent,
         }
 
         variant data {
