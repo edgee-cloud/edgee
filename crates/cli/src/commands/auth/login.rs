@@ -1,7 +1,7 @@
 setup_command! {}
 
 pub async fn run(_opts: Options) {
-    use inquire::{Confirm, Text};
+    use inquire::{Confirm, Password, PasswordDisplayMode};
 
     use edgee_components::auth::Credentials;
 
@@ -14,7 +14,16 @@ pub async fn run(_opts: Options) {
         return;
     }
 
-    let api_token = Text::new("Enter Edgee API token (you can create one at https://www.edgee.cloud/<username>/settings/tokens):").prompt().unwrap();
+    let api_token = Password::new("Enter Edgee API token (press Ctrl+R to toggle input display):")
+        .with_help_message(
+            "You can create one at https://www.edgee.cloud/<username>/settings/tokens",
+        )
+        .with_display_mode(PasswordDisplayMode::Masked)
+        .with_display_toggle_enabled()
+        .without_confirmation()
+        .with_validator(inquire::required!("API token cannot be empty"))
+        .prompt()
+        .unwrap();
     creds.api_token.replace(api_token);
 
     let user = match creds.fetch_user().await {
