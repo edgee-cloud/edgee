@@ -36,11 +36,33 @@ impl Credentials {
     }
 
     pub fn save(&self) -> Result<()> {
+        use std::io::Write;
+
         let content =
             toml::to_string_pretty(self).context("Could not serialize credentials data")?;
 
         let creds_path = Self::path()?;
-        std::fs::write(creds_path, content).context("Could not write credentials data")
+
+        let mut file = {
+            use std::fs::OpenOptions;
+
+            let mut options = OpenOptions::new();
+            options.write(true).create(true).truncate(true);
+
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::OpenOptionsExt;
+
+                // Set credentials file permissions to 0600 (u=rw-,g=,o=)
+                // so only the user has access.
+                options.mode(0o0600);
+            }
+
+            options.open(creds_path)?
+        };
+
+        file.write_all(content.as_bytes())
+            .context("Could not write credentials data")
     }
 
     pub async fn fetch_user(&self) -> Result<User> {
