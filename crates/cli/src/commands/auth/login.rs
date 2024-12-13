@@ -14,7 +14,7 @@ pub async fn run(_opts: Options) {
         return;
     }
 
-    let api_token = Text::new("Enter Edgee API token:").prompt().unwrap();
+    let api_token = Text::new("Enter Edgee API token (you can create one at https://www.edgee.cloud/<username>/settings/tokens):").prompt().unwrap();
     creds.api_token.replace(api_token);
 
     let user = match creds.fetch_user().await {
