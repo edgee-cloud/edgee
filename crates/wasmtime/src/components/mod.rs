@@ -219,7 +219,7 @@ fn insert_expected_headers(
     // Insert User-Agent in the user-agent header
     headers.insert(header::USER_AGENT, user_agent.clone());
 
-    // Insert referrer in the referer header
+    // Insert referrer in the referer header like an analytics client-side collect does
     if event
         .context
         .as_ref()
@@ -227,40 +227,35 @@ fn insert_expected_headers(
         .page
         .as_ref()
         .unwrap()
-        .referrer
+        .url
         .is_some()
     {
-        headers.insert(
-            header::REFERER,
-            HeaderValue::from_str(
-                event
-                    .context
-                    .as_ref()
-                    .unwrap()
-                    .page
-                    .as_ref()
-                    .unwrap()
-                    .referrer
-                    .as_ref()
-                    .unwrap(),
-            )?,
+        let document_location = format!(
+            "{}{}",
+            event
+                .context
+                .as_ref()
+                .unwrap()
+                .page
+                .as_ref()
+                .unwrap()
+                .url
+                .as_ref()
+                .unwrap(),
+            event
+                .context
+                .as_ref()
+                .unwrap()
+                .page
+                .as_ref()
+                .unwrap()
+                .search
+                .clone()
+                .unwrap_or_default(),
         );
-    } else {
-        // If referer is empty, insert the current page path in the referer header, like an analytics client-side collect does
         headers.insert(
             header::REFERER,
-            HeaderValue::from_str(
-                event
-                    .context
-                    .as_ref()
-                    .unwrap()
-                    .page
-                    .as_ref()
-                    .unwrap()
-                    .url
-                    .as_ref()
-                    .unwrap(),
-            )?,
+            HeaderValue::from_str(document_location.as_str())?,
         );
     }
 
