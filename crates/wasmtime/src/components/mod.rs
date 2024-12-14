@@ -45,6 +45,7 @@ pub async fn send_data_collection(
     for event in events {
         // Convert the event to the one which can be passed to the component
         let provider_event: provider::Event = event.clone().into();
+
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .build()?;
