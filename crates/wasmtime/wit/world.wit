@@ -1,0 +1,9 @@
+package edgee:native;
+
+// world edgee {
+    
+//     import edgee:data-collection/provider@0.2.1;
+// }
+world data-collection {
+  export edgee:protocols/provider@0.2.3;
+}

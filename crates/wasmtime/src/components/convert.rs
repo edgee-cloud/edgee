@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use tracing::warn;
 
-use crate::{exports::provider, payload};
-
+use crate::payload;
+use crate::exports::edgee::protocols::provider;
 impl From<payload::Event> for provider::Event {
     fn from(value: payload::Event) -> Self {
         let data = match value.data {
