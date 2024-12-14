@@ -10,7 +10,10 @@ use tracing::{error, info, span, Instrument, Level};
 
 use context::ComponentsContext;
 
-use crate::{exports::edgee::protocols::provider::{self}, payload::Event};
+use crate::{
+    exports::edgee::protocols::provider::{self},
+    payload::Event,
+};
 pub mod context;
 mod convert;
 
@@ -40,18 +43,16 @@ pub async fn send_data_collection(
     let mut store = ctx.empty_store();
 
     for event in events {
-        let event2: crate::payload::Event = event.clone();
         // Convert the event to the one which can be passed to the component
-        // let cloned: Event = event.clone();
-        let provider_event: crate::exports::edgee::protocols::provider::Event = event2.into();
+        let provider_event: provider::Event = event.clone().into();
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .build()?;
 
         let event_str = match provider_event.event_type {
-            crate::exports::edgee::protocols::provider::EventType::Page => "page",
-            crate::exports::edgee::protocols::provider::EventType::User => "user",
-            crate::exports::edgee::protocols::provider::EventType::Track => "track",
+            provider::EventType::Page => "page",
+            provider::EventType::User => "user",
+            provider::EventType::Track => "track",
         };
 
         let anonymized_client_ip = HeaderValue::from_str(&provider_event.context.client.ip)?;
