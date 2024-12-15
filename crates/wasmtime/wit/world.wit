@@ -1,5 +1,5 @@
 package edgee:native;
 
 world data-collection {
-  export edgee:protocols/provider@0.2.3;
+  export edgee:protocols/provider;
 }
