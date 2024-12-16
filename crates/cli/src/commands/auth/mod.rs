@@ -3,11 +3,8 @@ setup_commands! {
     Whoami(whoami),
 }
 
-setup_command! {
-    #[command(subcommand)]
-    command: Command,
-}
+pub type Options = Command;
 
-pub async fn run(opts: Options) {
-    opts.command.run().await
+pub async fn run(command: Command) {
+    command.run().await
 }
