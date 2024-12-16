@@ -1,5 +1,7 @@
 setup_commands! {
+    /// Log in to the Edgee Console
     Login(login),
+    /// Print currently login informations
     Whoami(whoami),
 }
 
