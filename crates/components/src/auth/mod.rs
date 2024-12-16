@@ -72,9 +72,11 @@ impl Credentials {
             anyhow::bail!("No API token provided");
         };
 
+        let url = format!("{}/v1/users/me", &*crate::API_ENDPOINT_BASE_URL);
+
         let client = Client::new();
         let res = client
-            .get("https://api.edgee.app/v1/users/me")
+            .get(url)
             .bearer_auth(api_token)
             .send()
             .await
