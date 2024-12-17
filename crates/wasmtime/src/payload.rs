@@ -50,7 +50,7 @@ pub struct DataCollection {
 }
 
 impl DataCollection {
-    pub fn populate_event_contexts(&mut self) {
+    pub fn populate_event_contexts(&mut self, from: &str) {
         let components = self.components.clone();
 
         // if events are set, we use the data collection context to fill in the missing fields
@@ -58,6 +58,7 @@ impl DataCollection {
             for event in events.iter_mut() {
                 event.uuid = uuid::Uuid::new_v4().to_string();
                 event.timestamp = Utc::now();
+                event.from = Some(from.to_string());
 
                 // fill in the missing context fields
                 if let Some(context) = &mut event.context {
@@ -120,6 +121,9 @@ pub struct Event {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub components: Option<HashMap<String, bool>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from: Option<String>,
 }
 
 impl<'de> Deserialize<'de> for Event {
@@ -134,6 +138,7 @@ impl<'de> Deserialize<'de> for Event {
             data: Option<serde_json::Value>,
             context: Option<Context>,
             components: Option<HashMap<String, bool>>,
+            from: Option<String>,
         }
 
         let helper = EventHelper::deserialize(deserializer)?;
@@ -162,6 +167,7 @@ impl<'de> Deserialize<'de> for Event {
             data,
             context: helper.context,
             components: helper.components,
+            from: helper.from,
         })
     }
 }
@@ -433,35 +439,6 @@ pub struct Client {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub city: Option<String>,
-}
-
-impl Client {
-    pub fn anonymize_ip(&mut self) {
-        if self.ip.is_none() {
-            return;
-        }
-
-        use std::net::IpAddr;
-
-        const KEEP_IPV4_BYTES: usize = 3;
-        const KEEP_IPV6_BYTES: usize = 6;
-
-        let ip: IpAddr = self.ip.clone().unwrap().parse().unwrap();
-        let anonymized_ip = match ip {
-            IpAddr::V4(ip) => {
-                let mut data = ip.octets();
-                data[KEEP_IPV4_BYTES..].fill(0);
-                IpAddr::V4(data.into())
-            }
-            IpAddr::V6(ip) => {
-                let mut data = ip.octets();
-                data[KEEP_IPV6_BYTES..].fill(0);
-                IpAddr::V6(data.into())
-            }
-        };
-
-        self.ip = Some(anonymized_ip.to_string());
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
