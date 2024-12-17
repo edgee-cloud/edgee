@@ -58,7 +58,7 @@ pub async fn process_from_html(
         .data_collection
         .as_mut()
         .unwrap()
-        .populate_event_contexts();
+        .populate_event_contexts("edge");
 
     // check if payload.events is empty, if so, add a page event
     if payload.data_collection.as_ref().unwrap().events.is_none() {
@@ -81,6 +81,7 @@ pub async fn process_from_html(
             context: payload.data_collection.clone().unwrap().context.clone(),
             // fill in components with payload.data_collection.unwrap().components if exists
             components: None,
+            from: Some("edge".to_string()),
         }]);
     }
 
@@ -146,7 +147,6 @@ pub async fn process_from_html(
                 .header("Content-Type", "application/json")
                 .header("Authorization", format!("Basic {}", b64))
                 .header("X-Edgee-Debug", debug)
-                .header("X-Edgee-From", "edge")
                 .header("X-Edgee-Host", host)
                 .body(events_json)
                 .send()
@@ -181,12 +181,18 @@ pub async fn process_from_json(
     // add more info from the request
     payload = add_more_info_from_request(request, payload);
 
+    let from = if from_third_party_sdk {
+        "third"
+    } else {
+        "client"
+    };
+
     // populate the events with the data collection context
     payload
         .data_collection
         .as_mut()
         .unwrap()
-        .populate_event_contexts();
+        .populate_event_contexts(from);
 
     let mut events = payload
         .data_collection
@@ -250,11 +256,6 @@ pub async fn process_from_json(
         } else {
             "false"
         };
-        let from = if from_third_party_sdk {
-            "third"
-        } else {
-            "client"
-        };
         let host = request.get_host().to_string();
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         tokio::spawn(async move {
@@ -263,7 +264,6 @@ pub async fn process_from_json(
                 .header("Content-Type", "application/json")
                 .header("Authorization", format!("Basic {}", b64))
                 .header("X-Edgee-Debug", debug)
-                .header("X-Edgee-From", from)
                 .header("X-Edgee-Host", host)
                 .body(events_json)
                 .send()
@@ -837,19 +837,6 @@ fn add_more_info_from_request(request: &RequestHandle, mut payload: Payload) -> 
         .as_mut()
         .unwrap()
         .ip = Some(request.get_client_ip().to_string());
-
-    // anonymize the ip address
-    payload
-        .data_collection
-        .as_mut()
-        .unwrap()
-        .context
-        .as_mut()
-        .unwrap()
-        .client
-        .as_mut()
-        .unwrap()
-        .anonymize_ip();
 
     // locale
     let locale = get_preferred_language(request.get_headers());

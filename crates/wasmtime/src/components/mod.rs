@@ -42,7 +42,7 @@ pub async fn send_data_collection(
 
     for event in events {
         // Convert the event to the one which can be passed to the component
-        let provider_event: provider::Event = event.clone().into();
+        let mut provider_event: provider::Event = event.clone().into();
 
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
@@ -54,7 +54,10 @@ pub async fn send_data_collection(
             provider::EventType::Track => "track",
         };
 
-        let anonymized_client_ip = HeaderValue::from_str(&provider_event.context.client.ip)?;
+        // todo: anonymize ip following the consent mapping
+        provider_event.context.client.ip = anonymize_ip(provider_event.context.client.ip.clone());
+
+        let client_ip = HeaderValue::from_str(&provider_event.context.client.ip)?;
         let user_agent = HeaderValue::from_str(&provider_event.context.client.user_agent)?;
 
         for cfg in component_config.data_collection.iter() {
@@ -116,7 +119,7 @@ pub async fn send_data_collection(
             for (key, value) in request.headers.iter() {
                 headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
             }
-            insert_expected_headers(&mut headers, event, &anonymized_client_ip, &user_agent)?;
+            insert_expected_headers(&mut headers, event, &client_ip, &user_agent)?;
 
             let client = client.clone();
 
@@ -204,17 +207,41 @@ pub async fn send_data_collection(
     Ok(())
 }
 
+fn anonymize_ip(ip: String) -> String {
+    if ip.is_empty() {
+        return ip;
+    }
+
+    use std::net::IpAddr;
+
+    const KEEP_IPV4_BYTES: usize = 3;
+    const KEEP_IPV6_BYTES: usize = 6;
+
+    let ip: IpAddr = ip.clone().parse().unwrap();
+    let anonymized_ip = match ip {
+        IpAddr::V4(ip) => {
+            let mut data = ip.octets();
+            data[KEEP_IPV4_BYTES..].fill(0);
+            IpAddr::V4(data.into())
+        }
+        IpAddr::V6(ip) => {
+            let mut data = ip.octets();
+            data[KEEP_IPV6_BYTES..].fill(0);
+            IpAddr::V6(data.into())
+        }
+    };
+
+    anonymized_ip.to_string()
+}
+
 fn insert_expected_headers(
     headers: &mut HeaderMap,
     event: &Event,
-    anonymized_client_ip: &HeaderValue,
+    client_ip: &HeaderValue,
     user_agent: &HeaderValue,
 ) -> anyhow::Result<()> {
     // Insert client ip in the x-forwarded-for header
-    headers.insert(
-        HeaderName::from_str("x-forwarded-for")?,
-        anonymized_client_ip.clone(),
-    );
+    headers.insert(HeaderName::from_str("x-forwarded-for")?, client_ip.clone());
 
     // Insert User-Agent in the user-agent header
     headers.insert(header::USER_AGENT, user_agent.clone());
