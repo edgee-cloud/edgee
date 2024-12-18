@@ -22,6 +22,7 @@ cbc = "0.1.2"
 chrono = "0.4.38"
 clap = "4.5.21"
 cookie = "0.18.1"
+dirs = "5.0.1"
 futures = "0.3.31"
 hex = "0.4.3"
 html-escape = "0.2.13"
@@ -30,6 +31,7 @@ http-body-util = "0.1"
 hyper = "1.5.1"
 hyper-rustls = "0.27.2"
 hyper-util = "0.1.5"
+inquire = "0.7.5"
 ipnetwork = "0.20.0"
 json_comments = "0.2.2"
 json_pretty = "0.1.2"
@@ -63,5 +65,6 @@ wasmtime-wasi = "27.0.0"
 edgee-sdk = "1.2.0"
 edgee-path = "0.1.1"
 
+edgee-components = { version = "0.6.0", path = "crates/components" }
 edgee-server = { version = "0.6.0", path = "crates/server" }
-edgee-wasmtime = { version = "0.6.0", path = "crates/wasmtime"}
+edgee-wasmtime = { version = "0.6.0", path = "crates/wasmtime" }
