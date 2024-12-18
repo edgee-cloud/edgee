@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use bytes::Bytes;
 use data_collection::{process_from_html, process_from_json};
-use http::header::CACHE_CONTROL;
+use http::header::{CACHE_CONTROL, ETAG, EXPIRES, LAST_MODIFIED};
 use http::response::Parts;
 use http::{HeaderName, HeaderValue};
 use tracing::warn;
@@ -50,8 +50,11 @@ pub async fn html_handler(
     if config::get().compute.enforce_no_store_policy {
         response.headers.insert(
             HeaderName::from_str(CACHE_CONTROL.as_ref()).unwrap(),
-            HeaderValue::from_str("no-store").unwrap(),
+            HeaderValue::from_str("private, no-store").unwrap(),
         );
+        response.headers.remove(EXPIRES);
+        response.headers.remove(ETAG);
+        response.headers.remove(LAST_MODIFIED);
     }
 
     match do_process_payload(request, response) {
