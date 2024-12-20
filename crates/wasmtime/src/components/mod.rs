@@ -13,6 +13,7 @@ use crate::{
     payload::{Consent, Event, EventType},
 };
 pub mod config;
+pub mod config_file;
 pub mod context;
 mod convert;
 
@@ -30,9 +31,9 @@ pub async fn send_data_collection(
 
     let mut store = ctx.empty_store();
 
-    // iterate on each event
-    for event in events.iter_mut() {
-        for cfg in component_config.data_collection.iter() {
+     // iterate on each event
+   for mut event in events.iter_mut() {
+        for cfg in component_config.get_collections().iter() {
             let span = span!(
                 Level::INFO,
                 "component",
@@ -41,10 +42,8 @@ pub async fn send_data_collection(
             );
             let _enter = span.enter();
 
-            let mut event = event.clone();
-
             let debug =
-                log_component.is_some() && log_component.as_ref().unwrap() == cfg.name.as_str();
+            log_component.is_some() && log_component.as_ref().unwrap() == cfg.name.as_str();
 
             // if event_type is not enabled in ccfg.config, skip the event
             match event.event_type {
@@ -71,7 +70,7 @@ pub async fn send_data_collection(
             if !event.is_component_enabled(&cfg.name) {
                 continue;
             }
-
+            
             let initial_anonymization = cfg.config.anonymization;
             let default_consent = cfg.config.default_consent.clone();
             let incoming_consent = request_info.consent.clone();

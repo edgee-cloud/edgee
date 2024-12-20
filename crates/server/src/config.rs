@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::OnceLock;
 
-use edgee_wasmtime::components::config::ComponentsConfiguration;
+use edgee_wasmtime::components::config_file::ComponentsConfigurationFile;
 use serde::Deserialize;
 use tracing::level_filters::LevelFilter;
 
@@ -24,7 +24,7 @@ pub struct StaticConfiguration {
     pub routing: Vec<RoutingConfiguration>,
 
     #[serde(default)]
-    pub components: ComponentsConfiguration,
+    pub components: ComponentsConfigurationFile,
 }
 
 fn default_compute_config() -> ComputeConfiguration {
@@ -226,7 +226,7 @@ pub fn init_test_config() {
         }),
         routing: vec![],
         compute: default_compute_config(),
-        components: ComponentsConfiguration::default(),
+        components: ComponentsConfigurationFile::default(),
     };
 
     CONFIG.get_or_init(|| config);
