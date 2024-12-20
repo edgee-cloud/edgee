@@ -3,6 +3,6 @@ pub mod payload;
 
 wasmtime::component::bindgen!({
     world: "data-collection",
-    path: "wit/protocols.wit",
+    path: "wit/",
     async: true,
 });

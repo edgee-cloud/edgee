@@ -10,8 +10,10 @@ use tracing::{error, info, span, Instrument, Level};
 
 use context::ComponentsContext;
 
-use crate::{exports::provider, payload::Event};
-
+use crate::{
+    exports::edgee::protocols::provider::{self},
+    payload::Event,
+};
 pub mod context;
 mod convert;
 
@@ -75,7 +77,7 @@ pub async fn send_data_collection(
             let instance = ctx
                 .instantiate_data_collection(&cfg.name, &mut store)
                 .await?;
-            let provider = instance.provider();
+            let provider = instance.edgee_protocols_provider();
             let credentials: Vec<(String, String)> = cfg.credentials.clone().into_iter().collect();
 
             let request = match provider_event.event_type {
