@@ -8,7 +8,7 @@ use wasmtime_wasi::{WasiCtx, WasiView};
 
 use crate::{DataCollection, DataCollectionPre};
 
-use super::ComponentsConfiguration;
+use super::config_file::ComponentsConfigurationFile;
 
 pub struct ComponentsContext {
     pub engine: Engine,
@@ -16,7 +16,7 @@ pub struct ComponentsContext {
 }
 
 impl ComponentsContext {
-    pub fn new(config: &ComponentsConfiguration) -> anyhow::Result<Self> {
+    pub fn new(config: &ComponentsConfigurationFile) -> anyhow::Result<Self> {
         let mut engine_config = wasmtime::Config::new();
         engine_config
             .wasm_backtrace_details(wasmtime::WasmBacktraceDetails::Enable)
@@ -40,7 +40,7 @@ impl ComponentsContext {
                 let _span = span.enter();
 
                 tracing::debug!("Start pre-instanciate component");
-
+                
                 let component = Component::from_file(&engine, &entry.component)?;
                 let instance_pre = linker.instantiate_pre(&component)?;
                 let instance_pre = DataCollectionPre::new(instance_pre)?;
