@@ -67,13 +67,18 @@ pub async fn edgee_client_event_from_third_party_sdk(
         let all_cookies = response.headers.get_all(SET_COOKIE).iter();
 
         let mut set_cookie_header = "";
+        let mut set_cookie_u_header = "";
         for cookie in all_cookies {
             if cookie
                 .to_str()?
-                .starts_with(config::get().compute.cookie_name.as_str())
+                .starts_with(format!("{}=", config::get().compute.cookie_name.as_str()).as_str())
             {
                 set_cookie_header = cookie.to_str()?;
-                break;
+            } else if cookie
+                .to_str()?
+                .starts_with(format!("{}_u=", config::get().compute.cookie_name.as_str()).as_str())
+            {
+                set_cookie_u_header = cookie.to_str()?;
             }
         }
 
@@ -90,6 +95,22 @@ pub async fn edgee_client_event_from_third_party_sdk(
             .unwrap_or("")
             .to_string();
 
+        let cookie_encrypted_u = if set_cookie_u_header.is_empty() {
+            "".to_string()
+        } else {
+            set_cookie_u_header
+                .split(&format!(
+                    "{}_u=",
+                    config::get().compute.cookie_name.as_str()
+                ))
+                .nth(1)
+                .unwrap_or("")
+                .split(';')
+                .next()
+                .unwrap_or("")
+                .to_string()
+        };
+
         if cookie_encrypted.is_empty() {
             return Ok(build_response(response, Bytes::new()));
         }
@@ -104,8 +125,9 @@ pub async fn edgee_client_event_from_third_party_sdk(
             return Ok(build_response(
                 response,
                 Bytes::from(format!(
-                    r#"{{"e":"{}", "events":{}}}"#,
+                    r#"{{"e":"{}", "u":"{}", "events":{}}}"#,
                     cookie_encrypted,
+                    cookie_encrypted_u,
                     events.unwrap()
                 )),
             ));
@@ -114,7 +136,10 @@ pub async fn edgee_client_event_from_third_party_sdk(
 
         return Ok(build_response(
             response,
-            Bytes::from(format!(r#"{{"e":"{}"}}"#, cookie_encrypted)),
+            Bytes::from(format!(
+                r#"{{"e":"{}", "u":"{}"}}"#,
+                cookie_encrypted, cookie_encrypted_u
+            )),
         ));
     }
 

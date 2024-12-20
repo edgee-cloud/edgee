@@ -21,6 +21,23 @@ use crate::proxy::context::incoming::RequestHandle;
 use crate::tools::edgee_cookie;
 use crate::{config, get};
 
+/// Processes data collection from HTML document and generates collection events.
+///
+/// # Arguments
+/// * `document` - The HTML document to process
+/// * `request` - The incoming request handle
+/// * `response` - The response parts to be modified
+///
+/// # Returns
+/// * `Option<String>` - JSON string of processed events if successful, None otherwise
+///
+/// # Processing Steps
+/// 1. Extracts data layer from document
+/// 2. Prepares payload and adds session info
+/// 3. Enriches with HTML/request data
+/// 4. Processes events and updates user cookies
+/// 5. Sends payload to data collection components
+/// 6. Optionally sends to data collection API
 #[tracing::instrument(name = "data_collection", skip(document, request, response))]
 pub async fn process_from_html(
     document: &Document,
@@ -53,6 +70,9 @@ pub async fn process_from_html(
     // add more info from the request
     payload = add_more_info_from_request(request, payload);
 
+    // add user context from the edgee_u cookie
+    payload = add_user_context_from_cookie(request, payload);
+
     // populate the events with the data collection context
     payload
         .data_collection
@@ -79,8 +99,7 @@ pub async fn process_from_html(
                     .unwrap(),
             )),
             context: payload.data_collection.clone().unwrap().context.clone(),
-            // fill in components with payload.data_collection.unwrap().components if exists
-            components: None,
+            components: payload.data_collection.clone().unwrap().components.clone(),
             from: Some("edge".to_string()),
         }]);
     }
@@ -96,6 +115,13 @@ pub async fn process_from_html(
     for e in events.clone().iter() {
         if e.is_all_components_disabled() {
             events.retain(|evt| evt.uuid != e.uuid);
+        } else {
+            // if a user event is present, encrypt the user data and write it to edgee_u cookie
+            if e.event_type == EventType::User {
+                if let EventData::User(user_data) = e.data.as_ref().unwrap() {
+                    edgee_cookie::set_user_cookie(request, response, user_data);
+                }
+            }
         }
     }
 
@@ -157,6 +183,22 @@ pub async fn process_from_html(
     Option::from(events_json)
 }
 
+/// Processes data collection events from a JSON payload.
+///
+/// # Arguments
+/// * `body` - The raw JSON payload as bytes
+/// * `request` - The HTTP request handle containing headers and other request information
+/// * `response` - Mutable response parts that may be modified (e.g. to set cookies)
+/// * `from_third_party_sdk` - Boolean indicating if the request originated from a third-party SDK
+///
+/// # Returns
+/// * `Option<String>` - The processed events as a JSON string if successful, None if parsing fails
+///
+/// # Processing Steps
+/// 1. Parses the JSON payload into a data collection payload structure
+/// 2. Prepares and enriches the payload with additional context (session, user, request info)
+/// 3. Processes any user events to update cookies
+/// 4. Returns the processed events as a JSON string
 #[tracing::instrument(name = "data_collection", skip(body, request, response))]
 pub async fn process_from_json(
     body: &Bytes,
@@ -180,6 +222,9 @@ pub async fn process_from_json(
 
     // add more info from the request
     payload = add_more_info_from_request(request, payload);
+
+    // add user context from the edgee_u cookie
+    payload = add_user_context_from_cookie(request, payload);
 
     let from = if from_third_party_sdk {
         "third"
@@ -205,6 +250,13 @@ pub async fn process_from_json(
     for e in events.clone().iter() {
         if e.is_all_components_disabled() {
             events.retain(|evt| evt.uuid != e.uuid);
+        } else {
+            // if a user event is present, encrypt the user context and write it to edgee_u cookie
+            if e.event_type == EventType::User {
+                if let EventData::User(user_data) = e.data.as_ref().unwrap() {
+                    edgee_cookie::set_user_cookie(request, response, user_data);
+                }
+            }
         }
     }
 
@@ -277,10 +329,18 @@ pub async fn process_from_json(
 /// Prepares the data collection payload by initializing necessary fields if they are not set.
 ///
 /// # Arguments
-/// - `payload`: The `Payload` object to be prepared.
+/// * `payload` - The `Payload` object to be prepared
 ///
 /// # Returns
-/// - `Payload`: The updated `Payload` object with initialized fields.
+/// * The updated `Payload` object with initialized fields
+///
+/// # Example
+/// ```ignore
+/// let mut payload = Payload::default();
+/// payload = prepare_data_collection_payload(payload);
+/// assert!(payload.data_collection.is_some());
+/// assert!(payload.data_collection.unwrap().context.is_some());
+/// ```
 fn prepare_data_collection_payload(mut payload: Payload) -> Payload {
     // Ensure data_collection and its nested fields are initialized
     payload
@@ -1145,19 +1205,68 @@ fn add_more_info_from_request(request: &RequestHandle, mut payload: Payload) -> 
     payload
 }
 
-/// Processes the `Sec-CH-UA` header to extract and format the user agent information.
+/// Adds user context information from the edgee_u cookie to the payload.
 ///
 /// # Arguments
-/// - `header`: A string slice that holds the value of the `Sec-CH-UA` header.
-/// - `full`: A boolean flag that indicates whether the full version string should be included.
+/// - `request`: A reference to the `RequestHandle` object containing the request information.
+/// - `payload`: The `Payload` object to be updated with user context information.
 ///
 /// # Returns
-/// - `String`: A formatted string containing the user agent information, with each key-value pair separated by a semicolon,
-///   and multiple pairs separated by a pipe character.
+/// - `Payload`: The updated `Payload` object with user context information from the cookie.
 ///
-/// The function uses a regular expression to capture the key and version from the header.
-/// It ensures that the version string has four parts by appending ".0" if necessary.
-/// The formatted key-version pairs are then concatenated into a single string.
+/// This function retrieves the edgee_u cookie from the request and updates the payload's user context
+/// with the user ID, anonymous ID, and properties if they exist in the cookie.
+fn add_user_context_from_cookie(request: &RequestHandle, mut payload: Payload) -> Payload {
+    let edgee_user_cookie = edgee_cookie::get_user_cookie(request);
+    if edgee_user_cookie.is_some() {
+        let user = payload
+            .data_collection
+            .as_mut()
+            .unwrap()
+            .context
+            .as_mut()
+            .unwrap()
+            .user
+            .as_mut()
+            .unwrap();
+        let edgee_user_cookie = edgee_user_cookie.unwrap();
+        if let Some(user_id) = edgee_user_cookie.user_id {
+            // replace the user_id with the one from the cookien only if it's not already set
+            if user.user_id.is_none() {
+                user.user_id = Some(user_id);
+            }
+        }
+        if let Some(anonymous_id) = edgee_user_cookie.anonymous_id {
+            // replace the anonymous_id with the one from the cookien only if it's not already set
+            if user.anonymous_id.is_none() {
+                user.anonymous_id = Some(anonymous_id);
+            }
+        }
+        if let Some(properties) = edgee_user_cookie.properties {
+            // replace the properties with the one from the cookien only if it's not already set
+            if user.properties.is_none() {
+                user.properties = Some(properties);
+            }
+        }
+    }
+    payload
+}
+
+/// Processes the `Sec-CH-UA` header to extract and format browser/platform information.
+///
+/// # Arguments
+/// * `header` - Raw Sec-CH-UA header string (e.g. `"Chrome";v="91.0.4472.124", "Edge";v="91.0.864.59"`)
+/// * `full` - If true, includes full version string; if false, only major version
+///
+/// # Returns
+/// * Formatted string with browser-version pairs (e.g. "Chrome;91|Edge;91" or "Chrome;91.0.4472.124|Edge;91.0.864.59")
+///
+/// # Example
+/// ```ignore
+/// let header = r#""Chrome";v="91.0.4472", "Edge";v="91.0.864""#;
+/// let result = process_sec_ch_ua(header, false);
+/// assert_eq!(result, "Chrome;91|Edge;91");
+/// ```
 fn process_sec_ch_ua(header: &str, full: bool) -> String {
     lazy_static::lazy_static! {
         static ref VALUE_REGEX: Regex = Regex::new(r#""([^"]+)";v="([^"]+)""#).unwrap();
@@ -1194,13 +1303,25 @@ fn process_sec_ch_ua(header: &str, full: bool) -> String {
     output
 }
 
-/// Extracts the preferred language from the `accept-language` header in the request.
+/// Extracts the preferred language from the Accept-Language header.
 ///
 /// # Arguments
-/// - `request_headers`: A reference to the `HeaderMap` containing the request headers.
+/// * `request_headers` - HTTP request headers containing Accept-Language
 ///
 /// # Returns
-/// - `String`: The preferred language extracted from the `accept-language` header, or "en-us" if no valid language is found.
+/// * The first preferred language code in lowercase (e.g. "en-us", "fr-fr")
+///
+/// # Details
+/// - Parses the Accept-Language header (e.g. "en-US,en;q=0.9,es;q=0.8")
+/// - Returns the first language code found, converted to lowercase
+/// - Falls back to "en-us" if no valid language is found
+///
+/// # Example
+/// ```ignore
+/// let mut headers = HeaderMap::new();
+/// headers.insert("accept-language", "fr-FR,fr;q=0.9".parse().unwrap());
+/// assert_eq!(get_preferred_language(&headers), "fr-fr");
+/// ```
 fn get_preferred_language(request_headers: &HeaderMap) -> String {
     let accept_language_header = request_headers
         .get("accept-language")
@@ -1216,20 +1337,20 @@ fn get_preferred_language(request_headers: &HeaderMap) -> String {
     "en-us".to_string()
 }
 
-/// Parses a JSON payload from a reader and returns a `Result` containing the `Payload` or a `serde_json::Error`.
-///
-/// # Type Parameters
-/// - `T`: A type that implements the `Read` trait, representing the input source of the JSON data.
+/// Parses a JSON payload into a Payload struct.
 ///
 /// # Arguments
-/// - `clean_json`: An instance of type `T` that provides the JSON data to be parsed.
+/// * `clean_json` - Reader containing valid JSON data
 ///
 /// # Returns
-/// - `Result<Payload, serde_json::Error>`: A `Result` that is `Ok` if the JSON data was successfully parsed into a `Payload`,
-///   or `Err` if there was an error during parsing.
+/// * `Ok(Payload)` - Successfully parsed payload
+/// * `Err(serde_json::Error)` - JSON parsing error with details
 ///
 /// # Errors
-/// This function will return a `serde_json::Error` if the JSON data cannot be parsed into a `Payload`.
+/// Returns error if:
+/// - JSON is malformed
+/// - JSON structure doesn't match Payload schema
+/// - IO error occurs while reading
 fn parse_payload<T: Read>(clean_json: T) -> Result<Payload, serde_json::Error> {
     serde_json::from_reader(clean_json)
 }

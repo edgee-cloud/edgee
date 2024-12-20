@@ -5,7 +5,7 @@ use std::time::Duration as StdDuration;
 use chrono::{DateTime, Duration, Utc};
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, SameSite};
-use edgee_wasmtime::payload::Payload;
+use edgee_wasmtime::payload::{Payload, User};
 use http::header::{COOKIE, SET_COOKIE};
 use http::response::Parts;
 use http::{HeaderValue, Method};
@@ -123,9 +123,9 @@ impl EdgeeCookie {
 ///
 /// # Arguments
 ///
-/// * `request_headers` - A reference to the request headers.
-/// * `response` - A mutable reference to the response headers where the cookie will be set.
-/// * `host` - A string slice that holds the host for which the cookie is set.
+/// * `request` - A reference to the `RequestHandle` containing the request information.
+/// * `response` - A mutable reference to the response `Parts` where the cookie will be set.
+/// * `payload` - A reference to the `Payload` containing data collection information.
 ///
 /// # Returns
 ///
@@ -138,11 +138,32 @@ pub fn get_or_set(request: &RequestHandle, response: &mut Parts, payload: &Paylo
     edgee_cookie.unwrap()
 }
 
+/// Checks if the edgee cookie exists in the request.
+///
+/// # Arguments
+/// * `request` - A reference to the `RequestHandle` containing the request information.
+///
+/// # Returns
+/// * `bool` - Returns true if the edgee cookie exists in the request, false otherwise.
 pub fn has_cookie(request: &RequestHandle) -> bool {
-    get_cookie(request).is_some()
+    get_cookie(config::get().compute.cookie_name.as_str(), request).is_some()
 }
 
-pub fn get_cookie(request: &RequestHandle) -> Option<String> {
+/// Retrieves a cookie value from the request headers by name.
+///
+/// # Arguments
+/// * `name` - The name of the cookie to retrieve
+/// * `request` - A reference to the `RequestHandle` containing the request information
+///
+/// # Returns
+/// * `Option<String>` - The cookie value if found, or None if not found
+///
+/// # Details
+/// - Searches through all Cookie headers in the request
+/// - Parses each cookie header into name-value pairs
+/// - Returns the value if a cookie with the given name is found
+/// - Falls back to checking query parameters if cookie not found in headers
+pub fn get_cookie(name: &str, request: &RequestHandle) -> Option<String> {
     let all_cookies = request.get_headers().get_all(COOKIE);
     for cookie in all_cookies {
         let mut map = HashMap::new();
@@ -154,21 +175,35 @@ pub fn get_cookie(request: &RequestHandle) -> Option<String> {
             map.insert(parts[0].trim().to_string(), parts[1].trim().to_string());
         }
 
-        if map.contains_key(config::get().compute.cookie_name.as_str()) {
-            return Some(
-                map.get(config::get().compute.cookie_name.as_str())
-                    .unwrap()
-                    .to_string(),
-            );
+        if map.contains_key(name) {
+            return Some(map.get(name).unwrap().to_string());
         }
     }
-    get_cookie_from_query_or_none(request)
+    get_cookie_from_query_or_none(name, request)
 }
 
-fn get_cookie_from_query_or_none(request: &RequestHandle) -> Option<String> {
+/// Attempts to retrieve a cookie value from query parameters if not found in headers.
+///
+/// # Arguments
+/// * `name` - The name of the cookie to retrieve
+/// * `request` - A reference to the `RequestHandle` containing the request information
+///
+/// # Returns
+/// * `Option<String>` - The cookie value if found in query params, or None if not found
+///
+/// # Details
+/// - Only checks query params for POST requests to the third party SDK endpoint
+/// - For edgee cookie, looks for 'e' param
+/// - For edgee user cookie, looks for 'u' param
+/// - Returns None for all other cases
+fn get_cookie_from_query_or_none(name: &str, request: &RequestHandle) -> Option<String> {
     if request.get_path() == DATA_COLLECTION_ENDPOINT_FROM_THIRD_PARTY_SDK
         && request.get_method() == Method::POST
     {
+        let mut param_name = "e";
+        if name == format!("{}_u", config::get().compute.cookie_name) {
+            param_name = "u";
+        }
         let map: HashMap<String, String> = request
             .get_query()
             .split('&')
@@ -176,7 +211,7 @@ fn get_cookie_from_query_or_none(request: &RequestHandle) -> Option<String> {
             .filter(|v| v.len() == 2)
             .map(|v| (v[0].to_string(), v[1].to_string()))
             .collect();
-        let e = map.get("e");
+        let e = map.get(param_name);
         e.map(|e| e.to_string())
     } else {
         None
@@ -187,19 +222,20 @@ fn get_cookie_from_query_or_none(request: &RequestHandle) -> Option<String> {
 ///
 /// # Arguments
 ///
-/// * `request` - A reference to the request headers.
-/// * `response` - A mutable reference to the response headers where the cookie will be set.
-/// * `host` - A string slice that holds the host for which the cookie is set.
+/// * `request` - A reference to the `RequestHandle` containing the request information.
+/// * `response` - A mutable reference to the response `Parts` where the cookie will be set.
+/// * `payload` - A reference to the `Payload` containing data collection information.
 ///
 /// # Returns
 ///
-/// * `Option<EdgeeCookie>` - An `Option` containing the `EdgeeCookie` if it exists and is successfully decrypted and updated, or `None` if the cookie does not exist or decryption fails.
+/// * `Option<EdgeeCookie>` - An `Option` containing the `EdgeeCookie` if it exists and is successfully decrypted and updated,
+///   or `None` if the cookie does not exist.
 pub fn get(
     request: &RequestHandle,
     response: &mut Parts,
     payload: &Payload,
 ) -> Option<EdgeeCookie> {
-    if let Some(value) = get_cookie(request) {
+    if let Some(value) = get_cookie(config::get().compute.cookie_name.as_str(), request) {
         let edgee_cookie_result = decrypt_and_update(value.as_str(), payload);
         if edgee_cookie_result.is_err() {
             return Some(init_and_set_cookie(request, response, payload));
@@ -211,6 +247,7 @@ pub fn get(
         let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
         let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
         set_cookie(
+            config::get().compute.cookie_name.as_str(),
             &edgee_cookie_encrypted,
             response,
             request.get_host().as_str(),
@@ -243,19 +280,16 @@ pub fn get(
 /// let updated_cookie = decrypt_and_update("some_encrypted_cookie").unwrap();
 /// println!("Updated EdgeeCookie: {:?}", updated_cookie);
 /// ```
-fn decrypt_and_update(
-    encrypted_edgee_cookie: &str,
-    payload: &Payload,
-) -> Result<EdgeeCookie, &'static str> {
-    let edgee_cookie_decrypted = decrypt(encrypted_edgee_cookie);
-    if edgee_cookie_decrypted.is_err() {
-        return Err("Failed to decrypt edgee_cookie");
+fn decrypt_and_update(value: &str, payload: &Payload) -> Result<EdgeeCookie, &'static str> {
+    let decrypted = decrypt(value);
+    if decrypted.is_err() {
+        return Err("Failed to decrypt EdgeeCookie");
     }
 
-    // deserialize edgee_cookie
-    let edgee_cookie_str = parse(edgee_cookie_decrypted?.as_bytes());
+    // deserialize EdgeeCookie
+    let edgee_cookie_str = parse(decrypted?.as_bytes());
     if edgee_cookie_str.is_err() {
-        return Err("Failed to parse edgee_cookie");
+        return Err("Failed to parse EdgeeCookie");
     }
 
     let mut edgee_cookie = edgee_cookie_str.unwrap();
@@ -283,9 +317,9 @@ fn decrypt_and_update(
 ///
 /// # Arguments
 ///
-/// * `request` - A reference to the request headers.
-/// * `response` - A mutable reference to the response headers where the cookie will be set.
-/// * `host` - A string slice that holds the host for which the cookie is set.
+/// * `request` - A reference to the `RequestHandle` containing the request information.
+/// * `response` - A mutable reference to the response `Parts` where the cookie will be set.
+/// * `payload` - A reference to the `Payload` containing data collection information.
 ///
 /// # Returns
 ///
@@ -301,6 +335,7 @@ fn init_and_set_cookie(
     let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
     let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
     set_cookie(
+        config::get().compute.cookie_name.as_str(),
         &edgee_cookie_encrypted,
         response,
         request.get_host().as_str(),
@@ -312,21 +347,22 @@ fn init_and_set_cookie(
 ///
 /// # Arguments
 ///
+/// * `name` - A string slice that holds the name of the cookie.
 /// * `value` - A string slice that holds the value of the cookie.
-/// * `response` - A mutable reference to the response headers where the cookie will be set.
+/// * `response` - A mutable reference to the response `Parts` where the cookie will be set.
 /// * `host` - A string slice that holds the host for which the cookie is set.
 ///
 /// # Panics
 ///
-/// This function will panic if the `HeaderValue::from_str` function fails to convert the cookie string to a `HeaderValue`.
-fn set_cookie(value: &str, response: &mut Parts, host: &str) {
+/// This function will panic if the cookie string cannot be converted to a valid `HeaderValue`.
+fn set_cookie(name: &str, value: &str, response: &mut Parts, host: &str) {
     let secure = config::get().http.is_some() && config::get().http.as_ref().unwrap().force_https;
     let cookie_domain = config::get()
         .compute
         .cookie_domain
         .clone()
         .unwrap_or_else(|| get_root_domain(host));
-    let cookie = Cookie::build((&config::get().compute.cookie_name, value))
+    let cookie = Cookie::build((name, value))
         .domain(cookie_domain)
         .path("/")
         .http_only(false)
@@ -372,23 +408,125 @@ fn get_root_domain(host: &str) -> String {
     }
 }
 
-/// This function is used to parse a JSON string into an `EdgeeCookie` object.
-///
-/// # Type Parameters
-///
-/// * `T: Read` - The type of the input that implements the `Read` trait. This is typically a string that represents a JSON object.
+/// Parses a JSON payload into an EdgeeCookie struct.
 ///
 /// # Arguments
-///
-/// * `clean_json: T` - The JSON string that will be parsed into an `EdgeeCookie` object.
+/// * `clean_json` - Reader containing valid JSON data
 ///
 /// # Returns
-///
-/// * `Result<EdgeeCookie, Error>` - The function returns a `Result` type. If the parsing is successful, it returns `Ok` containing the `EdgeeCookie` object. If the parsing fails, it returns `Err` containing the error information.
+/// * `Ok(EdgeeCookie)` - Successfully parsed EdgeeCookie
+/// * `Err(Error)` - JSON parsing error with details
 ///
 /// # Errors
-///
-/// This function will return an error if the JSON string cannot be parsed into an `EdgeeCookie` object.
+/// Returns error if:
+/// - JSON is malformed
+/// - JSON structure doesn't match EdgeeCookie schema
+/// - IO error occurs while reading
 fn parse<T: Read>(clean_json: T) -> Result<EdgeeCookie, Error> {
+    serde_json::from_reader(clean_json)
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct EdgeeUserCookie {
+    pub user_id: Option<String>,
+    pub anonymous_id: Option<String>,
+    pub properties: Option<HashMap<String, serde_json::Value>>,
+}
+
+/// Sets the user cookie in the response headers with encrypted user data.
+///
+/// # Arguments
+/// * `request` - A reference to the `RequestHandle` containing the request information
+/// * `response` - A mutable reference to the response `Parts` where the cookie will be set
+/// * `user_data` - A reference to the `User` data to store in the cookie
+///
+/// # Details
+/// - Creates an `EdgeeUserCookie` from the provided user data
+/// - Serializes and encrypts the cookie data
+/// - Sets the encrypted cookie in the response headers with the appropriate name
+pub fn set_user_cookie(request: &RequestHandle, response: &mut Parts, user_data: &User) {
+    let user_cookie = EdgeeUserCookie {
+        user_id: user_data.user_id.clone(),
+        anonymous_id: user_data.anonymous_id.clone(),
+        properties: user_data.properties.clone(),
+    };
+    let user_cookie_str = serde_json::to_string(&user_cookie).unwrap();
+    let encrypted_user_cookie = encrypt(&user_cookie_str).unwrap();
+    let cookie_name = format!("{}_u", config::get().compute.cookie_name);
+    set_cookie(
+        &cookie_name,
+        &encrypted_user_cookie,
+        response,
+        request.get_host().as_str(),
+    );
+}
+
+/// Retrieves and decrypts the user cookie from the request headers.
+///
+/// # Arguments
+/// * `request` - A reference to the `RequestHandle` containing the request information
+///
+/// # Returns
+/// * `Option<EdgeeUserCookie>` - The decrypted user cookie if present and valid, None otherwise
+///
+/// # Details
+/// - Looks for cookie with name "{cookie_name}_u" in request headers
+/// - Attempts to decrypt and parse the cookie value if found
+/// - Returns None if cookie is missing or invalid
+pub fn get_user_cookie(request: &RequestHandle) -> Option<EdgeeUserCookie> {
+    let cookie_name = format!("{}_u", config::get().compute.cookie_name);
+    if let Some(value) = get_cookie(cookie_name.as_str(), request) {
+        let cookie_result = decrypt_user_cookie(value.as_str());
+        if cookie_result.is_err() {
+            return None;
+        }
+        return Some(cookie_result.unwrap());
+    }
+    None
+}
+
+/// Decrypts and parses an encrypted user cookie string.
+///
+/// # Arguments
+/// * `value` - The encrypted cookie string to decrypt
+///
+/// # Returns
+/// * `Result<EdgeeUserCookie, &'static str>` - The decrypted and parsed cookie on success,
+///   or an error message on failure
+///
+/// # Errors
+/// Returns error if:
+/// - Decryption fails
+/// - JSON parsing fails after decryption
+fn decrypt_user_cookie(value: &str) -> Result<EdgeeUserCookie, &'static str> {
+    let decrypted = decrypt(value);
+    if decrypted.is_err() {
+        return Err("Failed to decrypt EdgeeUserCookie");
+    }
+
+    // deserialize EdgeeUserCookie
+    let cookie_str: Result<EdgeeUserCookie, Error> = parse_user_cookie(decrypted?.as_bytes());
+    if cookie_str.is_err() {
+        return Err("Failed to parse EdgeeUserCookie");
+    }
+
+    Ok(cookie_str.unwrap())
+}
+
+/// Parses a JSON reader into an EdgeeUserCookie struct.
+///
+/// # Arguments
+/// * `clean_json` - Reader containing valid JSON data
+///
+/// # Returns
+/// * `Result<EdgeeUserCookie, Error>` - The parsed cookie struct on success,
+///   or a serde_json Error on failure
+///
+/// # Errors
+/// Returns error if:
+/// - JSON is malformed
+/// - JSON structure doesn't match EdgeeUserCookie schema
+/// - IO error occurs while reading
+fn parse_user_cookie<T: Read>(clean_json: T) -> Result<EdgeeUserCookie, Error> {
     serde_json::from_reader(clean_json)
 }
