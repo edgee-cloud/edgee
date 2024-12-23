@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::{collections::HashMap, fs};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -17,8 +18,8 @@ pub mod context;
 mod convert;
 pub mod config_file;
 
-pub trait ComponentsConfiguration<T: DataCollectionConfiguration> {
-    fn get_collections(&self)->Vec<T>;
+pub trait ComponentsConfiguration {
+    fn get_collections(&self)->Vec<Arc<dyn DataCollectionConfiguration + Send + Sync>>;
     fn get_gache(&self)->Option<PathBuf>;
 }
 
@@ -28,10 +29,10 @@ pub trait DataCollectionConfiguration {
     fn get_credentials(&self)->HashMap<String, String>;
 }
 
-pub async fn send_data_collection<T: ComponentsConfiguration<U>, U: DataCollectionConfiguration>(
+pub async fn send_data_collection(
     ctx: &ComponentsContext,
     events: &Vec<Event>,
-    component_config: &T,
+    component_config: Box<dyn ComponentsConfiguration + Send + Sync>,
     log_component: &Option<String>,
 ) -> anyhow::Result<()> {
     if events.is_empty() {

@@ -137,10 +137,11 @@ pub async fn process_from_html(
     tokio::spawn(
         async move {
             let config = config::get();
+            let components = config.components.clone();
             if let Err(err) = components::send_data_collection(
                 get(),
                 &events,
-                &config.components,
+                Box::new(components),
                 &config.log.debug_component,
             )
             .await
@@ -275,7 +276,8 @@ pub async fn process_from_json(
             if let Err(err) = components::send_data_collection(
                 get(),
                 &events,
-                &config.components,
+                // Box::new(&config.components),
+                Box::new(config.components.clone()),
                 &config.log.debug_component,
             )
             .await

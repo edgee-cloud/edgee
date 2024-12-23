@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, path::PathBuf};
+use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 
 use serde::Deserialize;
 
@@ -10,9 +10,11 @@ pub struct ComponentsConfigurationFile {
     pub cache: Option<PathBuf>,
 }
 
-impl ComponentsConfiguration<DataCollectionConfigurationFile> for ComponentsConfigurationFile {
-    fn get_collections(&self)->Vec<DataCollectionConfigurationFile> {
-        self.data_collection.clone()
+impl ComponentsConfiguration for ComponentsConfigurationFile {
+    fn get_collections(&self)->Vec<Arc<dyn DataCollectionConfiguration + Send + Sync>> {
+        self.data_collection.clone().into_iter()
+            .map(|e| Arc::new(e) as Arc<dyn DataCollectionConfiguration + Send + Sync>)
+            .collect()
     }
 
     fn get_gache(&self)->Option<PathBuf> {
