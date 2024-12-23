@@ -316,6 +316,100 @@ fn insert_expected_headers(
         );
     }
 
+    // Insert sec-ch-ua headers
+    // sec-ch-ua
+    if event
+        .context
+        .as_ref()
+        .unwrap()
+        .client
+        .as_ref()
+        .unwrap()
+        .user_agent_version_list
+        .is_some()
+    {
+        headers.insert(
+            HeaderName::from_str("sec-ch-ua")?,
+            HeaderValue::from_str(
+                format_ch_ua_header(
+                    event
+                        .context
+                        .as_ref()
+                        .unwrap()
+                        .client
+                        .as_ref()
+                        .unwrap()
+                        .user_agent_version_list
+                        .as_ref()
+                        .unwrap(),
+                )
+                .as_str(),
+            )?,
+        );
+    }
+    // sec-ch-ua-mobile
+    if event
+        .context
+        .as_ref()
+        .unwrap()
+        .client
+        .as_ref()
+        .unwrap()
+        .user_agent_mobile
+        .is_some()
+    {
+        headers.insert(
+            HeaderName::from_str("sec-ch-ua-mobile")?,
+            HeaderValue::from_str(
+                format!(
+                    "?{}",
+                    event
+                        .context
+                        .as_ref()
+                        .unwrap()
+                        .client
+                        .as_ref()
+                        .unwrap()
+                        .user_agent_mobile
+                        .as_ref()
+                        .unwrap()
+                )
+                .as_str(),
+            )?,
+        );
+    }
+    // sec-ch-ua-platform
+    if event
+        .context
+        .as_ref()
+        .unwrap()
+        .client
+        .as_ref()
+        .unwrap()
+        .os_name
+        .is_some()
+    {
+        headers.insert(
+            HeaderName::from_str("sec-ch-ua-platform")?,
+            HeaderValue::from_str(
+                format!(
+                    "\"{}\"",
+                    event
+                        .context
+                        .as_ref()
+                        .unwrap()
+                        .client
+                        .as_ref()
+                        .unwrap()
+                        .os_name
+                        .as_ref()
+                        .unwrap()
+                )
+                .as_str(),
+            )?,
+        );
+    }
+
     Ok(())
 }
 
@@ -372,4 +466,87 @@ fn debug_response(status: &str, timer_start: std::time::Instant, body: String, e
         println!("Error:    {}", error);
     }
     println!();
+}
+
+fn format_ch_ua_header(string: &str) -> String {
+    if string.is_empty() {
+        return String::new();
+    }
+
+    let mut ch_ua_list = vec![];
+
+    // Split into individual brand-version pairs
+    let pairs = if string.contains('|') {
+        string.split('|').collect::<Vec<_>>()
+    } else {
+        vec![string]
+    };
+
+    // Process each pair
+    for pair in pairs {
+        if let Some((brand, version)) = parse_brand_version(pair) {
+            ch_ua_list.push(format!("\"{}\";v=\"{}\"", brand, version));
+        }
+    }
+
+    ch_ua_list.join(", ")
+}
+
+// Helper function to parse a single brand-version pair
+fn parse_brand_version(pair: &str) -> Option<(String, &str)> {
+    if !pair.contains(';') {
+        return None;
+    }
+
+    let parts: Vec<&str> = pair.split(';').collect();
+    if parts.len() < 2 {
+        return None;
+    }
+
+    // brand is everything except the last part
+    let brand = parts[0..parts.len() - 1].join(";");
+    // version is the last part
+    let version = parts[parts.len() - 1];
+
+    if brand.is_empty() || version.is_empty() {
+        return None;
+    }
+
+    Some((brand, version))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_ch_ua_header() {
+        // Valid cases
+        assert_eq!(
+            format_ch_ua_header("Chromium;128"),
+            "\"Chromium\";v=\"128\""
+        );
+        assert_eq!(
+            format_ch_ua_header("Chromium;128|Google Chrome;128"),
+            "\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\""
+        );
+        assert_eq!(
+            format_ch_ua_header("Not;A=Brand;24"),
+            "\"Not;A=Brand\";v=\"24\""
+        );
+        assert_eq!(
+            format_ch_ua_header("Chromium;128|Google Chrome;128|Not;A=Brand;24"),
+            "\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\", \"Not;A=Brand\";v=\"24\""
+        );
+        assert_eq!(
+            format_ch_ua_header("Chromium;128|Google Chrome;128|Not_A Brand;24|Opera;128"),
+            "\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\", \"Not_A Brand\";v=\"24\", \"Opera\";v=\"128\""
+        );
+
+        // Edge cases
+        assert_eq!(format_ch_ua_header(""), "");
+        assert_eq!(format_ch_ua_header("Invalid"), "");
+        assert_eq!(format_ch_ua_header("No Version;"), "");
+        assert_eq!(format_ch_ua_header(";No Brand"), "");
+    }
 }
