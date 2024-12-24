@@ -248,166 +248,52 @@ fn insert_expected_headers(
     // Insert User-Agent in the user-agent header
     headers.insert(header::USER_AGENT, user_agent.clone());
 
-    // Insert referrer in the referer header like an analytics client-side collect does
-    if event
-        .context
-        .as_ref()
-        .unwrap()
-        .page
-        .as_ref()
-        .unwrap()
-        .url
-        .is_some()
-    {
-        let document_location = format!(
-            "{}{}",
-            event
-                .context
-                .as_ref()
-                .unwrap()
-                .page
-                .as_ref()
-                .unwrap()
-                .url
-                .as_ref()
-                .unwrap(),
-            event
-                .context
-                .as_ref()
-                .unwrap()
-                .page
-                .as_ref()
-                .unwrap()
-                .search
-                .clone()
-                .unwrap_or_default(),
-        );
-        headers.insert(
-            header::REFERER,
-            HeaderValue::from_str(document_location.as_str())?,
-        );
-    }
+    if let Some(context) = &event.context {
+        if let Some(page) = &context.page {
+            // Insert referrer in the referer header like an analytics client-side collect does
+            if let Some(url) = &page.url {
+                let document_location =
+                    format!("{}{}", url, page.search.clone().unwrap_or_default());
+                headers.insert(
+                    header::REFERER,
+                    HeaderValue::from_str(document_location.as_str())?,
+                );
+            }
+        }
 
-    // Insert Accept-Language in the accept-language header
-    if event
-        .context
-        .as_ref()
-        .unwrap()
-        .client
-        .as_ref()
-        .unwrap()
-        .accept_language
-        .is_some()
-    {
-        headers.insert(
-            header::ACCEPT_LANGUAGE,
-            HeaderValue::from_str(
-                event
-                    .context
-                    .as_ref()
-                    .unwrap()
-                    .client
-                    .as_ref()
-                    .unwrap()
-                    .accept_language
-                    .as_ref()
-                    .unwrap(),
-            )?,
-        );
-    }
-
-    // Insert sec-ch-ua headers
-    // sec-ch-ua
-    if event
-        .context
-        .as_ref()
-        .unwrap()
-        .client
-        .as_ref()
-        .unwrap()
-        .user_agent_version_list
-        .is_some()
-    {
-        headers.insert(
-            HeaderName::from_str("sec-ch-ua")?,
-            HeaderValue::from_str(
-                format_ch_ua_header(
-                    event
-                        .context
-                        .as_ref()
-                        .unwrap()
-                        .client
-                        .as_ref()
-                        .unwrap()
-                        .user_agent_version_list
-                        .as_ref()
-                        .unwrap(),
-                )
-                .as_str(),
-            )?,
-        );
-    }
-    // sec-ch-ua-mobile
-    if event
-        .context
-        .as_ref()
-        .unwrap()
-        .client
-        .as_ref()
-        .unwrap()
-        .user_agent_mobile
-        .is_some()
-    {
-        headers.insert(
-            HeaderName::from_str("sec-ch-ua-mobile")?,
-            HeaderValue::from_str(
-                format!(
-                    "?{}",
-                    event
-                        .context
-                        .as_ref()
-                        .unwrap()
-                        .client
-                        .as_ref()
-                        .unwrap()
-                        .user_agent_mobile
-                        .as_ref()
-                        .unwrap()
-                )
-                .as_str(),
-            )?,
-        );
-    }
-    // sec-ch-ua-platform
-    if event
-        .context
-        .as_ref()
-        .unwrap()
-        .client
-        .as_ref()
-        .unwrap()
-        .os_name
-        .is_some()
-    {
-        headers.insert(
-            HeaderName::from_str("sec-ch-ua-platform")?,
-            HeaderValue::from_str(
-                format!(
-                    "\"{}\"",
-                    event
-                        .context
-                        .as_ref()
-                        .unwrap()
-                        .client
-                        .as_ref()
-                        .unwrap()
-                        .os_name
-                        .as_ref()
-                        .unwrap()
-                )
-                .as_str(),
-            )?,
-        );
+        if let Some(client) = &context.client {
+            // Insert Accept-Language in the accept-language header
+            if let Some(accept_language) = &client.accept_language {
+                headers.insert(
+                    header::ACCEPT_LANGUAGE,
+                    HeaderValue::from_str(accept_language.as_str())?,
+                );
+            }
+            // Insert sec-ch-ua headers
+            if let Some(user_agent_version_list) = &client.user_agent_version_list {
+                let ch_ua_value = format_ch_ua_header(user_agent_version_list);
+                headers.insert(
+                    HeaderName::from_str("sec-ch-ua")?,
+                    HeaderValue::from_str(ch_ua_value.as_str())?,
+                );
+            }
+            // Insert sec-ch-ua-mobile header
+            if let Some(user_agent_mobile) = &client.user_agent_mobile {
+                let mobile_value = format!("?{}", user_agent_mobile);
+                headers.insert(
+                    HeaderName::from_str("sec-ch-ua-mobile")?,
+                    HeaderValue::from_str(mobile_value.as_str())?,
+                );
+            }
+            // Insert sec-ch-ua-platform header
+            if let Some(os_name) = &client.os_name {
+                let platform_value = format!("\"{}\"", os_name);
+                headers.insert(
+                    HeaderName::from_str("sec-ch-ua-platform")?,
+                    HeaderValue::from_str(platform_value.as_str())?,
+                );
+            }
+        }
     }
 
     Ok(())
