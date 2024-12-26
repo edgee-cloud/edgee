@@ -235,72 +235,52 @@ fn insert_expected_headers(
     // Insert User-Agent in the user-agent header
     headers.insert(header::USER_AGENT, user_agent.clone());
 
-    // Insert referrer in the referer header like an analytics client-side collect does
-    if event
-        .context
-        .as_ref()
-        .unwrap()
-        .page
-        .as_ref()
-        .unwrap()
-        .url
-        .is_some()
-    {
-        let document_location = format!(
-            "{}{}",
-            event
-                .context
-                .as_ref()
-                .unwrap()
-                .page
-                .as_ref()
-                .unwrap()
-                .url
-                .as_ref()
-                .unwrap(),
-            event
-                .context
-                .as_ref()
-                .unwrap()
-                .page
-                .as_ref()
-                .unwrap()
-                .search
-                .clone()
-                .unwrap_or_default(),
-        );
-        headers.insert(
-            header::REFERER,
-            HeaderValue::from_str(document_location.as_str())?,
-        );
-    }
+    if let Some(context) = &event.context {
+        if let Some(page) = &context.page {
+            // Insert referrer in the referer header like an analytics client-side collect does
+            if let Some(url) = &page.url {
+                let document_location =
+                    format!("{}{}", url, page.search.clone().unwrap_or_default());
+                headers.insert(
+                    header::REFERER,
+                    HeaderValue::from_str(document_location.as_str())?,
+                );
+            }
+        }
 
-    // Insert Accept-Language in the accept-language header
-    if event
-        .context
-        .as_ref()
-        .unwrap()
-        .client
-        .as_ref()
-        .unwrap()
-        .accept_language
-        .is_some()
-    {
-        headers.insert(
-            header::ACCEPT_LANGUAGE,
-            HeaderValue::from_str(
-                event
-                    .context
-                    .as_ref()
-                    .unwrap()
-                    .client
-                    .as_ref()
-                    .unwrap()
-                    .accept_language
-                    .as_ref()
-                    .unwrap(),
-            )?,
-        );
+        if let Some(client) = &context.client {
+            // Insert Accept-Language in the accept-language header
+            if let Some(accept_language) = &client.accept_language {
+                headers.insert(
+                    header::ACCEPT_LANGUAGE,
+                    HeaderValue::from_str(accept_language.as_str())?,
+                );
+            }
+            // Insert sec-ch-ua headers
+            if let Some(user_agent_version_list) = &client.user_agent_version_list {
+                let ch_ua_value = format_ch_ua_header(user_agent_version_list);
+                headers.insert(
+                    HeaderName::from_str("sec-ch-ua")?,
+                    HeaderValue::from_str(ch_ua_value.as_str())?,
+                );
+            }
+            // Insert sec-ch-ua-mobile header
+            if let Some(user_agent_mobile) = &client.user_agent_mobile {
+                let mobile_value = format!("?{}", user_agent_mobile);
+                headers.insert(
+                    HeaderName::from_str("sec-ch-ua-mobile")?,
+                    HeaderValue::from_str(mobile_value.as_str())?,
+                );
+            }
+            // Insert sec-ch-ua-platform header
+            if let Some(os_name) = &client.os_name {
+                let platform_value = format!("\"{}\"", os_name);
+                headers.insert(
+                    HeaderName::from_str("sec-ch-ua-platform")?,
+                    HeaderValue::from_str(platform_value.as_str())?,
+                );
+            }
+        }
     }
 
     Ok(())
@@ -359,4 +339,87 @@ fn debug_response(status: &str, timer_start: std::time::Instant, body: String, e
         println!("Error:    {}", error);
     }
     println!();
+}
+
+fn format_ch_ua_header(string: &str) -> String {
+    if string.is_empty() {
+        return String::new();
+    }
+
+    let mut ch_ua_list = vec![];
+
+    // Split into individual brand-version pairs
+    let pairs = if string.contains('|') {
+        string.split('|').collect::<Vec<_>>()
+    } else {
+        vec![string]
+    };
+
+    // Process each pair
+    for pair in pairs {
+        if let Some((brand, version)) = parse_brand_version(pair) {
+            ch_ua_list.push(format!("\"{}\";v=\"{}\"", brand, version));
+        }
+    }
+
+    ch_ua_list.join(", ")
+}
+
+// Helper function to parse a single brand-version pair
+fn parse_brand_version(pair: &str) -> Option<(String, &str)> {
+    if !pair.contains(';') {
+        return None;
+    }
+
+    let parts: Vec<&str> = pair.split(';').collect();
+    if parts.len() < 2 {
+        return None;
+    }
+
+    // brand is everything except the last part
+    let brand = parts[0..parts.len() - 1].join(";");
+    // version is the last part
+    let version = parts[parts.len() - 1];
+
+    if brand.is_empty() || version.is_empty() {
+        return None;
+    }
+
+    Some((brand, version))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_ch_ua_header() {
+        // Valid cases
+        assert_eq!(
+            format_ch_ua_header("Chromium;128"),
+            "\"Chromium\";v=\"128\""
+        );
+        assert_eq!(
+            format_ch_ua_header("Chromium;128|Google Chrome;128"),
+            "\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\""
+        );
+        assert_eq!(
+            format_ch_ua_header("Not;A=Brand;24"),
+            "\"Not;A=Brand\";v=\"24\""
+        );
+        assert_eq!(
+            format_ch_ua_header("Chromium;128|Google Chrome;128|Not;A=Brand;24"),
+            "\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\", \"Not;A=Brand\";v=\"24\""
+        );
+        assert_eq!(
+            format_ch_ua_header("Chromium;128|Google Chrome;128|Not_A Brand;24|Opera;128"),
+            "\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\", \"Not_A Brand\";v=\"24\", \"Opera\";v=\"128\""
+        );
+
+        // Edge cases
+        assert_eq!(format_ch_ua_header(""), "");
+        assert_eq!(format_ch_ua_header("Invalid"), "");
+        assert_eq!(format_ch_ua_header("No Version;"), "");
+        assert_eq!(format_ch_ua_header(";No Brand"), "");
+    }
 }
