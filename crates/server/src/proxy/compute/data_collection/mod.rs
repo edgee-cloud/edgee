@@ -7,6 +7,7 @@ use base64::engine::general_purpose::PAD;
 use base64::engine::GeneralPurpose;
 use base64::Engine;
 use bytes::Bytes;
+use edgee_wasmtime::components::config::ComponentsConfiguration;
 use edgee_wasmtime::components::{self};
 use edgee_wasmtime::payload::{self, EventData, EventType, Payload};
 use html_escape;
@@ -137,11 +138,11 @@ pub async fn process_from_html(
     tokio::spawn(
         async move {
             let config = config::get();
-            let components = config.components.clone();
+            let components = ComponentsConfiguration::from(&config.components);
             if let Err(err) = components::send_data_collection(
                 get(),
                 &events,
-                Box::new(components),
+                &components,
                 &config.log.debug_component,
             )
             .await
@@ -273,11 +274,12 @@ pub async fn process_from_json(
     tokio::spawn(
         async move {
             let config = config::get();
+            let components = ComponentsConfiguration::from(&config.components);
             if let Err(err) = components::send_data_collection(
                 get(),
                 &events,
                 // Box::new(&config.components),
-                Box::new(config.components.clone()),
+                &components,
                 &config.log.debug_component,
             )
             .await

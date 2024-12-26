@@ -1,23 +1,19 @@
-use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, fs, path::PathBuf};
 
 use serde::Deserialize;
 
-use super::{ComponentsConfiguration, DataCollectionConfiguration};
-
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct ComponentsConfigurationFile {
-    pub data_collection: Vec<DataCollectionConfigurationFile>,
-    pub cache: Option<PathBuf>,
+    data_collection: Vec<DataCollectionConfigurationFile>,
+    cache: Option<PathBuf>,
 }
 
-impl ComponentsConfiguration for ComponentsConfigurationFile {
-    fn get_collections(&self)->Vec<Arc<dyn DataCollectionConfiguration + Send + Sync>> {
-        self.data_collection.clone().into_iter()
-            .map(|e| Arc::new(e) as Arc<dyn DataCollectionConfiguration + Send + Sync>)
-            .collect()
+impl ComponentsConfigurationFile {
+    pub fn get_collections(&self)->Vec<DataCollectionConfigurationFile> {
+        self.data_collection.clone()
     }
 
-    fn get_gache(&self)->Option<PathBuf> {
+    pub fn get_gache(&self)->Option<PathBuf> {
         self.cache.clone()
     }
 }
@@ -28,17 +24,17 @@ pub struct DataCollectionConfigurationFile {
     pub credentials: HashMap<String, String>,
 }
 
-impl DataCollectionConfiguration for DataCollectionConfigurationFile {
-    fn get_name(&self)->String {
+impl DataCollectionConfigurationFile {
+    pub fn get_name(&self)->String {
         return self.name.clone()
     }
 
-    fn get_wasm_binary(&self)->anyhow::Result<Vec<u8>> {
+    pub fn get_wasm_binary(&self)->anyhow::Result<Vec<u8>> {
         let path = PathBuf::from(&self.component);
         fs::read(path).map_err(|e| anyhow::anyhow!("Error reading wasm binary at: {} error: {:?}",&self.component,e))
     }
 
-    fn get_credentials(&self)->HashMap<String, String> {
+    pub fn get_credentials(&self)->HashMap<String, String> {
         self.credentials.clone()
     }
 }

@@ -1,9 +1,7 @@
-use std::sync::Arc;
-use std::{collections::HashMap, fs};
-use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
+use config::ComponentsConfiguration;
 use http::{header, HeaderMap, HeaderName, HeaderValue};
 use json_pretty::PrettyFormatter;
 use tracing::{error, info, span, Instrument, Level};
@@ -16,23 +14,13 @@ use crate::{
 };
 pub mod context;
 mod convert;
+pub mod config;
 pub mod config_file;
-
-pub trait ComponentsConfiguration {
-    fn get_collections(&self)->Vec<Arc<dyn DataCollectionConfiguration + Send + Sync>>;
-    fn get_gache(&self)->Option<PathBuf>;
-}
-
-pub trait DataCollectionConfiguration {
-    fn get_name(&self)->String;
-    fn get_wasm_binary(&self)->anyhow::Result<Vec<u8>>;
-    fn get_credentials(&self)->HashMap<String, String>;
-}
 
 pub async fn send_data_collection(
     ctx: &ComponentsContext,
     events: &Vec<Event>,
-    component_config: Box<dyn ComponentsConfiguration + Send + Sync>,
+    component_config: &ComponentsConfiguration,
     log_component: &Option<String>,
 ) -> anyhow::Result<()> {
     if events.is_empty() {
@@ -76,7 +64,7 @@ pub async fn send_data_collection(
             let instance = ctx
                 .instantiate_data_collection(&cfg.get_name(), &mut store)
                 .await?;
-            let provider = instance.provider();
+            let provider = instance.edgee_protocols_provider();
             let credentials: Vec<(String, String)> = cfg.get_credentials().into_iter().collect();
 
             let request = match provider_event.event_type {
