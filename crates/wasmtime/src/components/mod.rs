@@ -12,10 +12,10 @@ use crate::{
     exports::edgee::protocols::provider::{self},
     payload::Event,
 };
-pub mod context;
-mod convert;
 pub mod config;
 pub mod config_file;
+pub mod context;
+mod convert;
 
 pub async fn send_data_collection(
     ctx: &ComponentsContext,
@@ -125,8 +125,8 @@ pub async fn send_data_collection(
                 url = request.url,
                 body = request.body
             );
-            let log =
-                log_component.is_some() && log_component.as_ref().unwrap() == cfg.get_name().as_str();
+            let log = log_component.is_some()
+                && log_component.as_ref().unwrap() == cfg.get_name().as_str();
 
             if log {
                 debug_request(&request, &headers);

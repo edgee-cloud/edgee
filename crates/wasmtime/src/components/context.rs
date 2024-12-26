@@ -32,7 +32,7 @@ impl ComponentsContext {
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
-        let mut components: HashMap<String,DataCollectionPre<HostState>> = HashMap::new();
+        let mut components: HashMap<String, DataCollectionPre<HostState>> = HashMap::new();
         for entry in &config.get_collections() {
             let span = tracing::info_span!("component-context", component = %entry.get_name());
             let _span = span.enter();

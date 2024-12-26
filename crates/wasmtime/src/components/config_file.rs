@@ -9,11 +9,11 @@ pub struct ComponentsConfigurationFile {
 }
 
 impl ComponentsConfigurationFile {
-    pub fn get_collections(&self)->Vec<DataCollectionConfigurationFile> {
+    pub fn get_collections(&self) -> Vec<DataCollectionConfigurationFile> {
         self.data_collection.clone()
     }
 
-    pub fn get_gache(&self)->Option<PathBuf> {
+    pub fn get_gache(&self) -> Option<PathBuf> {
         self.cache.clone()
     }
 }
@@ -25,16 +25,22 @@ pub struct DataCollectionConfigurationFile {
 }
 
 impl DataCollectionConfigurationFile {
-    pub fn get_name(&self)->String {
-        return self.name.clone()
+    pub fn get_name(&self) -> String {
+        return self.name.clone();
     }
 
-    pub fn get_wasm_binary(&self)->anyhow::Result<Vec<u8>> {
+    pub fn get_wasm_binary(&self) -> anyhow::Result<Vec<u8>> {
         let path = PathBuf::from(&self.component);
-        fs::read(path).map_err(|e| anyhow::anyhow!("Error reading wasm binary at: {} error: {:?}",&self.component,e))
+        fs::read(path).map_err(|e| {
+            anyhow::anyhow!(
+                "Error reading wasm binary at: {} error: {:?}",
+                &self.component,
+                e
+            )
+        })
     }
 
-    pub fn get_credentials(&self)->HashMap<String, String> {
+    pub fn get_credentials(&self) -> HashMap<String, String> {
         self.credentials.clone()
     }
 }
