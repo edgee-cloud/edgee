@@ -13,7 +13,7 @@ dev.setup: ## Setup dev environment
 	cargo build
 
 dev.up: ## Launch locally
-	cargo run
+	cargo run serve
 
 ci.check: ## Check the code
 	cargo check
