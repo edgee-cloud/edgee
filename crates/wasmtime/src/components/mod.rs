@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
+use config::ComponentsConfiguration;
 use http::{header, HeaderMap, HeaderName, HeaderValue};
 use json_pretty::PrettyFormatter;
-use serde::Deserialize;
 use tracing::{error, info, span, Instrument, Level};
 
 use context::ComponentsContext;
@@ -14,21 +12,10 @@ use crate::{
     exports::edgee::protocols::provider::{self},
     payload::Event,
 };
+pub mod config;
+pub mod config_file;
 pub mod context;
 mod convert;
-
-#[derive(Deserialize, Debug, Default, Clone)]
-pub struct ComponentsConfiguration {
-    pub data_collection: Vec<DataCollectionConfiguration>,
-    pub cache: Option<PathBuf>,
-}
-
-#[derive(Deserialize, Debug, Default, Clone)]
-pub struct DataCollectionConfiguration {
-    pub name: String,
-    pub component: String,
-    pub credentials: HashMap<String, String>,
-}
 
 pub async fn send_data_collection(
     ctx: &ComponentsContext,
@@ -62,23 +49,23 @@ pub async fn send_data_collection(
         let client_ip = HeaderValue::from_str(&provider_event.context.client.ip)?;
         let user_agent = HeaderValue::from_str(&provider_event.context.client.user_agent)?;
 
-        for cfg in component_config.data_collection.iter() {
+        for cfg in component_config.get_collections().iter() {
             let span = span!(
                 Level::INFO,
                 "component",
-                name = cfg.name.as_str(),
+                name = cfg.get_name().as_str(),
                 event = event_str
             );
             let _enter = span.enter();
 
-            if !event.is_component_enabled(&cfg.name) {
+            if !event.is_component_enabled(&cfg.get_name()) {
                 continue;
             }
             let instance = ctx
-                .instantiate_data_collection(&cfg.name, &mut store)
+                .instantiate_data_collection(&cfg.get_name(), &mut store)
                 .await?;
             let provider = instance.edgee_protocols_provider();
-            let credentials: Vec<(String, String)> = cfg.credentials.clone().into_iter().collect();
+            let credentials: Vec<(String, String)> = cfg.get_credentials().into_iter().collect();
 
             let request = match provider_event.event_type {
                 provider::EventType::Page => {
@@ -138,8 +125,8 @@ pub async fn send_data_collection(
                 url = request.url,
                 body = request.body
             );
-            let log =
-                log_component.is_some() && log_component.as_ref().unwrap() == cfg.name.as_str();
+            let log = log_component.is_some()
+                && log_component.as_ref().unwrap() == cfg.get_name().as_str();
 
             if log {
                 debug_request(&request, &headers);
