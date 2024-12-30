@@ -3,6 +3,8 @@ use hyper::body::Incoming;
 use hyper_rustls::ConfigBuilderExt;
 use hyper_util::{client::legacy::Client, rt::TokioExecutor};
 
+use crate::config;
+
 use super::body::ProxyBody;
 use super::incoming::IncomingContext;
 use super::routing::RoutingContext;
@@ -57,22 +59,32 @@ impl<'a> ProxyContext<'a> {
 
         // rebuild all the cookies
         let cookies = incoming_headers.get_all("cookie");
-        let mut str_cookies = String::new();
+        let mut filtered_cookies = Vec::new();
         for cookie in cookies {
             let cookie_str = cookie.to_str().unwrap();
-            let cookie_parts: Vec<&str> = cookie_str.split("; ").collect();
+            let cookie_parts: Vec<&str> = cookie_str.split(";").map(|c| c.trim()).collect();
             for cookie_part in cookie_parts {
                 let parts: Vec<&str> = cookie_part.split('=').collect();
+                if parts.len() != 2 {
+                    continue;
+                }
+                // Include all cookies except edgee and edgee_u
                 let name = parts[0].trim();
-                let value = parts[1].trim();
-                str_cookies.push_str(&format!("{}={}; ", name, value));
+                if name != config::get().compute.cookie_name
+                    && name != format!("{}_u", config::get().compute.cookie_name)
+                {
+                    filtered_cookies.push(cookie_part.to_string());
+                }
             }
         }
-        if !str_cookies.is_empty() {
+        if !filtered_cookies.is_empty() {
+            let new_cookies = filtered_cookies.join("; ");
             incoming_headers.insert(
                 "cookie",
-                HeaderValue::from_str(&str_cookies).expect("header value should be valid"),
+                HeaderValue::from_str(&new_cookies).expect("header value should be valid"),
             );
+        } else {
+            incoming_headers.remove("cookie");
         }
 
         Self {
