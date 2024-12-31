@@ -11,6 +11,12 @@ impl From<payload::Event> for provider::Event {
             Some(payload::EventData::Track(track)) => provider::Data::Track(track.into()),
             None => todo!(),
         };
+        let consent = match value.consent {
+            Some(payload::Consent::Pending) => Some(provider::Consent::Pending),
+            Some(payload::Consent::Granted) => Some(provider::Consent::Granted),
+            Some(payload::Consent::Denied) => Some(provider::Consent::Denied),
+            None => None,
+        };
         Self {
             uuid: value.uuid,
             timestamp: value.timestamp.timestamp(),
@@ -19,7 +25,7 @@ impl From<payload::Event> for provider::Event {
             event_type: value.event_type.into(),
             data,
             context: value.context.unwrap_or_default().into(),
-            consent: provider::Consent::Pending,
+            consent,
         }
     }
 }

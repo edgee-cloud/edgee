@@ -28,6 +28,40 @@ pub struct DataCollectionConfiguration {
     pub name: String,
     pub component: String,
     pub credentials: HashMap<String, String>,
+    #[serde(default = "default_component_config")]
+    pub config: ComponentConfig,
+}
+
+#[derive(Deserialize, Debug, Default, Clone)]
+pub struct ComponentConfig {
+    #[serde(default = "default_true")]
+    pub anonymization: bool,
+    #[serde(default = "default_pending")]
+    pub default_consent: String,
+    #[serde(default = "default_true")]
+    pub track_event_enabled: bool,
+    #[serde(default = "default_true")]
+    pub user_event_enabled: bool,
+    #[serde(default = "default_true")]
+    pub page_event_enabled: bool,
+}
+
+fn default_component_config() -> ComponentConfig {
+    ComponentConfig {
+        anonymization: true,
+        default_consent: "pending".to_string(),
+        track_event_enabled: true,
+        user_event_enabled: true,
+        page_event_enabled: true,
+    }
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_pending() -> String {
+    "pending".to_string()
 }
 
 pub async fn send_data_collection(
@@ -56,12 +90,6 @@ pub async fn send_data_collection(
             provider::EventType::Track => "track",
         };
 
-        // todo: anonymize ip following the consent mapping
-        provider_event.context.client.ip = anonymize_ip(provider_event.context.client.ip.clone());
-
-        let client_ip = HeaderValue::from_str(&provider_event.context.client.ip)?;
-        let user_agent = HeaderValue::from_str(&provider_event.context.client.user_agent)?;
-
         for cfg in component_config.data_collection.iter() {
             let span = span!(
                 Level::INFO,
@@ -70,6 +98,7 @@ pub async fn send_data_collection(
                 event = event_str
             );
             let _enter = span.enter();
+            let debug = log_component.is_some() && log_component.as_ref().unwrap() == cfg.name.as_str();
 
             if !event.is_component_enabled(&cfg.name) {
                 continue;
@@ -80,21 +109,63 @@ pub async fn send_data_collection(
             let provider = instance.edgee_protocols_provider();
             let credentials: Vec<(String, String)> = cfg.credentials.clone().into_iter().collect();
 
+            let default_consent = cfg.config.default_consent.clone();
+            let mut anonymization = cfg.config.anonymization;
+
+            // Consent is not set in the event, set it to the default consent
+            if provider_event.consent.is_none() {
+                provider_event.consent = if default_consent == "granted" {
+                    Some(provider::Consent::Granted)
+                } else if default_consent == "denied" {
+                    Some(provider::Consent::Denied)
+                } else {
+                    Some(provider::Consent::Pending)
+                };
+            }
+
+            // if consent is granted, anonymization is disabled
+            if provider_event.consent.unwrap() == provider::Consent::Granted {
+                anonymization = false;
+            }
+            
+            if anonymization {
+                provider_event.context.client.ip = anonymize_ip(provider_event.context.client.ip.clone());
+                // todo: anonymize other data, utm, referrer, etc.
+            }
+
+            let client_ip = HeaderValue::from_str(&provider_event.context.client.ip)?;
+            let user_agent = HeaderValue::from_str(&provider_event.context.client.user_agent)?;
+
             let request = match provider_event.event_type {
                 provider::EventType::Page => {
-                    provider
-                        .call_page(&mut store, &provider_event, &credentials)
-                        .await
+                    if cfg.config.page_event_enabled {
+                        provider
+                            .call_page(&mut store, &provider_event, &credentials)
+                            .await
+                    } else {
+                        debug_disabled_event(debug, "page");
+                        continue;
+                    }
                 }
                 provider::EventType::Track => {
-                    provider
-                        .call_track(&mut store, &provider_event, &credentials)
-                        .await
+                    if cfg.config.track_event_enabled {
+                        provider
+                            .call_track(&mut store, &provider_event, &credentials)
+                            .await
+                    } else {
+                        debug_disabled_event(debug, "track");
+                        continue;
+                    }
                 }
                 provider::EventType::User => {
-                    provider
-                        .call_user(&mut store, &provider_event, &credentials)
-                        .await
+                    if cfg.config.user_event_enabled {
+                        provider
+                            .call_user(&mut store, &provider_event, &credentials)
+                            .await
+                    } else {
+                        debug_disabled_event(debug, "user");
+                        continue;
+                    }
                 }
             };
             let request = match request {
@@ -138,13 +209,9 @@ pub async fn send_data_collection(
                 url = request.url,
                 body = request.body
             );
-            let log =
-                log_component.is_some() && log_component.as_ref().unwrap() == cfg.name.as_str();
 
-            if log {
-                debug_request(&request, &headers);
-            }
-
+            debug_request(debug, &request, &headers, provider_event.consent.unwrap(), anonymization);
+            
             // spawn a separated async thread
             tokio::spawn(
                 async move {
@@ -185,20 +252,23 @@ pub async fn send_data_collection(
                             } else {
                                 error!(step = "response", status = status_str, body = body_res_str);
                             }
-                            if log {
-                                debug_response(
-                                    &status_str,
-                                    timer_start,
-                                    body_res_str,
-                                    "".to_string(),
-                                );
-                            }
+                            debug_response(
+                                debug,
+                                &status_str,
+                                timer_start,
+                                body_res_str,
+                                "".to_string(),
+                            );
                         }
                         Err(err) => {
                             error!(step = "response", status = "500", err = err.to_string());
-                            if log {
-                                debug_response("502", timer_start, "".to_string(), err.to_string());
-                            }
+                            debug_response(
+                                debug,
+                                "502",
+                                timer_start,
+                                "".to_string(),
+                                err.to_string(),
+                            );
                         }
                     }
                 }
@@ -299,7 +369,21 @@ fn insert_expected_headers(
     Ok(())
 }
 
-fn debug_request(request: &provider::EdgeeRequest, headers: &HeaderMap) {
+fn debug_disabled_event(debug: bool, event: &str) {
+    if !debug {
+        return;
+    }
+
+    println!("--------------------------------------------");
+    println!(" Event {} is disabled for this component", event);
+    println!("--------------------------------------------\n");
+}
+
+fn debug_request(debug: bool, request: &provider::EdgeeRequest, headers: &HeaderMap, consent: provider::Consent, anonymization: bool) {
+    if !debug {
+        return;
+    }
+
     let method_str = match request.method {
         provider::HttpMethod::Get => "GET",
         provider::HttpMethod::Put => "PUT",
@@ -307,9 +391,18 @@ fn debug_request(request: &provider::EdgeeRequest, headers: &HeaderMap) {
         provider::HttpMethod::Delete => "DELETE",
     };
 
+    let consent_str = match consent {
+        provider::Consent::Granted => "granted",
+        provider::Consent::Denied => "denied",
+        provider::Consent::Pending => "pending",
+    };
+
+    let anonymization_str = if anonymization { "true" } else { "false" };
+
     println!("-----------");
     println!("  REQUEST  ");
     println!("-----------\n");
+    println!("Config:   Consent: {}, Anonymization: {}", consent_str, anonymization_str);
     println!("Method:   {}", method_str);
     println!("Url:      {}", request.url);
     if !headers.is_empty() {
@@ -336,7 +429,11 @@ fn debug_request(request: &provider::EdgeeRequest, headers: &HeaderMap) {
     println!();
 }
 
-fn debug_response(status: &str, timer_start: std::time::Instant, body: String, error: String) {
+fn debug_response(debug: bool, status: &str, timer_start: std::time::Instant, body: String, error: String) {
+    if !debug {
+        return;
+    }
+
     println!("------------");
     println!("  RESPONSE  ");
     println!("------------\n");

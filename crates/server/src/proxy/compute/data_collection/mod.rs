@@ -101,6 +101,7 @@ pub async fn process_from_html(
             context: payload.data_collection.clone().unwrap().context.clone(),
             components: payload.data_collection.clone().unwrap().components.clone(),
             from: Some("edge".to_string()),
+            consent: None,
         }]);
     }
 
