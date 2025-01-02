@@ -43,6 +43,8 @@ pub struct EdgeeCookie {
     pub uafvl: Option<String>, // user agent full version list
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tz: Option<String>, // timezone
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub c: Option<String>, // consent
 }
 
 impl EdgeeCookie {
@@ -62,6 +64,7 @@ impl EdgeeCookie {
             uapv: None,
             uafvl: None,
             tz: None,
+            c: None,
         }
     }
 
@@ -114,6 +117,16 @@ impl EdgeeCookie {
             if client.timezone.is_some() {
                 self.tz = client.timezone.clone();
             }
+        }
+    }
+
+    fn set_consent(&mut self, payload: &Payload) {
+        if let Some(consent) = payload
+            .data_collection
+            .as_ref()
+            .and_then(|dc| dc.consent.as_ref())
+        {
+            self.c = Some(consent.to_string());
         }
     }
 }
@@ -243,7 +256,7 @@ pub fn get(
         let mut edgee_cookie = edgee_cookie_result.unwrap();
         edgee_cookie.set_screen_size(payload);
         edgee_cookie.set_client_hints(payload);
-
+        edgee_cookie.set_consent(payload);
         let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
         let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
         set_cookie(
@@ -309,7 +322,7 @@ fn decrypt_and_update(value: &str, payload: &Payload) -> Result<EdgeeCookie, &'s
     }
     edgee_cookie.set_screen_size(payload);
     edgee_cookie.set_client_hints(payload);
-
+    edgee_cookie.set_consent(payload);
     Ok(edgee_cookie)
 }
 
@@ -332,6 +345,7 @@ fn init_and_set_cookie(
     let mut edgee_cookie = EdgeeCookie::new();
     edgee_cookie.set_screen_size(payload);
     edgee_cookie.set_client_hints(payload);
+    edgee_cookie.set_consent(payload);
     let edgee_cookie_str = serde_json::to_string(&edgee_cookie).unwrap();
     let edgee_cookie_encrypted = encrypt(&edgee_cookie_str).unwrap();
     set_cookie(

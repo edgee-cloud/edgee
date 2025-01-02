@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::OnceLock;
 
-use edgee_wasmtime::components::ComponentsConfiguration;
+use edgee_wasmtime::components::config::ComponentsConfiguration;
 use serde::Deserialize;
 use tracing::level_filters::LevelFilter;
 
