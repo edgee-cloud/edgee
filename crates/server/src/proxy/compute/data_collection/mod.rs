@@ -8,7 +8,7 @@ use base64::engine::GeneralPurpose;
 use base64::Engine;
 use bytes::Bytes;
 use edgee_wasmtime::components::{self};
-use edgee_wasmtime::payload::{self, EventData, EventType, Payload};
+use edgee_wasmtime::payload::{self, Consent, EventData, EventType, Payload};
 use html_escape;
 use http::response::Parts;
 use http::{header, HeaderMap};
@@ -101,6 +101,7 @@ pub async fn process_from_html(
             context: payload.data_collection.clone().unwrap().context.clone(),
             components: payload.data_collection.clone().unwrap().components.clone(),
             from: Some("edge".to_string()),
+            consent: payload.data_collection.clone().unwrap().consent.clone(),
         }]);
     }
 
@@ -540,6 +541,15 @@ fn add_session(request: &RequestHandle, response: &mut Parts, mut payload: Paylo
         .as_mut()
         .unwrap()
         .timezone = edgee_cookie.tz.clone();
+
+    if let Some(consent) = edgee_cookie.c {
+        payload.data_collection.as_mut().unwrap().consent = Some(match consent.as_str() {
+            "pending" => Consent::Pending,
+            "granted" => Consent::Granted,
+            "denied" => Consent::Denied,
+            _ => todo!(),
+        });
+    }
 
     payload
 }

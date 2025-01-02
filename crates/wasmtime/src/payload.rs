@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt;
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct Payload {
@@ -47,6 +48,9 @@ pub struct DataCollection {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub events: Option<Vec<Event>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub consent: Option<Consent>,
 }
 
 impl DataCollection {
@@ -65,6 +69,10 @@ impl DataCollection {
                     context.fill_in(&self.context.clone().unwrap());
                 } else {
                     event.context = self.context.clone();
+                }
+
+                if event.consent.is_none() {
+                    event.consent = self.consent.clone();
                 }
 
                 if let Some(data) = &mut event.data {
@@ -124,6 +132,9 @@ pub struct Event {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub from: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub consent: Option<Consent>,
 }
 
 impl<'de> Deserialize<'de> for Event {
@@ -139,6 +150,7 @@ impl<'de> Deserialize<'de> for Event {
             context: Option<Context>,
             components: Option<HashMap<String, bool>>,
             from: Option<String>,
+            consent: Option<Consent>,
         }
 
         let helper = EventHelper::deserialize(deserializer)?;
@@ -168,6 +180,7 @@ impl<'de> Deserialize<'de> for Event {
             context: helper.context,
             components: helper.components,
             from: helper.from,
+            consent: helper.consent,
         })
     }
 }
@@ -232,6 +245,26 @@ pub enum EventData {
 impl Default for EventData {
     fn default() -> Self {
         EventData::Page(Page::default())
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum Consent {
+    #[serde(rename = "pending")]
+    Pending,
+    #[serde(rename = "granted")]
+    Granted,
+    #[serde(rename = "denied")]
+    Denied,
+}
+
+impl fmt::Display for Consent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Consent::Pending => write!(f, "pending"),
+            Consent::Granted => write!(f, "granted"),
+            Consent::Denied => write!(f, "denied"),
+        }
     }
 }
 

@@ -13,7 +13,7 @@ type dict = list<tuple<string,string>>;
         event-type: event-type,
         data: data,
         context: context,
-        consent: consent,
+        consent: option<consent>,
     }
 
     variant data {

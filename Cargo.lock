@@ -967,9 +967,9 @@ dependencies = [
 
 [[package]]
 name = "edgee-sdk"
-version = "1.3.1"
+version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a0cc6a8a6378ab71a29bbc3d54174e3f2a1d83d73feaa8a3aa44f9ee6c808b9"
+checksum = "b8728ae2855108a38430b8270fdaaf650f4559a93e5c740d39c084b5b8454532"
 dependencies = [
  "edgee-path",
 ]
