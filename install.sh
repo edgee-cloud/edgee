@@ -34,7 +34,7 @@ _header() {
 
 $_divider
 ${_bold}Website${_normal}:        https://www.edgee.cloud
-${_bold}Documentation${_normal}:  https://docs.edgee.cloud/introduction
+${_bold}Documentation${_normal}:  https://www.edgee.cloud/docs/introduction
 $_divider
 
 EOF
