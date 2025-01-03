@@ -26,6 +26,8 @@ pub async fn send_data_collection(
         return Ok(());
     }
 
+    let request_info = RequestInfo::new(events);
+
     let mut store = ctx.empty_store();
 
     // iterate on each event
@@ -74,13 +76,11 @@ pub async fn send_data_collection(
             );
 
             if anonymization {
-                provider_event.context.client.ip =
-                    anonymize_ip(provider_event.context.client.ip.clone());
+                provider_event.context.client.ip = request_info.ip_anonymized.clone();
                 // todo: anonymize other data, utm, referrer, etc.
+            } else {
+                provider_event.context.client.ip = request_info.ip.clone();
             }
-
-            let client_ip = HeaderValue::from_str(&provider_event.context.client.ip)?;
-            let user_agent = HeaderValue::from_str(&provider_event.context.client.user_agent)?;
 
             let request = match provider_event.event_type {
                 provider::EventType::Page => {
@@ -138,7 +138,7 @@ pub async fn send_data_collection(
             for (key, value) in request.headers.iter() {
                 headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
             }
-            insert_expected_headers(&mut headers, event, &client_ip, &user_agent)?;
+            insert_expected_headers(&mut headers, event, &provider_event)?;
 
             let client = client.clone();
 
@@ -231,6 +231,43 @@ pub async fn send_data_collection(
     Ok(())
 }
 
+pub struct RequestInfo {
+    pub from: String,
+    pub ip: String,
+    pub ip_anonymized: String,
+    pub consent: String,
+}
+
+impl RequestInfo {
+    pub fn new(events: &[Event]) -> Self {
+        let mut request_info = RequestInfo {
+            from: "-".to_string(),
+            ip: "".to_string(),
+            ip_anonymized: "".to_string(),
+            consent: "default".to_string(),
+        };
+        if let Some(event) = events.first() {
+            // set request_info from the first event
+            request_info.from = event.from.clone().unwrap_or("-".to_string());
+            request_info.ip = event
+                .context
+                .as_ref()
+                .unwrap()
+                .client
+                .as_ref()
+                .unwrap()
+                .ip
+                .clone()
+                .unwrap_or("".to_string());
+            request_info.ip_anonymized = anonymize_ip(request_info.ip.clone());
+            if event.consent.is_some() {
+                request_info.consent = event.consent.clone().unwrap().to_string();
+            }
+        }
+        request_info
+    }
+}
+
 fn handle_consent_and_anonymization(
     event: &mut provider::Event,
     default_consent: &str,
@@ -282,14 +319,19 @@ fn anonymize_ip(ip: String) -> String {
 fn insert_expected_headers(
     headers: &mut HeaderMap,
     event: &Event,
-    client_ip: &HeaderValue,
-    user_agent: &HeaderValue,
+    provider_event: &provider::Event,
 ) -> anyhow::Result<()> {
     // Insert client ip in the x-forwarded-for header
-    headers.insert(HeaderName::from_str("x-forwarded-for")?, client_ip.clone());
+    headers.insert(
+        HeaderName::from_str("x-forwarded-for")?,
+        HeaderValue::from_str(&provider_event.context.client.ip)?,
+    );
 
     // Insert User-Agent in the user-agent header
-    headers.insert(header::USER_AGENT, user_agent.clone());
+    headers.insert(
+        header::USER_AGENT,
+        HeaderValue::from_str(&provider_event.context.client.user_agent)?,
+    );
 
     if let Some(context) = &event.context {
         if let Some(page) = &context.page {
