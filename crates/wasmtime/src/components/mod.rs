@@ -10,7 +10,7 @@ use context::ComponentsContext;
 
 use crate::{
     exports::edgee::protocols::provider::{self},
-    payload::Event,
+    payload::{Consent, Event, EventType},
 };
 pub mod config;
 pub mod context;
@@ -18,7 +18,7 @@ mod convert;
 
 pub async fn send_data_collection(
     ctx: &ComponentsContext,
-    events: &Vec<Event>,
+    events: &mut [Event],
     component_config: &ComponentsConfiguration,
     log_component: &Option<String>,
 ) -> anyhow::Result<()> {
@@ -31,87 +31,93 @@ pub async fn send_data_collection(
     let mut store = ctx.empty_store();
 
     // iterate on each event
-    for event in events {
-        // Convert the event to the one which can be passed to the component
-        let mut provider_event: provider::Event = event.clone().into();
-
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(5))
-            .build()?;
-
-        let event_str = match provider_event.event_type {
-            provider::EventType::Page => "page",
-            provider::EventType::User => "user",
-            provider::EventType::Track => "track",
-        };
-
+    for event in events.iter_mut() {
         for cfg in component_config.data_collection.iter() {
             let span = span!(
                 Level::INFO,
                 "component",
                 name = cfg.name.as_str(),
-                event = event_str
+                event = event.event_type.to_string()
             );
             let _enter = span.enter();
+
+            let mut event = event.clone();
+
             let debug =
                 log_component.is_some() && log_component.as_ref().unwrap() == cfg.name.as_str();
+
+            // if event_type is not enabled in config.config.get(component_id).unwrap(), skip the event
+            match event.event_type {
+                EventType::Page => {
+                    if !cfg.config.page_event_enabled {
+                        debug_disabled_event(debug, "page");
+                        continue;
+                    }
+                }
+                EventType::User => {
+                    if !cfg.config.user_event_enabled {
+                        debug_disabled_event(debug, "user");
+                        continue;
+                    }
+                }
+                EventType::Track => {
+                    if !cfg.config.track_event_enabled {
+                        debug_disabled_event(debug, "track");
+                        continue;
+                    }
+                }
+            }
 
             if !event.is_component_enabled(&cfg.name) {
                 continue;
             }
+
+            let initial_anonymization = cfg.config.anonymization;
+            let default_consent = cfg.config.default_consent.clone();
+            let incoming_consent = request_info.consent.clone();
+
+            // Use the helper function to handle consent and determine anonymization
+            let (anonymization, outgoing_consent) = handle_consent_and_anonymization(
+                &mut event,
+                &default_consent,
+                initial_anonymization,
+            );
+
+            if anonymization {
+                event.context.as_mut().unwrap().client.as_mut().unwrap().ip =
+                    Some(request_info.ip_anonymized.clone());
+                // todo: anonymize other data, utm, referrer, etc.
+            } else {
+                event.context.as_mut().unwrap().client.as_mut().unwrap().ip =
+                    Some(request_info.ip.clone());
+            }
+
+            // Convert the event to the one which can be passed to the component
+            let provider_event: provider::Event = event.clone().into();
+            let client = reqwest::Client::builder()
+                .timeout(Duration::from_secs(5))
+                .build()?;
             let instance = ctx
                 .instantiate_data_collection(&cfg.name, &mut store)
                 .await?;
             let provider = instance.edgee_protocols_provider();
             let credentials: Vec<(String, String)> = cfg.credentials.clone().into_iter().collect();
 
-            let default_consent = cfg.config.default_consent.clone();
-            let initial_anonymization = cfg.config.anonymization;
-
-            // Use the helper function to handle consent and determine anonymization
-            let anonymization = handle_consent_and_anonymization(
-                &mut provider_event,
-                &default_consent,
-                initial_anonymization,
-            );
-
-            if anonymization {
-                provider_event.context.client.ip = request_info.ip_anonymized.clone();
-                // todo: anonymize other data, utm, referrer, etc.
-            } else {
-                provider_event.context.client.ip = request_info.ip.clone();
-            }
-
             let request = match provider_event.event_type {
                 provider::EventType::Page => {
-                    if cfg.config.page_event_enabled {
-                        provider
-                            .call_page(&mut store, &provider_event, &credentials)
-                            .await
-                    } else {
-                        debug_disabled_event(debug, "page");
-                        continue;
-                    }
+                    provider
+                        .call_page(&mut store, &provider_event, &credentials)
+                        .await
                 }
                 provider::EventType::Track => {
-                    if cfg.config.track_event_enabled {
-                        provider
-                            .call_track(&mut store, &provider_event, &credentials)
-                            .await
-                    } else {
-                        debug_disabled_event(debug, "track");
-                        continue;
-                    }
+                    provider
+                        .call_track(&mut store, &provider_event, &credentials)
+                        .await
                 }
                 provider::EventType::User => {
-                    if cfg.config.user_event_enabled {
-                        provider
-                            .call_user(&mut store, &provider_event, &credentials)
-                            .await
-                    } else {
-                        debug_disabled_event(debug, "user");
-                        continue;
-                    }
+                    provider
+                        .call_user(&mut store, &provider_event, &credentials)
+                        .await
                 }
             };
             let request = match request {
@@ -138,7 +144,7 @@ pub async fn send_data_collection(
             for (key, value) in request.headers.iter() {
                 headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
             }
-            insert_expected_headers(&mut headers, event, &provider_event)?;
+            insert_expected_headers(&mut headers, &event, &provider_event)?;
 
             let client = client.clone();
 
@@ -160,7 +166,8 @@ pub async fn send_data_collection(
                 debug,
                 &request,
                 &headers,
-                provider_event.consent.unwrap(),
+                incoming_consent,
+                outgoing_consent,
                 anonymization,
             );
 
@@ -261,7 +268,7 @@ impl RequestInfo {
                 .unwrap_or("".to_string());
             request_info.ip_anonymized = anonymize_ip(request_info.ip.clone());
             if event.consent.is_some() {
-                request_info.consent = event.consent.clone().unwrap().to_string();
+                request_info.consent = event.consent.as_ref().unwrap().to_string();
             }
         }
         request_info
@@ -269,23 +276,25 @@ impl RequestInfo {
 }
 
 fn handle_consent_and_anonymization(
-    event: &mut provider::Event,
+    event: &mut Event,
     default_consent: &str,
     initial_anonymization: bool,
-) -> bool {
+) -> (bool, String) {
     // Handle default consent if not set
     if event.consent.is_none() {
         event.consent = match default_consent {
-            "granted" => Some(provider::Consent::Granted),
-            "denied" => Some(provider::Consent::Denied),
-            _ => Some(provider::Consent::Pending),
+            "granted" => Some(Consent::Granted),
+            "denied" => Some(Consent::Denied),
+            _ => Some(Consent::Pending),
         };
     }
 
+    let outgoing_consent = event.consent.clone().unwrap().to_string();
+
     // Determine final anonymization state
     match event.consent {
-        Some(provider::Consent::Granted) => false,
-        _ => initial_anonymization,
+        Some(Consent::Granted) => (false, outgoing_consent),
+        _ => (initial_anonymization, outgoing_consent),
     }
 }
 
@@ -398,7 +407,8 @@ fn debug_request(
     debug: bool,
     request: &provider::EdgeeRequest,
     headers: &HeaderMap,
-    consent: provider::Consent,
+    _incoming_consent: String,
+    outgoing_consent: String,
     anonymization: bool,
 ) {
     if !debug {
@@ -412,12 +422,6 @@ fn debug_request(
         provider::HttpMethod::Delete => "DELETE",
     };
 
-    let consent_str = match consent {
-        provider::Consent::Granted => "granted",
-        provider::Consent::Denied => "denied",
-        provider::Consent::Pending => "pending",
-    };
-
     let anonymization_str = if anonymization { "true" } else { "false" };
 
     println!("-----------");
@@ -425,7 +429,7 @@ fn debug_request(
     println!("-----------\n");
     println!(
         "Config:   Consent: {}, Anonymization: {}",
-        consent_str, anonymization_str
+        outgoing_consent, anonymization_str
     );
     println!("Method:   {}", method_str);
     println!("Url:      {}", request.url);
