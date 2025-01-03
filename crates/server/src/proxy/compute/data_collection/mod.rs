@@ -140,7 +140,7 @@ pub async fn process_from_html(
             let config = config::get();
             if let Err(err) = components::send_data_collection(
                 get(),
-                &events,
+                &mut events,
                 &config.components,
                 &config.log.debug_component,
             )
@@ -275,7 +275,7 @@ pub async fn process_from_json(
             let config = config::get();
             if let Err(err) = components::send_data_collection(
                 get(),
-                &events,
+                &mut events,
                 &config.components,
                 &config.log.debug_component,
             )

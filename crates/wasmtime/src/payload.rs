@@ -234,6 +234,16 @@ pub enum EventType {
     Track,
 }
 
+impl fmt::Display for EventType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            EventType::Page => write!(f, "page"),
+            EventType::User => write!(f, "user"),
+            EventType::Track => write!(f, "track"),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum EventData {
