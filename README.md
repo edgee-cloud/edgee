@@ -16,7 +16,7 @@
 [![Edgee](https://img.shields.io/badge/edgee-open%20source-blueviolet.svg)](https://www.edgee.cloud)
 [![Docker](https://img.shields.io/docker/v/edgeecloud/edgee.svg?logo=docker&label=docker&color=0db7ed)](https://hub.docker.com/r/edgeecloud/edgee)
 [![Edgee](https://img.shields.io/badge/slack-edgee-blueviolet.svg?logo=slack)](https://www.edgee.cloud/slack)
-[![Docs](https://img.shields.io/badge/docs-published-blue)](https://docs.edgee.cloud)
+[![Docs](https://img.shields.io/badge/docs-published-blue)](https://www.edgee.cloud/docs/introduction)
 
 </div>
 
@@ -31,14 +31,14 @@ We welcome feedback and contributions during this development phase, and appreci
 <!-- TODO: Add Video introduction -->
 ## Documentation
 - [Official Website](https://www.edgee.cloud)
-- [Official Documentation](https://docs.edgee.cloud)
+- [Official Documentation](https://www.edgee.cloud/docs/introduction)
 
 ## Contacts
 - [Twitter](https://x.com/edgee_cloud)
 - [LinkedIn](https://www.linkedin.com/company/edgee-cloud/)
 - [Slack](https://www.edgee.cloud/slack)
 
-Check out [the official docs](https://docs.edgee.cloud) to dive into Edgee's main concepts and architecture.
+Check out [the official docs](https://www.edgee.cloud/docs/introduction) to dive into Edgee's main concepts and architecture.
 
 # Running Edgee
 
@@ -178,7 +178,7 @@ This way, calling `/api/test` on port `80` will result in calling `/v1/test` on 
 
 ## Integrating with edgee components
 
-Check out the [official components docs](https://docs.edgee.cloud/components/overview) to dive into the
+Check out the [official components docs](https://www.edgee.cloud/docs/components/overview) to dive into the
 components architecture.
 
 The Edgee proxy is designed for performance and extensibility, so you can easily integrate open source components based on the platforms you need. Here's a list of the components we've built so far:
