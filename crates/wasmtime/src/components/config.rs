@@ -31,7 +31,7 @@ impl ComponentsConfiguration {
             name,
             component: wasm_source,
             credentials,
-            config
+            config,
         };
         self.data_collection.push(item);
     }
@@ -51,7 +51,7 @@ pub struct DataCollectionConfiguration {
     pub name: String,
     pub component: WasmSource,
     pub credentials: HashMap<String, String>,
-    pub config: ComponentConfig,    
+    pub config: ComponentConfig,
 }
 
 #[derive(Deserialize, Debug, Default, Clone)]
