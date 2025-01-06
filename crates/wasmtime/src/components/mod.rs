@@ -76,11 +76,8 @@ pub async fn send_data_collection(
             let incoming_consent = request_info.consent.clone();
 
             // Use the helper function to handle consent and determine anonymization
-            let (anonymization, outgoing_consent) = handle_consent_and_anonymization(
-                event,
-                &default_consent,
-                initial_anonymization,
-            );
+            let (anonymization, outgoing_consent) =
+                handle_consent_and_anonymization(event, &default_consent, initial_anonymization);
 
             if anonymization {
                 event.context.as_mut().unwrap().client.as_mut().unwrap().ip =
