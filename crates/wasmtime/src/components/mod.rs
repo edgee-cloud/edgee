@@ -46,7 +46,7 @@ pub async fn send_data_collection(
             let debug =
                 log_component.is_some() && log_component.as_ref().unwrap() == cfg.name.as_str();
 
-            // if event_type is not enabled in ccfg.config, skip the event
+            // if event_type is not enabled in config.config.get(component_id).unwrap(), skip the event
             match event.event_type {
                 EventType::Page => {
                     if !cfg.config.page_event_enabled {
