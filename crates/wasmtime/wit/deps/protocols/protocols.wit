@@ -38,6 +38,7 @@ type dict = list<tuple<string,string>>;
         user-id: string,
         anonymous-id: string,
         edgee-id: string,
+        component-id: string,
         properties: dict,
     }
 
