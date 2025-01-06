@@ -62,6 +62,7 @@ impl From<payload::User> for provider::UserData {
             user_id: value.user_id.unwrap_or_default(),
             anonymous_id: value.anonymous_id.unwrap_or_default(),
             edgee_id: value.edgee_id,
+            component_id: "".to_string(),
             properties: convert_properties(value.properties),
         }
     }
