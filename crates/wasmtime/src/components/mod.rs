@@ -32,7 +32,7 @@ pub async fn send_data_collection(
     let mut store = ctx.empty_store();
 
     // iterate on each event
-    for mut event in events.iter_mut() {
+    for event in events.iter_mut() {
         for cfg in component_config.get_collections().iter() {
             let span = span!(
                 Level::INFO,
@@ -77,7 +77,7 @@ pub async fn send_data_collection(
 
             // Use the helper function to handle consent and determine anonymization
             let (anonymization, outgoing_consent) = handle_consent_and_anonymization(
-                &mut event,
+                event,
                 &default_consent,
                 initial_anonymization,
             );
@@ -143,7 +143,7 @@ pub async fn send_data_collection(
             for (key, value) in request.headers.iter() {
                 headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
             }
-            insert_expected_headers(&mut headers, &event, &provider_event)?;
+            insert_expected_headers(&mut headers, event, &provider_event)?;
 
             let client = client.clone();
 

@@ -40,7 +40,7 @@ fn default_component_config() -> ComponentConfig {
 
 impl DataCollectionConfigurationFile {
     pub fn get_name(&self) -> String {
-        return self.name.clone();
+        self.name.clone()
     }
 
     pub fn get_wasm_binary(&self) -> anyhow::Result<Vec<u8>> {

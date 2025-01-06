@@ -126,7 +126,7 @@ impl From<&DataCollectionConfigurationFile> for DataCollectionConfiguration {
 
 impl DataCollectionConfiguration {
     pub fn get_name(&self) -> String {
-        return self.name.clone();
+        self.name.clone()
     }
 
     pub async fn get_wasm_binary(&self) -> anyhow::Result<Vec<u8>> {
