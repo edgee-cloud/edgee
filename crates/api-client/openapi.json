@@ -1,0 +1,3551 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Edgee API",
+    "version": "1"
+  },
+  "servers": [
+    {
+      "url": "https://api.edgee.app"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/v1/api_tokens": {
+      "get": {
+        "operationId": "listApiTokens",
+        "summary": "List all ApiTokens",
+        "description": "Returns a list of your ApiTokens. The ApiTokens are returned sorted by creation date, with the most recent ApiTokens appearing first.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ListParams"
+                  }
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The name of the ApiToken."
+                  }
+                }
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "A list of ApiTokens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ListParams"
+                    }
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ApiToken"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createApiToken",
+        "summary": "Create a new ApiToken",
+        "description": "Creates a new ApiToken. The ApiToken is returned, including its `token` field, which you should record for future reference. **Be careful, this token is only returned once, when the token is created.**",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiTokenCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created ApiToken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiToken"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/api_tokens/{id}": {
+      "get": {
+        "operationId": "getApiToken",
+        "summary": "Get an ApiToken",
+        "description": "Retrieve an ApiToken that has previously been created.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The ApiToken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiToken"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteApiToken",
+        "summary": "Delete an ApiToken",
+        "description": "Delete an ApiToken that has previously been created. Once deleted, the ApiToken can no longer be used to authenticate requests.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted ApiToken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations": {
+      "get": {
+        "operationId": "listOrganizations",
+        "summary": "List all Organizations",
+        "description": "Returns a list of your Organizations. The Organizations are returned sorted by creation date, with the most recent Organizations appearing first.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ListParams"
+                  }
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The name of the organization."
+                  }
+                }
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "A list of Organizations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ListResponse"
+                    }
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Organization"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOrganization",
+        "summary": "Create a new Organization",
+        "description": "Creates a new Organization.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created Organization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organization"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/me": {
+      "get": {
+        "operationId": "getMyOrganization",
+        "summary": "Get my Organization",
+        "description": "Retrieve my Organization personal organization.",
+        "responses": {
+          "200": {
+            "description": "The retrieved Organization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organization"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{id}": {
+      "get": {
+        "operationId": "getOrganization",
+        "summary": "Get an Organization",
+        "description": "Retrieve an Organization that has previously been created.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The retrieved Organization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organization"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "updateOrganization",
+        "summary": "Update an Organization",
+        "description": "Updates an existing Organization.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationUpdateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Organization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organization"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteOrganization",
+        "summary": "Delete an Organization",
+        "description": "Deletes an existing Organization.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted Organization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{id}/users": {
+      "get": {
+        "operationId": "listOrganizationsUsers",
+        "summary": "List Users of an organizations",
+        "description": "Retrieves all the Users of an organizations.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ListParams"
+                  }
+                ],
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "description": "The role of the users.",
+                    "enum": [
+                      "admin",
+                      "member"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "A list of Users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ListResponse"
+                    }
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OrganizationUser"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{id}/users/{userId}": {
+      "post": {
+        "operationId": "updateOrganizationUser",
+        "summary": "Update a User of an Organization",
+        "description": "Updates an existing User of an Organization.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationUserUpdateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated User",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationUser"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteOrganizationUser",
+        "summary": "Delete a User from an Organization",
+        "description": "Remove an existing User from an Organization.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted User",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects": {
+      "get": {
+        "operationId": "listProjects",
+        "summary": "List all Projects",
+        "description": "Returns a list of your Projects. The Projects are returned sorted by creation date, with the most recent Project appearing first.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ListParams"
+                  }
+                ],
+                "properties": {
+                  "organization_id": {
+                    "type": "string",
+                    "description": "The organization ID."
+                  }
+                }
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "A list of Projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ListResponse"
+                    }
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Project"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProject",
+        "summary": "Create a new Project",
+        "description": "Creates a new Project.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created Project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectBase"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{id}": {
+      "get": {
+        "operationId": "getProject",
+        "summary": "Get a Project",
+        "description": "Retrieve a Project that has previously been created.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "organization_id": {
+                    "type": "string",
+                    "description": "The organization ID."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The retrieved Project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "updateProject",
+        "summary": "Update a Project",
+        "description": "Updates an existing Project.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteProject",
+        "summary": "Delete a Project",
+        "description": "Deletes an existing Project.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted Project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{id}/domains": {
+      "get": {
+        "operationId": "listProjectDomains",
+        "summary": "List all Domains",
+        "description": "Retrieves all the Domains of a project.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of Domains",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ListResponse"
+                    }
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Domain"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProjectDomain",
+        "summary": "Create a new Domain",
+        "description": "Creates a new Domain of a project.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DomainCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created Domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Domain"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{id}/domains/{name}": {
+      "get": {
+        "operationId": "getProjectDomain",
+        "summary": "Get a Domain",
+        "description": "Retrieve a Domain that has previously been created.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The retrieved Domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Domain"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "updateProjectDomain",
+        "summary": "Update a Domain",
+        "description": "Updates an existing Domain.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DomainUpdateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Domain"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteProjectDomain",
+        "summary": "Delete a Domain",
+        "description": "Deletes an existing Domain.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted Domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{id}/proxy-settings": {
+      "get": {
+        "operationId": "listProjectProxySettings",
+        "summary": "List Proxy Settings revisions of a project",
+        "description": "Retrieves all the Proxy Settings revisions of a project.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of all the Proxy Settings revisions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ListResponse"
+                    }
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProxySettings"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProjectProxySettings",
+        "summary": "Create a new ProxySettings",
+        "description": "Creates a new ProxySettings.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProxySettingsCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created ProxySettings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProxySettings"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{id}/proxy-settings/{revision}": {
+      "post": {
+        "operationId": "updateProjectProxySettings",
+        "summary": "Update a ProxySettings by its revision number",
+        "description": "Updates a ProxySettings.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "revision",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProxySettingsUpdateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated ProxySettings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProxySettings"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{id}/components": {
+      "get": {
+        "operationId": "listProjectComponents",
+        "summary": "List all Project Components",
+        "description": "Retrieves all the Components of a project.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ComponentListParams"
+                  }
+                ]
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "A list of Project Components",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ListResponse"
+                    }
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProjectComponent"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProjectComponent",
+        "summary": "Create a new Project Component",
+        "description": "Creates a new Component for a project.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectComponent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created Project Component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectComponent"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{id}/components/{project_component_id}": {
+      "get": {
+        "operationId": "getProjectComponent",
+        "summary": "Get a Component of a project",
+        "description": "Retrieve a Project Component that has previously been set up.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project_component_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The retrieved Project Component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectComponent"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "updateProjectComponent",
+        "summary": "Update a Project Component",
+        "description": "Updates an existing Project Component.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project_component_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectComponent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectComponent"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteProjectComponent",
+        "summary": "Delete a Project Component",
+        "description": "Deletes an existing Project Component.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project_component_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted Project Component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/components": {
+      "get": {
+        "operationId": "listPublicComponents",
+        "summary": "List public components",
+        "description": "Returns a list of public components.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ComponentListParams"
+                  }
+                ]
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "A list of Components",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ListResponse"
+                    }
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Component"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/components/{id}": {
+      "get": {
+        "operationId": "getComponent",
+        "summary": "Get a Component",
+        "description": "Retrieve a Component.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The retrieved Component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Component"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateComponent",
+        "summary": "Update a Component",
+        "description": "Updates an existing Component.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComponentUpdateParams"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Component"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/components/{id}/versions": {
+      "post": {
+        "operationId": "createComponentVersion",
+        "summary": "Create a Component Version",
+        "description": "Create a Component Version.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComponentVersionCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created Component Version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentVersion"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/components/{id}/versions/{versionId}": {
+      "put": {
+        "operationId": "updateComponentVersion",
+        "summary": "Update a Component Version",
+        "description": "Update a Component Version.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComponentVersionUpdateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Component Version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentVersion"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{id}/components": {
+      "get": {
+        "operationId": "listOrganizationComponents",
+        "summary": "List organization components",
+        "description": "Returns a list of organization components.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ComponentListParams"
+                  }
+                ]
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "A list of Components",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ListResponse"
+                    }
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Component"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createComponent",
+        "summary": "Create a Component",
+        "description": "Create a Component.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComponentCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created Component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Component"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/invitations": {
+      "get": {
+        "operationId": "listInvitations",
+        "summary": "List all Invitations",
+        "description": "Returns a list of the invitation of your organizations. The Invitations are returned sorted by creation date, with the most recent Invitation appearing first.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ListParams"
+                  }
+                ],
+                "properties": {
+                  "organization_id": {
+                    "type": "string",
+                    "description": "The organization ID."
+                  }
+                }
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "A list of Invitations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ListResponse"
+                    }
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Invitation"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createInvitation",
+        "summary": "Create a new Invitation",
+        "description": "Creates a new Invitation.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created Invitation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/invitations/{id}": {
+      "get": {
+        "operationId": "getInvitation",
+        "summary": "Get an Invitation",
+        "description": "Retrieve an Invitation that has previously been created.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The retrieved Invitation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteInvitation",
+        "summary": "Delete an Invitation",
+        "description": "Deletes an existing Invitation.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted Invitation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/me": {
+      "get": {
+        "operationId": "getMe",
+        "summary": "Get my User object",
+        "description": "Retrieves my current User object.",
+        "responses": {
+          "200": {
+            "description": "Your User object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/{id}": {
+      "get": {
+        "operationId": "getUser",
+        "summary": "Get a User",
+        "description": "Retrieve a User that has previously been created.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The retrieved User",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{id}/incoming_data_collection_events": {
+      "get": {
+        "operationId": "getIncomingDataCollectionEvents",
+        "summary": "List all Incoming Data Collection Events",
+        "description": "Retrieves all the Incoming Data Collection Events of a project.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ListParams"
+                  }
+                ]
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "A list of Incoming Data Collection Events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ListResponse"
+                    }
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/IncomingDataCollectionEvent"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{id}/outgoing_data_collection_events/{event_id}": {
+      "get": {
+        "operationId": "getOutgoingDataCollectionEvents",
+        "summary": "List all Outgoing Data Collection Events",
+        "description": "Retrieves all the Outgoing Data Collection Events of a project.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ListParams"
+                  }
+                ]
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "A list of Outgoing Data Collection Events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ListResponse"
+                    }
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OutgoingDataCollectionEvent"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiToken": {
+        "type": "object",
+        "description": "An ApiToken is a unique identifier that you can use to authenticate requests to the API. You can create as many ApiTokens as you need.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object’s type. Objects of the same type share the same value.",
+            "readOnly": true,
+            "example": "api_token"
+          },
+          "id": {
+            "type": "string",
+            "description": "This is the internal ID for this ApiToken. You don’t need to record this information, since you will not need to use it.",
+            "readOnly": true
+          },
+          "user_id": {
+            "type": "string",
+            "description": "The ID of the user that created this ApiToken.",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the ApiToken."
+          },
+          "from_browser": {
+            "type": "boolean",
+            "description": "Whether this ApiToken was created from the browser.",
+            "readOnly": true
+          },
+          "last_used_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The last time this ApiToken was used.",
+            "readOnly": true
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The time this ApiToken expires."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the object was created.",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the object was last updated.",
+            "readOnly": true
+          },
+          "token": {
+            "type": "string",
+            "description": "The actual token that you will use to authenticate your requests. > **Be careful, this token is only returned once, when the token is created.**",
+            "readOnly": true
+          }
+        }
+      },
+      "ApiTokenCreateInput": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ApiToken"
+          }
+        ],
+        "required": [
+          "name"
+        ]
+      },
+      "Organization": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object’s type. Objects of the same type share the same value.",
+            "readOnly": true,
+            "example": "organization"
+          },
+          "id": {
+            "type": "string",
+            "description": "The unique identifier for the organization.",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the organization."
+          },
+          "slug": {
+            "type": "string",
+            "description": "The slug of the organization."
+          },
+          "avatar_url": {
+            "type": "string",
+            "description": "Avatar URL of the organization",
+            "readOnly": true
+          },
+          "type": {
+            "type": "string",
+            "description": "The type of the organization.",
+            "readOnly": true,
+            "enum": [
+              "perso",
+              "pro"
+            ]
+          },
+          "current_billing_plan": {
+            "type": "string",
+            "description": "The current billing plan of the organization."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the object was created.",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the object was last updated.",
+            "readOnly": true
+          }
+        }
+      },
+      "OrganizationCreateInput": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Organization"
+          }
+        ],
+        "required": [
+          "name",
+          "slug"
+        ]
+      },
+      "OrganizationUpdateInput": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Organization"
+          }
+        ],
+        "required": [
+          "id"
+        ]
+      },
+      "ProjectBase": {
+        "type": "object",
+        "description": "A Project is a unique identifier that you can use to manage and organize your work. Each project belongs to an organization.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "project",
+            "readOnly": true
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the project",
+            "readOnly": true
+          },
+          "organization_id": {
+            "type": "string",
+            "description": "Unique identifier for the organization the project belongs to",
+            "example": "d290f1ee-6c54-4b01-90e6-d701748f0851"
+          },
+          "slug": {
+            "type": "string",
+            "description": "The Name of the project, URL-friendly string that identifies the project",
+            "example": "my-project"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the project",
+            "example": "This is my project"
+          },
+          "avatar_url": {
+            "type": "string",
+            "description": "Avatar URL of the project",
+            "readOnly": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the project was created",
+            "example": "2022-03-01T00:00:00Z",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the project was last updated",
+            "example": "2022-03-01T00:00:00Z",
+            "readOnly": true
+          }
+        }
+      },
+      "ProjectBaseWithoutOrgId": {
+        "type": "object",
+        "description": "A Project is a unique identifier that you can use to manage and organize your work. Each project belongs to an organization.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "project",
+            "readOnly": true
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the project",
+            "readOnly": true
+          },
+          "slug": {
+            "type": "string",
+            "description": "The Name of the project, URL-friendly string that identifies the project",
+            "example": "my-project"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the project",
+            "example": "This is my project"
+          },
+          "avatar_url": {
+            "type": "string",
+            "description": "Avatar URL of the project",
+            "readOnly": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the project was created",
+            "example": "2022-03-01T00:00:00Z",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the project was last updated",
+            "example": "2022-03-01T00:00:00Z",
+            "readOnly": true
+          }
+        }
+      },
+      "ProjectFull": {
+        "type": "object",
+        "description": "A Project is a unique identifier that you can use to manage and organize your work. Each project belongs to an organization.",
+        "properties": {
+          "log_severity": {
+            "type": "string",
+            "description": "The log severity of the project.",
+            "enum": [
+              "DEBUG",
+              "INFO",
+              "WARNING",
+              "ERROR"
+            ],
+            "default": "INFO",
+            "nullable": true
+          },
+          "edgee_behind_proxy_cache": {
+            "type": "boolean",
+            "description": "Whether the project is behind a proxy cache (or CDN).",
+            "default": false,
+            "nullable": true
+          },
+          "force_https": {
+            "type": "boolean",
+            "description": "Whether the project is forcing HTTPS.",
+            "default": true,
+            "nullable": true
+          },
+          "cache": {
+            "type": "boolean",
+            "description": "Whether caching is enabled for the project.",
+            "default": false,
+            "nullable": true
+          },
+          "max_decompressed_body_size": {
+            "type": "integer",
+            "description": "The maximum size, in bytes, of the decompressed body of a request that edgee will compute at the edge.",
+            "default": 6000000,
+            "nullable": true
+          },
+          "cookie_name": {
+            "type": "string",
+            "description": "The name of the cookie that edgee will use to store the session ID.",
+            "default": "edgee",
+            "nullable": true
+          },
+          "cookie_domain": {
+            "type": "string",
+            "description": "The domain of the cookie that edgee will use to store the session ID.",
+            "nullable": true
+          },
+          "proxy_only": {
+            "type": "boolean",
+            "description": "Whether the Edgee will only proxy requests to the origin without any computing.",
+            "default": false,
+            "nullable": true
+          },
+          "enforce_no_store_policy": {
+            "type": "boolean",
+            "description": "A boolean that indicates whether Edgee should enforce a `no-store` cache-control header on the responses that can be computed.",
+            "default": false,
+            "nullable": true
+          },
+          "trusted_ips": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of trusted IPs that can access the project.",
+            "default": [],
+            "nullable": true
+          },
+          "password_protection": {
+            "type": "boolean",
+            "description": "Whether the project is password protected.",
+            "default": false,
+            "nullable": true
+          },
+          "blocked_ips": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of blocked IPs that can't access the project. Blocking IPs can only works is trusted_ips and password_protection are empty.",
+            "default": [],
+            "nullable": true
+          },
+          "cookie_whitelist": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of cookies that are allowed to be set by the project.",
+            "default": [],
+            "nullable": true
+          },
+          "forwarded_headers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "List of headers that are forwarded to the origin.",
+            "default": [],
+            "nullable": true
+          }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProjectBase"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectFull"
+          }
+        ]
+      },
+      "ProjectCreateInput": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProjectBase"
+          }
+        ],
+        "required": [
+          "organization_id",
+          "slug"
+        ]
+      },
+      "ProjectUpdateInput": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProjectBaseWithoutOrgId"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectFull"
+          }
+        ],
+        "required": [
+          "id"
+        ]
+      },
+      "Domain": {
+        "type": "object",
+        "description": "A Domain is a hostname that you can use to access your project. Each domain belongs to a project.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "domain",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "The domain name."
+          },
+          "project_id": {
+            "type": "string",
+            "description": "The Project ID."
+          },
+          "dns_status": {
+            "type": "boolean",
+            "description": "The DNS status of the domain.",
+            "readOnly": true
+          },
+          "ssl_status": {
+            "type": "boolean",
+            "description": "The SSL status of the domain.",
+            "readOnly": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the object was created.",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the object was last updated.",
+            "readOnly": true
+          }
+        }
+      },
+      "DomainCreateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The domain name."
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "DomainUpdateInput": {
+        "type": "object",
+        "properties": {
+          "dns_status": {
+            "type": "boolean",
+            "description": "The DNS status of the domain."
+          },
+          "ssl_status": {
+            "type": "boolean",
+            "description": "The SSL status of the domain."
+          }
+        }
+      },
+      "ProxySettings": {
+        "type": "object",
+        "description": "A ProxySettings is a revision of the proxy settings of a project.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "proxy_settings",
+            "readOnly": true
+          },
+          "revision": {
+            "type": "number",
+            "description": "The revision number of the proxy settings.",
+            "readOnly": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the proxy settings revision."
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Whether this revision is the active one.",
+            "readOnly": true
+          },
+          "backends": {
+            "type": "array",
+            "description": "The backend list of the proxy.",
+            "items": {
+              "$ref": "#/components/schemas/ProxySettingsBackend"
+            }
+          },
+          "routes": {
+            "type": "array",
+            "description": "The routing rules of the proxy.",
+            "items": {
+              "$ref": "#/components/schemas/ProxySettingsRoute"
+            }
+          }
+        }
+      },
+      "ProxySettingsCreateInput": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Description of the proxy settings revision."
+          },
+          "backends": {
+            "type": "array",
+            "description": "The backend list of the proxy.",
+            "items": {
+              "$ref": "#/components/schemas/ProxySettingsBackend"
+            }
+          },
+          "routes": {
+            "type": "array",
+            "description": "The routing rules of the proxy.",
+            "items": {
+              "$ref": "#/components/schemas/ProxySettingsRoute"
+            }
+          }
+        },
+        "required": [
+          "description",
+          "backends"
+        ]
+      },
+      "ProxySettingsUpdateInput": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Description of the proxy settings revision."
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Whether this revision is the active one."
+          }
+        }
+      },
+      "ProxySettingsBackend": {
+        "type": "object",
+        "description": "A ProxySettings backend entity",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "A string that represents the name of the backend."
+          },
+          "address": {
+            "type": "string",
+            "description": "A string that represents the address of the backend."
+          },
+          "enable_ssl": {
+            "type": "boolean",
+            "description": "A boolean that indicates that SSL should be enabled for this backend."
+          },
+          "check_certificate": {
+            "type": "string",
+            "description": "An optional string that, if present, represents the hostname that the server certificate should declare, and turn on validation during backend connections. You should enable this if you are using SSL/ TLS, and setting this will enable SSL for the connection as a side effect."
+          },
+          "ca_certificate": {
+            "type": "string",
+            "description": "An optional string that, if present, represents the CA certificate for this backend. Set the CA certificate to use when checking the validity of the backend. Setting this will enable SSL for the connection as a side effect."
+          },
+          "sni_hostname": {
+            "type": "string",
+            "description": "An optional string that, if present, represents the SNI hostname for this backend. Setting this will enable SSL for the connection as a side effect."
+          },
+          "default": {
+            "type": "boolean",
+            "description": "An optional boolean that, if present and set to `true`, indicates that this backend is the default backend."
+          },
+          "override_host": {
+            "type": "string",
+            "description": "An optional string that, if present, represents the host that should be overridden for this backend. This will force the value of the \"Host\" header to the given string when sending out the origin request. If this is not set and no header already exists, the \"Host\" header will default to this backend's address."
+          }
+        }
+      },
+      "ProxySettingsRoute": {
+        "type": "object",
+        "description": "A ProxySettings route entity",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "A string that represents the path for which this rule applies. This can be a regular expression if `regex` is set to `true`."
+          },
+          "regex": {
+            "type": "boolean",
+            "description": "A boolean that indicates whether the `path` is a regular expression."
+          },
+          "backend_name": {
+            "type": "string",
+            "description": "The name of the backend to which requests that match this rule should be routed."
+          },
+          "rank": {
+            "type": "string",
+            "description": "An integer that represents the rank of this rule. Rules with lower ranks are evaluated before rules with higher ranks."
+          },
+          "continent": {
+            "type": "array",
+            "description": "An optional vector of strings that represent the continents associated with an IP address. If this is set, the rule only applies to requests from IP addresses in the specified continents."
+          },
+          "region": {
+            "type": "array",
+            "description": "An optional vector of strings that represent the general regions of the world in which the Fastly POP processing the current Compute instance resides. If this is set, the rule only applies to requests from the specified regions."
+          },
+          "country": {
+            "type": "array",
+            "description": "An optional vector of strings that represent the countries associated with an IP address. If this is set, the rule only applies to requests from IP addresses in the specified countries."
+          }
+        }
+      },
+      "ProjectComponent": {
+        "type": "object",
+        "description": "A Project Component object represents an integration of a component in a project.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "project_component",
+            "readOnly": true
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the project component",
+            "readOnly": true
+          },
+          "component_id": {
+            "type": "string",
+            "description": "Unique identifier for the component",
+            "example": "d290f1ee-6c54-4b01-90e6-d701748f0851"
+          },
+          "component_version": {
+            "type": "string",
+            "description": "Version of the component",
+            "example": "1.0.0"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category of the component",
+            "readOnly": true,
+            "example": "analytics"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Whether the component is active in the project",
+            "default": true
+          },
+          "settings": {
+            "type": "object",
+            "description": "Settings of the component"
+          }
+        }
+      },
+      "Component": {
+        "type": "object",
+        "description": "A component is a reusable piece of code that can be used in multiple projects.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "component",
+            "readOnly": true
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the component",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the component",
+            "readOnly": true
+          },
+          "slug": {
+            "type": "string",
+            "description": "Slug of the component",
+            "readOnly": true
+          },
+          "avatar_url": {
+            "type": "string",
+            "description": "Avatar of the component",
+            "readOnly": true
+          },
+          "category": {
+            "type": "string",
+            "description": "Category of the component",
+            "readOnly": true
+          },
+          "sub_category": {
+            "type": "string",
+            "description": "Subcategory of the component",
+            "readOnly": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the component",
+            "readOnly": true
+          },
+          "versions": {
+            "type": "array",
+            "description": "List of versions of the component",
+            "items": {
+              "$ref": "#/components/schemas/ComponentVersion"
+            }
+          },
+          "repo_link": {
+            "type": "string",
+            "description": "Link to the repository of the component",
+            "readOnly": true
+          },
+          "documentation_link": {
+            "type": "string",
+            "description": "Link to the documentation of the component",
+            "readOnly": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the project was created",
+            "example": "2022-03-01T00:00:00Z",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the project was last updated",
+            "example": "2022-03-01T00:00:00Z",
+            "readOnly": true
+          },
+          "is_public": {
+            "type": "boolean",
+            "description": "Whether the component is public or not",
+            "example": false,
+            "readOnly": true
+          },
+          "is_archived": {
+            "type": "boolean",
+            "description": "Whether the component is archived or not",
+            "example": false
+          }
+        }
+      },
+      "ComponentVersion": {
+        "type": "object",
+        "description": "Version of a component",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "component_version_item",
+            "readOnly": true
+          },
+          "version": {
+            "type": "string",
+            "description": "Version of the component"
+          },
+          "wit_world_version": {
+            "type": "string",
+            "description": "Wit world version of the component"
+          },
+          "wasm_url": {
+            "type": "string",
+            "description": "URL of the component"
+          },
+          "dynamic_fields": {
+            "type": "array",
+            "description": "List of dynamic fields",
+            "items": {
+              "$ref": "#/components/schemas/DynamicFieldsItem"
+            }
+          },
+          "changelog": {
+            "type": "string",
+            "description": "Changelog of the component version"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the component version item was created",
+            "example": "2022-03-01T00:00:00Z",
+            "readOnly": true
+          }
+        }
+      },
+      "DynamicFieldsItem": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the dynamic field."
+          },
+          "title": {
+            "type": "string",
+            "description": "The title of the dynamic field."
+          },
+          "type": {
+            "type": "string",
+            "description": "The type of the dynamic field."
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether the dynamic field is required."
+          },
+          "description": {
+            "type": "string",
+            "description": "The description of the dynamic field."
+          }
+        }
+      },
+      "ComponentCreateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the component.",
+            "example": "My Component"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category of the component.",
+            "enum": [
+              "data_collection"
+            ]
+          },
+          "sub_category": {
+            "type": "string",
+            "description": "Subcategory of the component.",
+            "enum": [
+              "analytics",
+              "warehouse",
+              "attribution"
+            ]
+          },
+          "documentation_link": {
+            "type": "string",
+            "description": "Link to the documentation of the component.",
+            "format": "url"
+          },
+          "repo_link": {
+            "type": "string",
+            "description": "Link to the repository of the component.",
+            "format": "url"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the component."
+          }
+        },
+        "required": [
+          "organization_id",
+          "name",
+          "category",
+          "sub_category"
+        ]
+      },
+      "ComponentUpdateParams" : {
+        "type": "object",
+        "properties": {
+          "documentation_link": {
+            "type": "string",
+            "description": "Link to the documentation of the component.",
+            "format": "url"
+          },
+          "repo_link": {
+            "type": "string",
+            "description": "Link to the repository of the component.",
+            "format": "url"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the component."
+          },
+          "is_archived": {
+            "type": "boolean",
+            "description": "Whether the component is archived or not."
+          }
+        }
+      },
+      "ComponentVersionCreateInput": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "component_version_item",
+            "readOnly": true
+          },
+          "version": {
+            "type": "string",
+            "description": "Version of the component"
+          },
+          "wit_world_version": {
+            "type": "string",
+            "description": "Wit world version of the component"
+          },
+          "wasm_url": {
+            "type": "string",
+            "description": "URL of the component"
+          },
+          "dynamic_fields": {
+            "type": "array",
+            "description": "List of dynamic fields",
+            "items": {
+              "$ref": "#/components/schemas/DynamicFieldsItem"
+            }
+          },
+          "changelog": {
+            "type": "string",
+            "description": "Changelog of the component version"
+          }
+        },
+        "required": [
+          "version",
+          "wit_world_version",
+          "wasm_url"
+        ]
+      },
+      "ComponentVersionUpdateInput": {
+        "type": "object",
+        "properties": {
+          "changelog": {
+            "type": "string",
+            "description": "Changelog of the component version"
+          }
+        }
+      },
+      "ComponentListParams": {
+        "type": "object",
+        "properties": {
+         "category": {
+            "type": "string",
+            "description": "Filter components by category.",
+            "enum": [
+              "data_collection"
+            ]
+          },
+          "sub_category": {
+            "type": "string",
+            "description": "Filter components by sub category.",
+            "enum": [
+              "analytics",
+              "warehouse",
+              "attribution"
+            ]
+          }
+        }
+      },
+      "Invitation": {
+        "type": "object",
+        "description": "An invitation is a request to join an organization. An invitation is sent to an email address, and the recipient can accept or decline the invitation.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "project",
+            "readOnly": true
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the invitation",
+            "readOnly": true
+          },
+          "organization_id": {
+            "type": "string",
+            "description": "Unique identifier for the organization the project belongs to",
+            "example": "d290f1ee-6c54-4b01-90e6-d701748f0851"
+          },
+          "role": {
+            "type": "string",
+            "description": "The future role of the user in the organization.",
+            "enum": [
+              "admin",
+              "member"
+            ]
+          },
+          "email": {
+            "type": "string",
+            "description": "Email of the user"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the project was created",
+            "example": "2022-03-01T00:00:00Z",
+            "readOnly": true
+          }
+        }
+      },
+      "InvitationCreateInput": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Invitation"
+          }
+        ],
+        "required": [
+          "organization_id",
+          "email",
+          "role"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "description": "A User is a unique identifier that you can use to manage and organize your work.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "user",
+            "readOnly": true
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the user",
+            "readOnly": true
+          },
+          "email": {
+            "type": "string",
+            "description": "Email of the user",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the user",
+            "readOnly": true
+          },
+          "slug": {
+            "type": "string",
+            "description": "Slug of the user",
+            "readOnly": true
+          },
+          "avatar_url": {
+            "type": "string",
+            "description": "Avatar of the user",
+            "readOnly": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the project was created",
+            "example": "2022-03-01T00:00:00Z",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the project was last updated",
+            "example": "2022-03-01T00:00:00Z",
+            "readOnly": true
+          }
+        }
+      },
+      "OrganizationUser": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/User"
+          }
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "The role of the user in the organization.",
+            "enum": [
+              "admin",
+              "member"
+            ]
+          }
+        }
+      },
+      "OrganizationUserUpdateInput": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/OrganizationUser"
+          }
+        ],
+        "required": [
+          "role"
+        ]
+      },
+      "IncomingDataCollectionEvent": {
+        "type": "object",
+        "description": "An incoming data collection event is an event created by edgee, which will be processed and transformed into one or more outgoing data collection events by the components.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "component",
+            "readOnly": true
+          },
+          "uuid": {
+            "type": "string",
+            "description": "Unique identifier for the event",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the event was created",
+            "readOnly": true
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of the event",
+            "enum": [
+              "page",
+              "track",
+              "user"
+            ],
+            "readOnly": true
+          },
+          "from": {
+            "type": "string",
+            "description": "Origin of the event",
+            "enum": [
+              "edge",
+              "client",
+              "third"
+            ],
+            "readOnly": true
+          },
+          "data": {
+            "type": "object",
+            "description": "Data of the event",
+            "readOnly": true
+          },
+          "context": {
+            "type": "object",
+            "description": "Context of the event",
+            "readOnly": true
+          }
+        }
+      },
+      "OutgoingDataCollectionEvent": {
+        "type": "object",
+        "description": "An outgoing data collection event is an event created by a component, which will be sent to the destination specified by the component.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "component",
+            "readOnly": true
+          },
+          "uuid": {
+            "type": "string",
+            "description": "Unique identifier for the event",
+            "readOnly": true
+          },
+          "component_id": {
+            "type": "string",
+            "description": "Unique identifier for the component",
+            "readOnly": true
+          },
+          "component_slug": {
+            "type": "string",
+            "description": "Slug of the component",
+            "readOnly": true
+          },
+          "component_request": {
+            "type": "object",
+            "description": "Object representing the request of the event",
+            "readOnly": true
+          },
+          "component_response": {
+            "type": "object",
+            "description": "Object representing the response of the event",
+            "readOnly": true
+          }
+        }
+      },
+      "ListParams": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "A limit on the number of objects to be returned."
+          },
+          "start_key": {
+            "type": "string",
+            "description": "A cursor for use in pagination. `start_key` parameter defines the place in the list for your subsequent calls. For instance, if you make a list request and receive 100 objects, the last one having `ABCDE` key, you can make a subsequent call with `start_key=ABCDE` in order to fetch the next page of the list."
+          },
+          "order_direction": {
+            "type": "string",
+            "description": "The order direction of the returned list. Objects are returned sorted by creation date. By default, the order is descending, so the most recent object appears first. Possible values are ASC and DESC. Default is DESC.",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "default": "DESC"
+          }
+        }
+      },
+      "ListResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object’s type. Objects of the same type share the same value.",
+            "readOnly": true,
+            "example": "list"
+          },
+          "url": {
+            "type": "string",
+            "description": "The URL where this list can be accessed.",
+            "readOnly": true
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "Whether there are more objects beyond the ones returned. You can use it to decide whether to show the user a “load more” button, for example."
+          },
+          "last_key": {
+            "type": "string",
+            "description": "The last key of the list. You can use its value on the `start_key` parameter to fetch the next page of the list."
+          }
+        }
+      },
+      "DeletedResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object’s type. Objects of the same type share the same value."
+          },
+          "id": {
+            "type": "string",
+            "description": "This is the internal ID for this object. You don’t need to record this information, since you will not need to use it."
+          },
+          "deleted": {
+            "type": "boolean",
+            "description": "If the object has been deleted, the value is true. If the object has not been deleted, the value is false."
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "description": "An error response from the API. More info [here]('/docs/api-reference/errors')",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "invalid_request_error",
+                  "not_found_error",
+                  "creation_error",
+                  "update_error",
+                  "deletion_error",
+                  "forbidden_error",
+                  "authentication_error"
+                ],
+                "default": "invalid_request_error",
+                "description": "The type of error returned."
+              },
+              "message": {
+                "type": "string",
+                "description": "A human-readable message providing more details about the error.",
+                "example": "Parameter error."
+              },
+              "params": {
+                "type": "array",
+                "description": "The specific request parameters associated with the error. May be omitted if the error message is generic enough to apply to multiple parameters.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "param": {
+                      "type": "string",
+                      "description": "The parameter related to the error.",
+                      "example": "name"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "A human-readable message providing more details about the error.",
+                      "example": "Name is required."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Bearer authentication header of the form `Bearer <token>`, where `<token>` is your auth token. More info [here]('/docs/api-reference/authentication')"
+      }
+    }
+  }
+}
