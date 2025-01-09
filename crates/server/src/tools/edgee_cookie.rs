@@ -181,11 +181,9 @@ pub fn get_cookie(name: &str, request: &RequestHandle) -> Option<String> {
     for cookie in all_cookies {
         let mut map = HashMap::new();
         for item in cookie.to_str().unwrap().split("; ") {
-            let parts: Vec<&str> = item.split('=').collect();
-            if parts.len() != 2 {
-                continue;
+            if let Some((key, value)) = item.split_once('=') {
+                map.insert(key.trim().to_string(), value.trim().to_string());
             }
-            map.insert(parts[0].trim().to_string(), parts[1].trim().to_string());
         }
 
         if map.contains_key(name) {

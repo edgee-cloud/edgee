@@ -64,16 +64,13 @@ impl<'a> ProxyContext<'a> {
             let cookie_str = cookie.to_str().unwrap();
             let cookie_parts: Vec<&str> = cookie_str.split(";").map(|c| c.trim()).collect();
             for cookie_part in cookie_parts {
-                let parts: Vec<&str> = cookie_part.split('=').collect();
-                if parts.len() != 2 {
-                    continue;
-                }
-                // Include all cookies except edgee and edgee_u
-                let name = parts[0].trim();
-                if name != config::get().compute.cookie_name
-                    && name != format!("{}_u", config::get().compute.cookie_name)
-                {
-                    filtered_cookies.push(cookie_part.to_string());
+                if let Some((key, _value)) = cookie_part.split_once('=') {
+                    let name = key.trim();
+                    if name != config::get().compute.cookie_name
+                        && name != format!("{}_u", config::get().compute.cookie_name)
+                    {
+                        filtered_cookies.push(cookie_part.to_string());
+                    }
                 }
             }
         }
