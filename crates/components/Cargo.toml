@@ -12,6 +12,7 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 dirs.workspace = true
-reqwest = { workspace = true, features = ["json"] }
 serde = { workspace = true, features = ["derive"] }
 toml.workspace = true
+
+edgee-api-client.workspace = true
