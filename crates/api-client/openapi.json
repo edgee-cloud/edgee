@@ -3287,6 +3287,10 @@
             "description": "Slug of the user",
             "readOnly": true
           },
+          "role": {
+            "type": "string",
+            "readOnly": true
+          },
           "avatar_url": {
             "type": "string",
             "description": "Avatar of the user",
@@ -3306,7 +3310,8 @@
             "example": "2022-03-01T00:00:00Z",
             "readOnly": true
           }
-        }
+        },
+        "required": ["object", "id", "email", "name", "slug", "role", "created_at", "updated_at"]
       },
       "OrganizationUser": {
         "type": "object",
