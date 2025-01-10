@@ -66,23 +66,13 @@ impl Credentials {
     }
 
     pub async fn fetch_user(&self) -> Result<User> {
-        use reqwest::Client;
-
         let Some(ref api_token) = self.api_token else {
             anyhow::bail!("No API token provided");
         };
 
-        let url = format!("{}/v1/users/me", &*crate::API_ENDPOINT_BASE_URL);
+        let client = edgee_api_client::new().api_token(api_token).connect();
+        let res = client.get_me().send().await?;
 
-        let client = Client::new();
-        let res = client
-            .get(url)
-            .bearer_auth(api_token)
-            .send()
-            .await
-            .context("Could not send API request")?
-            .error_for_status()?;
-
-        res.json().await.context("Could not decode API response")
+        Ok(res.into_inner().into())
     }
 }
