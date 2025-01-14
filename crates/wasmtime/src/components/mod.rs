@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use std::time::Duration;
 
+use chrono::{DateTime, Utc};
 use config::ComponentsConfiguration;
 use http::{header, HeaderMap, HeaderName, HeaderValue};
 use json_pretty::PrettyFormatter;
@@ -90,6 +91,19 @@ pub async fn send_data_collection(
             } else {
                 event.context.as_mut().unwrap().client.as_mut().unwrap().ip =
                     Some(request_info.ip.clone());
+            }
+
+            // Add one second to the timestamp if uuid is not the same than the first event, to prevent duplicate sessions
+            if event.uuid != request_info.uuid {
+                event.timestamp = request_info.timestamp + chrono::Duration::seconds(1);
+                event
+                    .context
+                    .as_mut()
+                    .unwrap()
+                    .session
+                    .as_mut()
+                    .unwrap()
+                    .session_start = false;
             }
 
             // Convert the event to the one which can be passed to the component
@@ -243,6 +257,8 @@ pub struct RequestInfo {
     pub ip: String,
     pub ip_anonymized: String,
     pub consent: String,
+    pub uuid: String,
+    pub timestamp: DateTime<Utc>,
 }
 
 impl RequestInfo {
@@ -252,6 +268,8 @@ impl RequestInfo {
             ip: "".to_string(),
             ip_anonymized: "".to_string(),
             consent: "default".to_string(),
+            uuid: "".to_string(),
+            timestamp: chrono::Utc::now(),
         };
         if let Some(event) = events.first() {
             // set request_info from the first event
@@ -270,6 +288,8 @@ impl RequestInfo {
             if event.consent.is_some() {
                 request_info.consent = event.consent.as_ref().unwrap().to_string();
             }
+            request_info.uuid = event.uuid.clone();
+            request_info.timestamp = event.timestamp;
         }
         request_info
     }
