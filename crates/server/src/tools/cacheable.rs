@@ -200,6 +200,12 @@ mod tests {
     }
 
     #[test]
+    fn is_cacheable_by_browser_with_max_age_zero() {
+        let headers = create_headers(vec![("cache-control", "max-age=0")]);
+        assert!(!is_cacheable_by_browser(&headers));
+    }
+
+    #[test]
     fn is_cacheable_by_shared_cache_with_no_store() {
         let headers = create_headers(vec![("cache-control", "no-store")]);
         assert!(!is_cacheable_by_shared_cache(&headers));
@@ -215,6 +221,12 @@ mod tests {
     fn is_cacheable_by_shared_cache_with_surrogate_max_age() {
         let headers = create_headers(vec![("surrogate-control", "max-age=3600")]);
         assert!(is_cacheable_by_shared_cache(&headers));
+    }
+
+    #[test]
+    fn is_cacheable_by_shared_cache_with_surrogate_max_age_zero() {
+        let headers = create_headers(vec![("surrogate-control", "max-age=0")]);
+        assert!(!is_cacheable_by_shared_cache(&headers));
     }
 
     #[test]

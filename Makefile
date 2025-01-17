@@ -24,3 +24,10 @@ ci.build: ## Build release version
 
 ci.test: ## Run tests
 	cargo test -- --test-threads 1
+
+
+test.coverage:
+	cargo llvm-cov --all-features
+
+test.coverage.html:
+	cargo llvm-cov --all-features --open

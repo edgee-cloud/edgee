@@ -78,6 +78,7 @@ pub fn decrypt(text: &str) -> Result<String, &'static str> {
 mod tests {
     use super::*;
     use crate::config::init_test_config;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn decrypt_valid_text() {
@@ -91,6 +92,13 @@ mod tests {
             decrypted_text.unwrap().as_str(),
             "a text to encrypt and decrypt"
         );
+    }
+
+    #[test]
+    fn encrypt_empty_fails() {
+        init_test_config();
+        let encrypted_text = encrypt("");
+        assert!(encrypted_text.is_err());
     }
 
     #[test]

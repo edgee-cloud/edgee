@@ -174,6 +174,7 @@ impl Realip {
 mod tests {
     use super::*;
     use http::HeaderMap;
+    use pretty_assertions::assert_eq;
     use std::net::SocketAddr;
 
     #[test]
@@ -272,6 +273,15 @@ mod tests {
             "X-Forwarded-For",
             "192.168.1.1, 203.0.113.195".parse().unwrap(),
         );
+        let ip = realip.get_from_forwarded_headers(&headers);
+        assert_eq!(ip, Some("203.0.113.195".to_string()));
+    }
+
+    #[test]
+    fn get_from_forwarded_headers_doesnt_fail_with_invalid_ip() {
+        let realip = Realip::new();
+        let mut headers = HeaderMap::new();
+        headers.insert("X-Forwarded-For", "192.168, 203.0.113.195".parse().unwrap());
         let ip = realip.get_from_forwarded_headers(&headers);
         assert_eq!(ip, Some("203.0.113.195".to_string()));
     }
