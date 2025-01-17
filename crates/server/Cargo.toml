@@ -52,5 +52,5 @@ edgee-sdk.workspace = true
 edgee-wasmtime.workspace = true
 
 [dev-dependencies]
-cargo-llvm-cov = "0.6.15"
-pretty_assertions = "1.4.1"
+cargo-llvm-cov.workspace = true
+pretty_assertions.workspace = true
