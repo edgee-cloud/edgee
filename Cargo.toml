@@ -72,3 +72,8 @@ edgee-api-client = { version = "0.6.1", path = "crates/api-client" }
 edgee-components = { version = "0.6.1", path = "crates/components" }
 edgee-server = { version = "0.6.1", path = "crates/server" }
 edgee-wasmtime = { version = "0.6.1", path = "crates/wasmtime" }
+
+[workspace.dev-dependencies]
+cargo-llvm-cov = "0.6.15"
+pretty_assertions = "1.4.1"
+
