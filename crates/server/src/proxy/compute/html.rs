@@ -80,6 +80,7 @@ macro_rules! set_document_field {
 /// # Arguments
 ///
 /// * `html` - A string slice that holds the HTML document.
+/// * `host` - A string that represents the requet hostname.
 ///
 /// # Returns
 ///
@@ -323,4 +324,153 @@ fn extract_content_value(tag: &str) -> Option<String> {
 
     // Extract the value between the quotes
     Some(rest_of_tag[..end_quote].to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn sample_html_full_minimal() -> String {
+        String::from(
+            "<html>
+            <head>
+                <title>ABC > DEF</title>
+                <!-- LEGACY STUFF HERE -->
+                <link rel=\"canonical\" href=\"https://test.com/test\"/>
+                <meta name=\"keywords\" content=\"k1, k2, k3\"/>
+                <script type=\"json\" id=\"__EDGEE_DATA_LAYER__\">{
+                    \"data_collection\": {
+                        \"events\": [
+                          {
+                            \"type\": \"track\",
+                            \"data\": {\"name\": \"Event > name\",}
+                          }
+                        ]
+                    }
+                }</script>
+                <script type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/sdk.js\"/>
+            </head>
+            <body></body>
+        </html>",
+        )
+    }
+
+    fn sample_html_full_sdk_in_body() -> String {
+        String::from(
+            "<html>
+            <head>
+                <title>ABC</title>
+                <!-- LEGACY STUFF HERE -->
+                <link rel=\"canonical\" href=\"https://test.com/test\"/>
+                <meta name=\"keywords\" content=\"k1, k2, k3\"/>
+            </head>
+            <body>
+                <script type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/sdk.js\"></script>
+            </body>
+        </html>",
+        )
+    }
+
+    fn sample_html_full_sdk_inline_false() -> String {
+        String::from("<html>
+            <head>
+                <title>ABC</title>
+                <!-- LEGACY STUFF HERE -->
+                <link rel=\"canonical\" href=\"https://test.com/test\"/>
+                <meta name=\"keywords\" content=\"k1, k2, k3\"/>
+                <script type=\"json\" id=\"__EDGEE_DATA_LAYER__\">{}</script>
+                <script data-inline=\"false\" data-random=\"ok>ko\" type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/sdk.js\"></script>
+            </head>
+            <body></body>
+        </html>")
+    }
+
+    fn sample_html_without_data_layer() -> String {
+        String::from(
+            "<html>
+            <head>
+                <title>ABC</title>
+                <link rel=\"canonical\" href=\"https://test.com/test\"/>
+                <meta name=\"keywords\" content=\"k1, k2, k3\"/>
+                <script type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/sdk.js\"></script>
+            </head>
+            <body>
+            </body>
+        </html>",
+        )
+    }
+
+    fn sample_html_without_sdk() -> String {
+        String::from(
+            "<html>
+            <head>
+                <title>ABC</title>
+                <link rel=\"canonical\" href=\"https://test.com/test\"/>
+                <meta name=\"keywords\" content=\"k1, k2, k3\"/>
+            </head>
+            <body>
+            </body>
+        </html>",
+        )
+    }
+
+    #[test]
+    fn parse_html_creates_a_document() {
+        let document = parse_html(&sample_html_full_minimal(), "test.com");
+        assert_eq!(document.title, "ABC > DEF");
+        assert_eq!(document.canonical, "https://test.com/test");
+        assert_eq!(document.keywords, "k1, k2, k3");
+        // add check
+    }
+
+    #[test]
+    fn parse_html_without_data_layer() {
+        let document = parse_html(&sample_html_without_data_layer(), "test.com");
+        assert_eq!(document.title, "ABC");
+        // add check
+    }
+
+    #[test]
+    fn parse_html_without_sdk() {
+        let document = parse_html(&sample_html_without_sdk(), "test.com");
+        assert_eq!(document.title, "ABC");
+        // add check
+    }
+
+    #[test]
+    fn parse_html_with_sdk_in_body() {
+        let document = parse_html(&sample_html_full_sdk_in_body(), "test.com");
+        assert_eq!(document.title, "ABC");
+        // add check
+    }
+
+    #[test]
+    fn parse_html_with_sdk_inline_false() {
+        let document = parse_html(&sample_html_full_sdk_inline_false(), "test.com");
+        assert_eq!(document.title, "ABC");
+        // add check
+    }
+
+    #[test]
+    fn parse_html_doesnt_break_if_broken_html() {
+        let html = "<!- LEGACY STUFF HERE ->"; // invalid
+        let document = parse_html(&html, "test.com");
+        assert_eq!(document.title, "");
+    }
+
+    #[test]
+    fn parse_html_doesnt_break_if_broken_html2() {
+        let html = "<! LEGACY STUFF HERE >"; // invalid
+        let document = parse_html(&html, "test.com");
+        assert_eq!(document.title, "");
+    }
+
+    #[test]
+    fn parse_html_doesnt_break_if_invalid_sdk_version() {
+        let html = "<script type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/edgee.v99.js.js\"></script>"; // invalid
+        let document = parse_html(&html, "test.com");
+        assert_eq!(document.title, "");
+        // add check
+    }
 }

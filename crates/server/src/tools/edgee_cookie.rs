@@ -542,3 +542,44 @@ fn decrypt_user_cookie(value: &str) -> Result<EdgeeUserCookie, &'static str> {
 fn parse_user_cookie<T: Read>(clean_json: T) -> Result<EdgeeUserCookie, Error> {
     serde_json::from_reader(clean_json)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use http::response;
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+
+    fn sample_user_data() -> User {
+        return User {
+            user_id: Some("123".to_string()),
+            anonymous_id: Some("456".to_string()),
+            edgee_id: "456".to_string(),
+            properties: Some(HashMap::from([
+                ("prop1".to_string(), json!(true)),
+                ("prop2".to_string(), json!(false)),
+                ("prop3".to_string(), json!(10)),
+                ("prop4".to_string(), json!("ok")),
+            ])),
+        };
+    }
+
+    #[test]
+    fn test_get_root_domain() {
+        assert_eq!(get_root_domain("example.com"), "example.com");
+        assert_eq!(get_root_domain("test.example.com"), "example.com");
+        assert_eq!(get_root_domain("sub.test.example.com"), "example.com");
+        assert_eq!(get_root_domain("localhost"), "localhost");
+    }
+
+    #[test]
+    fn test_set_user_cookie() {
+        let request = RequestHandle::default();
+        let response = response::Builder::new().status(200).body("").unwrap();
+        let (mut parts, _body) = response.into_parts();
+
+        set_user_cookie(&request, &mut parts, &sample_user_data());
+
+        assert_eq!(parts.headers.len(), 1);
+    }
+}
