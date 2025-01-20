@@ -148,7 +148,7 @@ pub async fn edgee_client_event_from_third_party_sdk(
 
 pub fn empty_json_response() -> anyhow::Result<Response> {
     Ok(http::Response::builder()
-        .status(StatusCode::GONE)
+        .status(StatusCode::NO_CONTENT)
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::CACHE_CONTROL, "private, no-store")
         .header("X-Robots-Tag", "noindex, nofollow")
