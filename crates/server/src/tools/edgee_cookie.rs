@@ -5,7 +5,7 @@ use std::time::Duration as StdDuration;
 use chrono::{DateTime, Duration, Utc};
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, SameSite};
-use edgee_wasmtime::payload::{Payload, User};
+use edgee_components_runtime::payload::{Payload, User};
 use http::header::{COOKIE, SET_COOKIE};
 use http::response::Parts;
 use http::{HeaderValue, Method};

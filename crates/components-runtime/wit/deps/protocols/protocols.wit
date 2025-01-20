@@ -110,4 +110,3 @@ type dict = list<tuple<string,string>>;
     track: func(e: event, cred: dict) -> result<edgee-request, string>;
     user: func(e: event, cred:dict) -> result<edgee-request, string>;
 }
-

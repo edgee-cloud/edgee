@@ -49,7 +49,7 @@ uuid = { workspace = true, features = ["v4", "serde"] }
 
 edgee-path.workspace = true
 edgee-sdk.workspace = true
-edgee-wasmtime.workspace = true
+edgee-components-runtime.workspace = true
 
 [dev-dependencies]
 cargo-llvm-cov.workspace = true
