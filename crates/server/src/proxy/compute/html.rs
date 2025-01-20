@@ -455,21 +455,21 @@ mod tests {
     #[test]
     fn parse_html_doesnt_break_if_broken_html() {
         let html = "<!- LEGACY STUFF HERE ->"; // invalid
-        let document = parse_html(&html, "test.com");
+        let document = parse_html(html, "test.com");
         assert_eq!(document.title, "");
     }
 
     #[test]
     fn parse_html_doesnt_break_if_broken_html2() {
         let html = "<! LEGACY STUFF HERE >"; // invalid
-        let document = parse_html(&html, "test.com");
+        let document = parse_html(html, "test.com");
         assert_eq!(document.title, "");
     }
 
     #[test]
     fn parse_html_doesnt_break_if_invalid_sdk_version() {
         let html = "<script type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/edgee.v99.js.js\"></script>"; // invalid
-        let document = parse_html(&html, "test.com");
+        let document = parse_html(html, "test.com");
         assert_eq!(document.title, "");
         // add check
     }

@@ -551,7 +551,7 @@ mod tests {
     use serde_json::json;
 
     fn sample_user_data() -> User {
-        return User {
+        User {
             user_id: Some("123".to_string()),
             anonymous_id: Some("456".to_string()),
             edgee_id: "456".to_string(),
@@ -561,7 +561,7 @@ mod tests {
                 ("prop3".to_string(), json!(10)),
                 ("prop4".to_string(), json!("ok")),
             ])),
-        };
+        }
     }
 
     #[test]
