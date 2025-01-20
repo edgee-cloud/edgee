@@ -139,3 +139,155 @@ fn do_process_payload(request: &RequestHandle, response: &mut Parts) -> Result<b
 
     Ok(true)
 }
+
+
+#[cfg(test)]
+mod tests {
+    use core::panic;
+    use crate::config::init_test_config;
+    use super::*;
+    use http::header::{COOKIE, HeaderMap};
+    use pretty_assertions::assert_eq;
+
+    fn sample_html_full_minimal() -> String {
+        String::from(
+            "<html>
+            <head>
+                <title>ABC > DEF</title>
+                <!-- LEGACY STUFF HERE -->
+                <link rel=\"canonical\" href=\"https://test.com/test\"/>
+                <meta name=\"keywords\" content=\"k1, k2, k3\"/>
+                <script type=\"json\" id=\"__EDGEE_DATA_LAYER__\">{
+                    \"data_collection\": {
+                        \"events\": [
+                          {
+                            \"type\": \"track\",
+                            \"data\": {\"name\": \"Event > name\"}
+                          }
+                        ]
+                    }
+                }</script>
+                <script type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/sdk.js\"/>
+            </head>
+            <body></body>
+        </html>",
+        )
+    }
+
+    fn sample_html_commented_sdk() -> String {
+        String::from(
+            "<html>
+            <head>
+                <title>ABC > DEF</title>
+                <!-- <script type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/sdk.js\"/> -->                
+            </head>
+            <body></body>
+        </html>",
+        )
+    }
+
+    fn empty_parts() -> Parts {
+        let response = http::response::Builder::new().status(200).body("").unwrap();
+        let (parts, _body) = response.into_parts();
+        return parts;
+    }
+
+    #[tokio::test]
+    async fn html_handler_with_sample_body() {
+        init_test_config();
+        let body_str = sample_html_full_minimal();
+        let request = RequestHandle::default();
+        let mut response = empty_parts();
+
+        match html_handler(&body_str, &request, &mut response).await {
+            Ok(document) => {
+                assert_eq!(document.title, "ABC > DEF");
+                assert_eq!(document.canonical, "https://test.com/test");
+                assert_eq!(document.keywords, "k1, k2, k3");
+                // add checks
+            }
+            Err(reason) => {
+                panic!("Error: {}", reason);
+            }
+        }
+        
+    }
+
+    #[tokio::test]
+    async fn html_handler_with_too_large_body() {
+        init_test_config();
+        let body_str = "X".repeat(6000001); // above max_decompressed_body_size
+        let request = RequestHandle::default();
+        let mut response = empty_parts();
+
+        match html_handler(&body_str, &request, &mut response).await {
+            Ok(_document) => {
+                panic!("Should have failed");
+            }
+            Err(reason) => {
+                assert_eq!(reason, "compute-aborted(decompressed-body-too-large)");   
+            }
+        }
+        
+    }
+
+    #[tokio::test]
+    async fn html_handler_without_sdk() {
+        init_test_config();
+        let body_str = "X".repeat(1000);
+        let request = RequestHandle::default();
+        let mut response = empty_parts();
+
+        match html_handler(&body_str, &request, &mut response).await {
+            Ok(_document) => {
+                panic!("Should have failed");
+            }
+            Err(reason) => {
+                assert_eq!(reason, "compute-aborted(no-sdk)");   
+            }
+        }
+        
+    }
+
+    #[tokio::test]
+    async fn html_handler_with_commented_sdk() {
+        init_test_config();
+        let body_str = sample_html_commented_sdk();
+        let request = RequestHandle::default();
+        let mut response = empty_parts();
+
+        match html_handler(&body_str, &request, &mut response).await {
+            Ok(_document) => {
+                panic!("Should have failed");
+            }
+            Err(reason) => {
+                assert_eq!(reason, "compute-aborted(commented-sdk)");   
+            }
+        }
+        
+    }
+
+    #[tokio::test]
+    async fn html_handler_with_request_cookie() {
+        init_test_config();
+        let body_str = sample_html_full_minimal();
+        let mut headers = HeaderMap::new();
+        headers.insert(COOKIE, "edgee=abc".parse().unwrap());
+        let request = RequestHandle::default_with_headers(headers);
+        let mut response = empty_parts();
+        
+        match html_handler(&body_str, &request, &mut response).await {
+            Ok(document) => {
+                assert_eq!(document.title, "ABC > DEF");
+                assert_eq!(document.data_collection_events.contains("Event > name"), true);
+                // add checks
+            }
+            Err(reason) => {
+                panic!("Error: {}", reason);
+            }
+        }
+        
+    }
+
+    
+}
