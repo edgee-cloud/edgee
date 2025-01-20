@@ -20,7 +20,7 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 toml.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
 
-edgee-components.workspace = true
+edgee-api-client.workspace = true
 edgee-server.workspace = true
 
 [features]

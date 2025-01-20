@@ -1,7 +1,7 @@
 setup_command! {}
 
 pub async fn run(_opts: Options) {
-    use edgee_components::auth::Credentials;
+    use edgee_api_client::auth::Credentials;
 
     let creds = Credentials::load().unwrap();
     if creds.api_token.is_none() {
@@ -9,7 +9,8 @@ pub async fn run(_opts: Options) {
         return;
     }
 
-    let user = creds.fetch_user().await.unwrap();
+    let client = edgee_api_client::new().credentials(&creds).connect();
+    let user = client.get_me().send().await.unwrap();
 
     println!("Logged in as:");
     println!("  ID:    {}", user.id);

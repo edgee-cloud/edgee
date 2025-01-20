@@ -1,10 +1,12 @@
+pub mod auth;
+
+pub const PROD_BASEURL: &str = "https://api.edgee.app";
+
 progenitor::generate_api! {
     spec = "openapi.json",
     interface = Builder,
     derives = [ schemars::JsonSchema ],
 }
-
-pub const PROD_BASEURL: &str = "https://api.edgee.app";
 
 /// This crate's entry point
 ///

@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::{convert::Infallible, fs, io, net::SocketAddr};
 
 use bytes::Bytes;
-use edgee_wasmtime::components::context::ComponentsContext;
+use edgee_components_runtime::components::context::ComponentsContext;
 use http_body_util::combinators::BoxBody;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto::Builder;

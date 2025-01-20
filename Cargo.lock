@@ -1042,7 +1042,7 @@ version = "0.6.1"
 dependencies = [
  "anyhow",
  "clap",
- "edgee-components",
+ "edgee-api-client",
  "edgee-server",
  "inquire",
  "openssl",
@@ -1057,25 +1057,35 @@ dependencies = [
 name = "edgee-api-client"
 version = "0.6.1"
 dependencies = [
+ "anyhow",
  "bon",
  "chrono",
+ "dirs 6.0.0",
  "futures",
  "progenitor",
  "reqwest",
  "schemars",
  "serde",
  "serde_json",
+ "toml",
 ]
 
 [[package]]
-name = "edgee-components"
+name = "edgee-components-runtime"
 version = "0.6.1"
 dependencies = [
  "anyhow",
- "dirs 6.0.0",
- "edgee-api-client",
+ "chrono",
+ "http",
+ "json_pretty",
+ "reqwest",
  "serde",
- "toml",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+ "wasmtime",
+ "wasmtime-wasi",
 ]
 
 [[package]]
@@ -1109,9 +1119,9 @@ dependencies = [
  "cbc",
  "chrono",
  "cookie",
+ "edgee-components-runtime",
  "edgee-path",
  "edgee-sdk",
- "edgee-wasmtime",
  "futures",
  "hex",
  "html-escape",
@@ -1141,24 +1151,6 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
-]
-
-[[package]]
-name = "edgee-wasmtime"
-version = "0.6.1"
-dependencies = [
- "anyhow",
- "chrono",
- "http",
- "json_pretty",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "uuid",
- "wasmtime",
- "wasmtime-wasi",
 ]
 
 [[package]]

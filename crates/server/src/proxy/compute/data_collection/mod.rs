@@ -7,8 +7,10 @@ use base64::engine::general_purpose::PAD;
 use base64::engine::GeneralPurpose;
 use base64::Engine;
 use bytes::Bytes;
-use edgee_wasmtime::components::{self};
-use edgee_wasmtime::payload::{self, Consent, EventData, EventType, Payload};
+use edgee_components_runtime::{
+    components,
+    payload::{self, Consent, EventData, EventType, Payload},
+};
 use html_escape;
 use http::response::Parts;
 use http::{header, HeaderMap};

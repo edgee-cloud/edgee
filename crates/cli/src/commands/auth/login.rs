@@ -3,7 +3,7 @@ setup_command! {}
 pub async fn run(_opts: Options) {
     use inquire::{Confirm, Password, PasswordDisplayMode};
 
-    use edgee_components::auth::Credentials;
+    use edgee_api_client::auth::Credentials;
 
     let mut creds = Credentials::load().unwrap();
 
@@ -24,8 +24,10 @@ pub async fn run(_opts: Options) {
         .unwrap();
     creds.api_token.replace(api_token);
 
-    let user = match creds.fetch_user().await {
-        Ok(user) => user,
+    let client = edgee_api_client::new().credentials(&creds).connect();
+
+    let user = match client.get_me().send().await {
+        Ok(res) => res.into_inner(),
         Err(err) => {
             tracing::error!("{err:?}");
             return;

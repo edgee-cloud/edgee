@@ -3,9 +3,10 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use self::models::User;
-
-pub mod models;
+use crate::{
+    connect_builder::{IsUnset, SetApiToken, State},
+    ConnectBuilder,
+};
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct Credentials {
@@ -64,15 +65,14 @@ impl Credentials {
         file.write_all(content.as_bytes())
             .context("Could not write credentials data")
     }
+}
 
-    pub async fn fetch_user(&self) -> Result<User> {
-        let Some(ref api_token) = self.api_token else {
-            anyhow::bail!("No API token provided");
-        };
-
-        let client = edgee_api_client::new().api_token(api_token).connect();
-        let res = client.get_me().send().await?;
-
-        Ok(res.into_inner().into())
+impl<'a, S: State> ConnectBuilder<'a, S> {
+    pub fn credentials(self, creds: &Credentials) -> ConnectBuilder<'a, SetApiToken<S>>
+    where
+        S::ApiToken: IsUnset,
+    {
+        let api_token = creds.api_token.as_deref().unwrap();
+        self.api_token(api_token)
     }
 }
