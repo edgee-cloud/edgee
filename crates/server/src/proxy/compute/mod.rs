@@ -140,13 +140,12 @@ fn do_process_payload(request: &RequestHandle, response: &mut Parts) -> Result<b
     Ok(true)
 }
 
-
 #[cfg(test)]
 mod tests {
-    use core::panic;
-    use crate::config::init_test_config;
     use super::*;
-    use http::header::{COOKIE, HeaderMap};
+    use crate::config::init_test_config;
+    use core::panic;
+    use http::header::{HeaderMap, COOKIE};
     use pretty_assertions::assert_eq;
 
     fn sample_html_full_minimal() -> String {
@@ -210,7 +209,6 @@ mod tests {
                 panic!("Error: {}", reason);
             }
         }
-        
     }
 
     #[tokio::test]
@@ -225,10 +223,9 @@ mod tests {
                 panic!("Should have failed");
             }
             Err(reason) => {
-                assert_eq!(reason, "compute-aborted(decompressed-body-too-large)");   
+                assert_eq!(reason, "compute-aborted(decompressed-body-too-large)");
             }
         }
-        
     }
 
     #[tokio::test]
@@ -243,10 +240,9 @@ mod tests {
                 panic!("Should have failed");
             }
             Err(reason) => {
-                assert_eq!(reason, "compute-aborted(no-sdk)");   
+                assert_eq!(reason, "compute-aborted(no-sdk)");
             }
         }
-        
     }
 
     #[tokio::test]
@@ -261,10 +257,9 @@ mod tests {
                 panic!("Should have failed");
             }
             Err(reason) => {
-                assert_eq!(reason, "compute-aborted(commented-sdk)");   
+                assert_eq!(reason, "compute-aborted(commented-sdk)");
             }
         }
-        
     }
 
     #[tokio::test]
@@ -275,19 +270,19 @@ mod tests {
         headers.insert(COOKIE, "edgee=abc".parse().unwrap());
         let request = RequestHandle::default_with_headers(headers);
         let mut response = empty_parts();
-        
+
         match html_handler(&body_str, &request, &mut response).await {
             Ok(document) => {
                 assert_eq!(document.title, "ABC > DEF");
-                assert_eq!(document.data_collection_events.contains("Event > name"), true);
+                assert_eq!(
+                    document.data_collection_events.contains("Event > name"),
+                    true
+                );
                 // add checks
             }
             Err(reason) => {
                 panic!("Error: {}", reason);
             }
         }
-        
     }
-
-    
 }
