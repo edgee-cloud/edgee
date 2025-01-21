@@ -1075,9 +1075,11 @@ name = "edgee-components-runtime"
 version = "0.7.0"
 dependencies = [
  "anyhow",
+ "cargo-llvm-cov",
  "chrono",
  "http",
  "json_pretty",
+ "pretty_assertions",
  "reqwest",
  "serde",
  "serde_json",
