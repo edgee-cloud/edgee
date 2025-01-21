@@ -162,6 +162,14 @@ mod tests {
                           {
                             \"type\": \"track\",
                             \"data\": {\"name\": \"Event > name\"}
+                          },
+                          {
+                            \"type\": \"page\",
+                            \"data\": {\"name\": \"Page name\", \"title\": \"Page title\"}
+                          },
+                          {
+                            \"type\": \"user\",
+                            \"data\": {\"user_id\": \"123\", \"anonymous_id\": \"456\"}
                           }
                         ]
                     }
