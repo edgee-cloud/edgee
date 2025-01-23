@@ -189,7 +189,7 @@ mod tests {
     fn test_init() {
         init_test_config();
         init().unwrap();
-        let ctx = get();
+        let ctx = get_components_ctx();
         assert_eq!(ctx.engine.is_async(), true);
     }
 
