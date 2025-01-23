@@ -22,3 +22,7 @@ tracing.workspace = true
 uuid = { workspace = true, features = ["v4", "serde"] }
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
+
+[dev-dependencies]
+cargo-llvm-cov.workspace = true
+pretty_assertions.workspace = true

@@ -105,6 +105,22 @@ impl RequestHandle {
         &self.headers
     }
 
+    #[cfg(test)]
+    pub fn default_with_headers(headers: HeaderMap) -> Self {
+        Self {
+            headers: headers,
+            method: http::Method::GET,
+            is_https: false,
+            proto: String::new(),
+            is_debug_mode: false,
+            client_ip: String::new(),
+            host: String::new(),
+            path: "".to_string(),
+            query: "".to_string(),
+            path_and_query: PathAndQuery::from_str("/").unwrap(),
+        }
+    }
+
     pub fn get_header(&self, key: impl http::header::AsHeaderName) -> Option<String> {
         self.headers
             .get(key)

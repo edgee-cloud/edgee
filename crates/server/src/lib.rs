@@ -178,3 +178,25 @@ fn make_service(
         })
         .boxed_clone()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::init_test_config;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_init() {
+        init_test_config();
+        init().unwrap();
+        let ctx = get_components_ctx();
+        assert_eq!(ctx.engine.is_async(), true);
+    }
+
+    #[tokio::test]
+    async fn test_start_server() {
+        init_test_config();
+        start().await.unwrap();
+        // no idea how to test this one
+    }
+}

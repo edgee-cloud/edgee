@@ -344,7 +344,7 @@ mod tests {
                         \"events\": [
                           {
                             \"type\": \"track\",
-                            \"data\": {\"name\": \"Event > name\",}
+                            \"data\": {\"name\": \"Event > name\"}
                           }
                         ]
                     }

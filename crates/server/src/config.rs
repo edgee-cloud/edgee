@@ -199,7 +199,9 @@ fn default_max_compressed_body_size() -> usize {
 }
 
 pub fn set(config: StaticConfiguration) {
-    CONFIG.set(config).expect("should initialize config")
+    CONFIG
+        .set(config)
+        .expect("should initialize config only once")
 }
 
 pub fn get() -> &'static StaticConfiguration {
@@ -224,10 +226,14 @@ pub fn init_test_config() {
         monitor: Some(MonitorConfiguration {
             address: "127.0.0.1:9090".to_string(),
         }),
-        routing: vec![],
+        routing: vec![RoutingConfiguration {
+            domain: "test.com".to_string(),
+            rules: vec![RoutingRulesConfiguration::default()],
+            backends: vec![BackendConfiguration::default()],
+        }],
         compute: default_compute_config(),
         components: ComponentsConfiguration::default(),
     };
-
+    config.validate().unwrap();
     CONFIG.get_or_init(|| config);
 }

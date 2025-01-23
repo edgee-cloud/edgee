@@ -473,3 +473,110 @@ pub struct Session {
     pub first_seen: DateTime<Utc>,
     pub last_seen: DateTime<Utc>,
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_event_type_display() {
+        assert_eq!(format!("{}", EventType::Page), "page");
+        assert_eq!(format!("{}", EventType::Track), "track");
+        assert_eq!(format!("{}", EventType::User), "user");
+    }
+
+    #[test]
+    fn test_consent_display() {
+        assert_eq!(format!("{}", Consent::Pending), "pending");
+        assert_eq!(format!("{}", Consent::Granted), "granted");
+        assert_eq!(format!("{}", Consent::Denied), "denied");
+    }
+
+    #[test]
+    fn test_event_data_default() {
+        let data = EventData::default();
+        if let EventData::Page(event_data) = data {
+            assert_eq!(event_data.title.unwrap_or_default(), "");
+        } else {
+            panic!("Invalid default event data");
+        }
+    }
+
+    #[test]
+    fn test_page_fill_in() {
+        let mut empty_page = Page::default();
+        let page = Page {
+            name: Some("name".to_string()),
+            category: Some("category".to_string()),
+            title: Some("title".to_string()),
+            url: Some("test.com/path".to_string()),
+            path: Some("/path".to_string()),
+            search: Some("?ok=1".to_string()),
+            referrer: Some("test.com/something".to_string()),
+            keywords: Some(vec![]),
+            properties: None,
+        };
+
+        empty_page.fill_in(&page);
+        assert_eq!(empty_page.title, page.title);
+        assert_eq!(empty_page.category, page.category);
+        assert_eq!(empty_page.url, page.url);
+    }
+
+    #[test]
+    fn test_user_fill_in() {
+        let mut empty_user = User::default();
+        let user = User {
+            edgee_id: "edgee-id".to_string(),
+            user_id: Some("id".to_string()),
+            anonymous_id: Some("id".to_string()),
+            properties: None,
+        };
+
+        empty_user.fill_in(&user);
+        assert_eq!(empty_user.user_id, user.user_id);
+        assert_eq!(empty_user.anonymous_id, user.anonymous_id);
+    }
+
+    #[test]
+    fn test_context_fill_in() {
+        let mut empty_context = Context::default();
+        empty_context.page = Some(Page::default());
+        empty_context.user = Some(User::default());
+
+        let context = Context {
+            page: Some(Page {
+                name: Some("name".to_string()),
+                category: Some("category".to_string()),
+                title: Some("title".to_string()),
+                url: Some("test.com/path".to_string()),
+                path: Some("/path".to_string()),
+                search: Some("?ok=1".to_string()),
+                referrer: Some("test.com/something".to_string()),
+                keywords: Some(vec![]),
+                properties: None,
+            }),
+            user: Some(User {
+                edgee_id: "edgee-id".to_string(),
+                user_id: Some("id".to_string()),
+                anonymous_id: Some("id".to_string()),
+                properties: None,
+            }),
+            client: Some(Client::default()),
+            campaign: Some(Campaign::default()),
+            session: Some(Session::default()),
+        };
+
+        empty_context.fill_in(&context);
+        assert_eq!(
+            empty_context.page.unwrap().title,
+            context.page.unwrap().title
+        );
+        assert_eq!(
+            empty_context.user.unwrap().user_id,
+            context.user.unwrap().user_id
+        );
+    }
+}
