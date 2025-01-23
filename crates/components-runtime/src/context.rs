@@ -41,7 +41,7 @@ impl ComponentsContext {
             .data_collection
             .iter()
             .map(|entry| {
-                let span = tracing::info_span!("component-context", component = %entry.name);
+                let span = tracing::info_span!("component-context", component = %entry.name, category = "data-collection");
                 let _span = span.enter();
 
                 tracing::debug!("Start pre-instantiate data collection component");
@@ -61,7 +61,7 @@ impl ComponentsContext {
             .consent_mapping
             .iter()
             .map(|entry| {
-                let span = tracing::info_span!("component-context", component = %entry.name);
+                let span = tracing::info_span!("component-context", component = %entry.name, category = "consent-mapping");
                 let _span = span.enter();
 
                 tracing::debug!("Start pre-instantiate consent mapping component");
