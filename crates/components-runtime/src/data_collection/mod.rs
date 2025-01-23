@@ -17,7 +17,7 @@ use json_pretty::PrettyFormatter;
 use tracing::{error, info, span, Instrument, Level};
 
 use crate::{
-    data_collection::exports::edgee::protocols::data_collection::{self},
+    data_collection::exports::edgee::protocols::data_collection as Component,
     data_collection::payload::{Consent, Event, EventType},
 };
 
@@ -115,22 +115,22 @@ pub async fn send_events(
                 .await?;
             let component = instance.edgee_protocols_data_collection();
 
-            let component_event: data_collection::Event = event.clone().into();
+            let component_event: Component::Event = event.clone().into();
             let credentials: Vec<(String, String)> = cfg.credentials.clone().into_iter().collect();
 
             // call the corresponding method of the component
             let request = match component_event.event_type {
-                data_collection::EventType::Page => {
+                Component::EventType::Page => {
                     component
                         .call_page(&mut store, &component_event, &credentials)
                         .await
                 }
-                data_collection::EventType::Track => {
+                Component::EventType::Track => {
                     component
                         .call_track(&mut store, &component_event, &credentials)
                         .await
                 }
-                data_collection::EventType::User => {
+                Component::EventType::User => {
                     component
                         .call_user(&mut store, &component_event, &credentials)
                         .await
@@ -168,10 +168,10 @@ pub async fn send_events(
             // let client = client.clone();
 
             let method_str = match request.method {
-                data_collection::HttpMethod::Get => "GET",
-                data_collection::HttpMethod::Put => "PUT",
-                data_collection::HttpMethod::Post => "POST",
-                data_collection::HttpMethod::Delete => "DELETE",
+                Component::HttpMethod::Get => "GET",
+                Component::HttpMethod::Put => "PUT",
+                Component::HttpMethod::Post => "POST",
+                Component::HttpMethod::Delete => "DELETE",
             };
 
             info!(
@@ -195,10 +195,10 @@ pub async fn send_events(
                 async move {
                     let timer_start = std::time::Instant::now();
                     let res = match request.method {
-                        data_collection::HttpMethod::Get => {
+                        Component::HttpMethod::Get => {
                             client.get(request.url).headers(headers).send().await
                         }
-                        data_collection::HttpMethod::Put => {
+                        Component::HttpMethod::Put => {
                             client
                                 .put(request.url)
                                 .headers(headers)
@@ -206,7 +206,7 @@ pub async fn send_events(
                                 .send()
                                 .await
                         }
-                        data_collection::HttpMethod::Post => {
+                        Component::HttpMethod::Post => {
                             client
                                 .post(request.url)
                                 .headers(headers)
@@ -214,7 +214,7 @@ pub async fn send_events(
                                 .send()
                                 .await
                         }
-                        data_collection::HttpMethod::Delete => {
+                        Component::HttpMethod::Delete => {
                             client.delete(request.url).headers(headers).send().await
                         }
                     };
@@ -344,7 +344,7 @@ fn anonymize_ip(ip: String) -> String {
 fn insert_expected_headers(
     headers: &mut HeaderMap,
     event: &Event,
-    data_collection_event: &data_collection::Event,
+    data_collection_event: &Component::Event,
 ) -> anyhow::Result<()> {
     // Insert client ip in the x-forwarded-for header
     headers.insert(
@@ -420,7 +420,7 @@ fn debug_disabled_event(debug: bool, event: &str) {
 
 fn debug_request(
     debug: bool,
-    request: &data_collection::EdgeeRequest,
+    request: &Component::EdgeeRequest,
     headers: &HeaderMap,
     _incoming_consent: String,
     outgoing_consent: String,
@@ -431,10 +431,10 @@ fn debug_request(
     }
 
     let method_str = match request.method {
-        data_collection::HttpMethod::Get => "GET",
-        data_collection::HttpMethod::Put => "PUT",
-        data_collection::HttpMethod::Post => "POST",
-        data_collection::HttpMethod::Delete => "DELETE",
+        Component::HttpMethod::Get => "GET",
+        Component::HttpMethod::Put => "PUT",
+        Component::HttpMethod::Post => "POST",
+        Component::HttpMethod::Delete => "DELETE",
     };
 
     let anonymization_str = if anonymization { "true" } else { "false" };
