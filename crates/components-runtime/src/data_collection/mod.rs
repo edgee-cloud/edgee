@@ -23,7 +23,7 @@ use crate::{
 
 use crate::context::ComponentsContext;
 
-pub async fn send_events(
+pub async fn send_json_events(
     ctx: &ComponentsContext,
     events_json: &str,
     component_config: &ComponentsConfiguration,
@@ -34,12 +34,20 @@ pub async fn send_events(
     }
 
     let mut events: Vec<Event> = serde_json::from_str(events_json)?;
+    send_events(ctx, &mut events, component_config, log_component).await
+}
 
+pub async fn send_events(
+    ctx: &ComponentsContext,
+    events: &mut [Event],
+    component_config: &ComponentsConfiguration,
+    log_component: &Option<String>,
+) -> anyhow::Result<()> {
     if events.is_empty() {
         return Ok(());
     }
 
-    let request_info = RequestInfo::new(&events);
+    let request_info = RequestInfo::new(events);
 
     let mut store = ctx.empty_store();
 
