@@ -171,7 +171,7 @@ pub async fn process_from_html(
     tokio::spawn(
         async move {
             let config = config::get();
-            if let Err(err) = dc_component_runtime::send_events(
+            if let Err(err) = dc_component_runtime::send_json_events(
                 get_components_ctx(),
                 &events_json_for_components,
                 &config.components,
@@ -308,7 +308,7 @@ pub async fn process_from_json(
     tokio::spawn(
         async move {
             let config = config::get();
-            if let Err(err) = dc_component_runtime::send_events(
+            if let Err(err) = dc_component_runtime::send_json_events(
                 get_components_ctx(),
                 &events_json_for_components,
                 &config.components,
