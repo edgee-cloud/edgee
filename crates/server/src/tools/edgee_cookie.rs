@@ -5,7 +5,6 @@ use std::time::Duration as StdDuration;
 use chrono::{DateTime, Duration, Utc};
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, SameSite};
-use edgee_components_runtime::payload::{Payload, User};
 use http::header::{COOKIE, SET_COOKIE};
 use http::response::Parts;
 use http::{HeaderValue, Method};
@@ -15,6 +14,7 @@ use uuid::Uuid;
 
 use super::crypto::{decrypt, encrypt};
 use crate::config;
+use crate::proxy::compute::data_collection::payload::{Payload, User};
 use crate::proxy::context::incoming::RequestHandle;
 use crate::proxy::DATA_COLLECTION_ENDPOINT_FROM_THIRD_PARTY_SDK;
 

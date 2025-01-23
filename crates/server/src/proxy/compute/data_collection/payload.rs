@@ -186,27 +186,6 @@ impl<'de> Deserialize<'de> for Event {
 }
 
 impl Event {
-    pub fn is_component_enabled(&self, name: &str) -> &bool {
-        // if destinations is not set, return true
-        if self.components.is_none() {
-            return &true;
-        }
-
-        // get destinations.get("all")
-        let all = self
-            .components
-            .as_ref()
-            .unwrap()
-            .get("all")
-            .unwrap_or(&true);
-
-        // check if the destination is enabled
-        if self.components.as_ref().unwrap().contains_key(name) {
-            return self.components.as_ref().unwrap().get(name).unwrap();
-        }
-        all
-    }
-
     pub fn is_all_components_disabled(&self) -> bool {
         if self.components.is_none() {
             return false;

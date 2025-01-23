@@ -9,8 +9,11 @@ help:
 		| sed -e "s/^Makefile://" -e "s///" \
 		| awk 'BEGIN { FS = ":.*?## " }; { printf "\033[36m%-30s\033[0m %s\n", $$1, $$2 }'
 
+dev.wit-deps: ## Install wit-deps
+	cd crates/components-runtime && wit-deps
+
 dev.setup: ## Setup dev environment
-	cd crates/wasmtime && wit-deps
+	make dev.wit-deps
 	cargo build
 
 dev.up: ## Launch locally

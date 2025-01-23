@@ -1,0 +1,13 @@
+package edgee:protocols;
+
+interface consent-mapping {
+    type config = list<tuple<string,string>>;
+
+    enum consent {
+        pending,
+        granted,
+        denied,
+    }
+
+    map: func(cookie: string, config: config) -> option<consent>;
+}

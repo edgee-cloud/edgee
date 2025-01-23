@@ -1,6 +1,7 @@
 package edgee:protocols;
-interface provider {
-type dict = list<tuple<string,string>>;
+
+interface data-collection {
+    type dict = list<tuple<string,string>>;
 
     enum event-type { page, track, user }
     enum consent { pending, granted, denied }

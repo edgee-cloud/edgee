@@ -6,13 +6,17 @@ use wasmtime::{
 };
 use wasmtime_wasi::{WasiCtx, WasiView};
 
-use crate::{DataCollection, DataCollectionPre};
-
-use super::ComponentsConfiguration;
-
+use crate::config::ComponentsConfiguration;
+use crate::consent_mapping::{ConsentMapping, ConsentMappingPre};
+use crate::data_collection::{DataCollection, DataCollectionPre};
 pub struct ComponentsContext {
     pub engine: Engine,
-    pub components: HashMap<String, DataCollectionPre<HostState>>,
+    pub components: Components,
+}
+
+pub struct Components {
+    pub data_collection: HashMap<String, DataCollectionPre<HostState>>,
+    pub consent_mapping: HashMap<String, ConsentMappingPre<HostState>>,
 }
 
 impl ComponentsContext {
@@ -32,24 +36,50 @@ impl ComponentsContext {
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
-        let components = config
+        // Data collection components
+        let data_collection_components = config
             .data_collection
             .iter()
             .map(|entry| {
                 let span = tracing::info_span!("component-context", component = %entry.name);
                 let _span = span.enter();
 
-                tracing::debug!("Start pre-instanciate component");
+                tracing::debug!("Start pre-instantiate data collection component");
 
                 let component = Component::from_file(&engine, &entry.component)?;
                 let instance_pre = linker.instantiate_pre(&component)?;
                 let instance_pre = DataCollectionPre::new(instance_pre)?;
 
-                tracing::debug!("Finished pre-instanciate component");
+                tracing::debug!("Finished pre-instantiate data collection component");
 
                 Ok((entry.name.clone(), instance_pre))
             })
             .collect::<anyhow::Result<_>>()?;
+
+        // Consent mapping components
+        let consent_mapping_components = config
+            .consent_mapping
+            .iter()
+            .map(|entry| {
+                let span = tracing::info_span!("component-context", component = %entry.name);
+                let _span = span.enter();
+
+                tracing::debug!("Start pre-instantiate consent mapping component");
+
+                let component = Component::from_file(&engine, &entry.component)?;
+                let instance_pre = linker.instantiate_pre(&component)?;
+                let instance_pre = ConsentMappingPre::new(instance_pre)?;
+
+                tracing::debug!("Finished pre-instantiate consent mapping component");
+
+                Ok((entry.name.clone(), instance_pre))
+            })
+            .collect::<anyhow::Result<_>>()?;
+
+        let components = Components {
+            data_collection: data_collection_components,
+            consent_mapping: consent_mapping_components,
+        };
 
         Ok(Self { engine, components })
     }
@@ -58,15 +88,33 @@ impl ComponentsContext {
         Store::new(&self.engine, HostState::new())
     }
 
-    pub async fn instantiate_data_collection(
+    pub async fn get_data_collection_instance(
         &self,
         name: &str,
         store: &mut Store<HostState>,
     ) -> anyhow::Result<DataCollection> {
         let instance_pre = self
             .components
+            .data_collection
             .get(name)
-            .expect("Data collection not found, should not happen");
+            .expect("Data collection component not found");
+
+        instance_pre
+            .instantiate_async(store)
+            .await
+            .map_err(Into::into)
+    }
+
+    pub async fn get_consent_mapping_instance(
+        &self,
+        name: &str,
+        store: &mut Store<HostState>,
+    ) -> anyhow::Result<ConsentMapping> {
+        let instance_pre = self
+            .components
+            .consent_mapping
+            .get(name)
+            .expect("Consent mapping component not found");
 
         instance_pre
             .instantiate_async(store)
