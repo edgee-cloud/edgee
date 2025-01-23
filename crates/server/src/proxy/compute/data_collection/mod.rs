@@ -7,21 +7,21 @@ use base64::engine::general_purpose::PAD;
 use base64::engine::GeneralPurpose;
 use base64::Engine;
 use bytes::Bytes;
-use edgee_components_runtime::{
-    components,
-    payload::{self, Consent, EventData, EventType, Payload},
-};
+use edgee_components_runtime::data_collection as dc_component_runtime;
 use html_escape;
 use http::response::Parts;
 use http::{header, HeaderMap};
 use json_comments::StripComments;
+use payload::{Consent, EventData, EventType, Payload};
 use regex::Regex;
 use tracing::{info, warn, Instrument};
 
 use crate::proxy::compute::html::Document;
 use crate::proxy::context::incoming::RequestHandle;
 use crate::tools::edgee_cookie;
-use crate::{config, get};
+use crate::{config, get_components_ctx};
+
+pub mod payload;
 
 /// Processes data collection from HTML document and generates collection events.
 ///
@@ -134,35 +134,19 @@ pub async fn process_from_html(
 
     let events_json =
         serde_json::to_string(&events).expect("Could not encode data collection events into JSON");
-    info!(events = events_json.as_str());
-
-    // send the payload to the data collection components
-    tokio::spawn(
-        async move {
-            let config = config::get();
-            if let Err(err) = components::send_data_collection(
-                get(),
-                &mut events,
-                &config.components,
-                &config.log.debug_component,
-            )
-            .await
-            {
-                warn!(?err, "failed to send data collection payload");
-            }
-        }
-        .in_current_span(),
-    );
+    let events_json_for_components = events_json.clone();
+    info!(events = %events_json);
 
     // send the payload to the edgee data-collection-api, but only if the api key and url are set
-    if config::get().compute.data_collection_api_key.is_some()
-        && config::get().compute.data_collection_api_url.is_some()
-    {
-        let api_key = config::get().compute.data_collection_api_key.as_ref()?;
-        let api_url = config::get().compute.data_collection_api_url.as_ref()?;
+    let c_config = &config::get().compute;
+    if c_config.data_collection_api_key.is_some() && c_config.data_collection_api_url.is_some() {
+        let events_json_to_send = events_json.clone();
+
+        let api_key = c_config.data_collection_api_key.as_ref()?;
+        let api_url = c_config.data_collection_api_url.as_ref()?;
 
         let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
-        let events_json = events_json.clone();
+
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         let debug = if request.is_debug_mode() {
             "true"
@@ -177,11 +161,29 @@ pub async fn process_from_html(
                 .header("Authorization", format!("Basic {}", b64))
                 .header("X-Edgee-Debug", debug)
                 .header("X-Edgee-Host", host)
-                .body(events_json)
+                .body(events_json_to_send)
                 .send()
                 .await;
         });
     }
+
+    // send the payload to the data collection components
+    tokio::spawn(
+        async move {
+            let config = config::get();
+            if let Err(err) = dc_component_runtime::send_events(
+                get_components_ctx(),
+                &events_json_for_components,
+                &config.components,
+                &config.log.debug_component,
+            )
+            .await
+            {
+                warn!(?err, "failed to send data collection payload");
+            }
+        }
+        .in_current_span(),
+    );
 
     Option::from(events_json)
 }
@@ -269,15 +271,46 @@ pub async fn process_from_json(
 
     let events_json =
         serde_json::to_string(&events).expect("Could not encode data collection events into JSON");
-    info!(events = events_json.as_str());
+    let events_json_for_components = events_json.clone();
+    info!(events = %events_json);
+
+    // send the payload to the edgee data-collection-api, but only if the api key and url are set
+    let c_config = &config::get().compute;
+    if c_config.data_collection_api_key.is_some() && c_config.data_collection_api_url.is_some() {
+        let events_json_to_send = events_json.clone();
+
+        let api_key = c_config.data_collection_api_key.as_ref()?;
+        let api_url = c_config.data_collection_api_url.as_ref()?;
+
+        let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
+
+        // now, we can send the payload to the edgee data-collection-api without waiting for the response
+        let debug = if request.is_debug_mode() {
+            "true"
+        } else {
+            "false"
+        };
+        let host = request.get_host().to_string();
+        tokio::spawn(async move {
+            let _ = reqwest::Client::new()
+                .post(api_url)
+                .header("Content-Type", "application/json")
+                .header("Authorization", format!("Basic {}", b64))
+                .header("X-Edgee-Debug", debug)
+                .header("X-Edgee-Host", host)
+                .body(events_json_to_send)
+                .send()
+                .await;
+        });
+    }
 
     // send the payload to the data collection components
     tokio::spawn(
         async move {
             let config = config::get();
-            if let Err(err) = components::send_data_collection(
-                get(),
-                &mut events,
+            if let Err(err) = dc_component_runtime::send_events(
+                get_components_ctx(),
+                &events_json_for_components,
                 &config.components,
                 &config.log.debug_component,
             )
@@ -288,43 +321,6 @@ pub async fn process_from_json(
         }
         .in_current_span(),
     );
-
-    // send the payload to the edgee data-collection-api, but only if the api key and url are set
-    if config::get().compute.data_collection_api_key.is_some()
-        && config::get().compute.data_collection_api_url.is_some()
-    {
-        let api_key = config::get()
-            .compute
-            .data_collection_api_key
-            .as_ref()
-            .unwrap();
-        let api_url = config::get()
-            .compute
-            .data_collection_api_url
-            .as_ref()
-            .unwrap();
-
-        let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
-        let events_json = events_json.clone();
-        let debug = if request.is_debug_mode() {
-            "true"
-        } else {
-            "false"
-        };
-        let host = request.get_host().to_string();
-        // now, we can send the payload to the edgee data-collection-api without waiting for the response
-        tokio::spawn(async move {
-            let _ = reqwest::Client::new()
-                .post(api_url)
-                .header("Content-Type", "application/json")
-                .header("Authorization", format!("Basic {}", b64))
-                .header("X-Edgee-Debug", debug)
-                .header("X-Edgee-Host", host)
-                .body(events_json)
-                .send()
-                .await;
-        });
-    }
 
     Option::from(events_json)
 }

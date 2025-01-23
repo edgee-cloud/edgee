@@ -1,33 +1,45 @@
+mod convert;
+pub mod payload;
+
+wasmtime::component::bindgen!({
+    world: "data-collection",
+    path: "wit/",
+    async: true,
+});
+
 use std::str::FromStr;
 use std::time::Duration;
 
+use crate::config::ComponentsConfiguration;
 use chrono::{DateTime, Utc};
-use config::ComponentsConfiguration;
 use http::{header, HeaderMap, HeaderName, HeaderValue};
 use json_pretty::PrettyFormatter;
 use tracing::{error, info, span, Instrument, Level};
 
-use context::ComponentsContext;
-
 use crate::{
-    exports::edgee::protocols::provider::{self},
-    payload::{Consent, Event, EventType},
+    data_collection::exports::edgee::protocols::data_collection::{self},
+    data_collection::payload::{Consent, Event, EventType},
 };
-pub mod config;
-pub mod context;
-mod convert;
 
-pub async fn send_data_collection(
+use crate::context::ComponentsContext;
+
+pub async fn send_events(
     ctx: &ComponentsContext,
-    events: &mut [Event],
+    events_json: &str,
     component_config: &ComponentsConfiguration,
     log_component: &Option<String>,
 ) -> anyhow::Result<()> {
+    if events_json.is_empty() {
+        return Ok(());
+    }
+
+    let mut events: Vec<Event> = serde_json::from_str(events_json)?;
+
     if events.is_empty() {
         return Ok(());
     }
 
-    let request_info = RequestInfo::new(events);
+    let request_info = RequestInfo::new(&events);
 
     let mut store = ctx.empty_store();
 
@@ -38,7 +50,7 @@ pub async fn send_data_collection(
                 Level::INFO,
                 "component",
                 name = cfg.name.as_str(),
-                event = event.event_type.to_string()
+                event = ?event.event_type
             );
             let _enter = span.enter();
 
@@ -85,52 +97,42 @@ pub async fn send_data_collection(
             );
 
             if anonymization {
-                event.context.as_mut().unwrap().client.as_mut().unwrap().ip =
-                    Some(request_info.ip_anonymized.clone());
+                event.context.client.ip = request_info.ip_anonymized.clone();
                 // todo: anonymize other data, utm, referrer, etc.
             } else {
-                event.context.as_mut().unwrap().client.as_mut().unwrap().ip =
-                    Some(request_info.ip.clone());
+                event.context.client.ip = request_info.ip.clone();
             }
 
             // Add one second to the timestamp if uuid is not the same than the first event, to prevent duplicate sessions
             if event.uuid != request_info.uuid {
                 event.timestamp = request_info.timestamp + chrono::Duration::seconds(1);
-                event
-                    .context
-                    .as_mut()
-                    .unwrap()
-                    .session
-                    .as_mut()
-                    .unwrap()
-                    .session_start = false;
+                event.context.session.session_start = false;
             }
 
-            // Convert the event to the one which can be passed to the component
-            let provider_event: provider::Event = event.clone().into();
-            let client = reqwest::Client::builder()
-                .timeout(Duration::from_secs(5))
-                .build()?;
+            // get the instance of the component
             let instance = ctx
-                .instantiate_data_collection(&cfg.name, &mut store)
+                .get_data_collection_instance(&cfg.name, &mut store)
                 .await?;
-            let provider = instance.edgee_protocols_provider();
+            let component = instance.edgee_protocols_data_collection();
+
+            let component_event: data_collection::Event = event.clone().into();
             let credentials: Vec<(String, String)> = cfg.credentials.clone().into_iter().collect();
 
-            let request = match provider_event.event_type {
-                provider::EventType::Page => {
-                    provider
-                        .call_page(&mut store, &provider_event, &credentials)
+            // call the corresponding method of the component
+            let request = match component_event.event_type {
+                data_collection::EventType::Page => {
+                    component
+                        .call_page(&mut store, &component_event, &credentials)
                         .await
                 }
-                provider::EventType::Track => {
-                    provider
-                        .call_track(&mut store, &provider_event, &credentials)
+                data_collection::EventType::Track => {
+                    component
+                        .call_track(&mut store, &component_event, &credentials)
                         .await
                 }
-                provider::EventType::User => {
-                    provider
-                        .call_user(&mut store, &provider_event, &credentials)
+                data_collection::EventType::User => {
+                    component
+                        .call_user(&mut store, &component_event, &credentials)
                         .await
                 }
             };
@@ -158,15 +160,18 @@ pub async fn send_data_collection(
             for (key, value) in request.headers.iter() {
                 headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
             }
-            insert_expected_headers(&mut headers, &event, &provider_event)?;
+            insert_expected_headers(&mut headers, &event, &component_event)?;
 
-            let client = client.clone();
+            let client = reqwest::Client::builder()
+                .timeout(Duration::from_secs(5))
+                .build()?;
+            // let client = client.clone();
 
             let method_str = match request.method {
-                provider::HttpMethod::Get => "GET",
-                provider::HttpMethod::Put => "PUT",
-                provider::HttpMethod::Post => "POST",
-                provider::HttpMethod::Delete => "DELETE",
+                data_collection::HttpMethod::Get => "GET",
+                data_collection::HttpMethod::Put => "PUT",
+                data_collection::HttpMethod::Post => "POST",
+                data_collection::HttpMethod::Delete => "DELETE",
             };
 
             info!(
@@ -190,10 +195,10 @@ pub async fn send_data_collection(
                 async move {
                     let timer_start = std::time::Instant::now();
                     let res = match request.method {
-                        provider::HttpMethod::Get => {
+                        data_collection::HttpMethod::Get => {
                             client.get(request.url).headers(headers).send().await
                         }
-                        provider::HttpMethod::Put => {
+                        data_collection::HttpMethod::Put => {
                             client
                                 .put(request.url)
                                 .headers(headers)
@@ -201,7 +206,7 @@ pub async fn send_data_collection(
                                 .send()
                                 .await
                         }
-                        provider::HttpMethod::Post => {
+                        data_collection::HttpMethod::Post => {
                             client
                                 .post(request.url)
                                 .headers(headers)
@@ -209,7 +214,7 @@ pub async fn send_data_collection(
                                 .send()
                                 .await
                         }
-                        provider::HttpMethod::Delete => {
+                        data_collection::HttpMethod::Delete => {
                             client.delete(request.url).headers(headers).send().await
                         }
                     };
@@ -274,16 +279,7 @@ impl RequestInfo {
         if let Some(event) = events.first() {
             // set request_info from the first event
             request_info.from = event.from.clone().unwrap_or("-".to_string());
-            request_info.ip = event
-                .context
-                .as_ref()
-                .unwrap()
-                .client
-                .as_ref()
-                .unwrap()
-                .ip
-                .clone()
-                .unwrap_or("".to_string());
+            request_info.ip = event.context.client.ip.clone();
             request_info.ip_anonymized = anonymize_ip(request_info.ip.clone());
             if event.consent.is_some() {
                 request_info.consent = event.consent.as_ref().unwrap().to_string();
@@ -348,66 +344,65 @@ fn anonymize_ip(ip: String) -> String {
 fn insert_expected_headers(
     headers: &mut HeaderMap,
     event: &Event,
-    provider_event: &provider::Event,
+    data_collection_event: &data_collection::Event,
 ) -> anyhow::Result<()> {
     // Insert client ip in the x-forwarded-for header
     headers.insert(
         HeaderName::from_str("x-forwarded-for")?,
-        HeaderValue::from_str(&provider_event.context.client.ip)?,
+        HeaderValue::from_str(&data_collection_event.context.client.ip)?,
     );
 
     // Insert User-Agent in the user-agent header
     headers.insert(
         header::USER_AGENT,
-        HeaderValue::from_str(&provider_event.context.client.user_agent)?,
+        HeaderValue::from_str(&data_collection_event.context.client.user_agent)?,
     );
 
-    if let Some(context) = &event.context {
-        if let Some(page) = &context.page {
-            // Insert referrer in the referer header like an analytics client-side collect does
-            if let Some(url) = &page.url {
-                let document_location =
-                    format!("{}{}", url, page.search.clone().unwrap_or_default());
-                headers.insert(
-                    header::REFERER,
-                    HeaderValue::from_str(document_location.as_str())?,
-                );
-            }
-        }
+    // Insert referrer in the referer header like an analytics client-side collect does
+    if !event.context.page.url.is_empty() {
+        let document_location = format!(
+            "{}{}",
+            event.context.page.url.clone(),
+            event.context.page.search.clone()
+        );
+        headers.insert(
+            header::REFERER,
+            HeaderValue::from_str(document_location.as_str())?,
+        );
+    }
 
-        if let Some(client) = &context.client {
-            // Insert Accept-Language in the accept-language header
-            if let Some(accept_language) = &client.accept_language {
-                headers.insert(
-                    header::ACCEPT_LANGUAGE,
-                    HeaderValue::from_str(accept_language.as_str())?,
-                );
-            }
-            // Insert sec-ch-ua headers
-            if let Some(user_agent_version_list) = &client.user_agent_version_list {
-                let ch_ua_value = format_ch_ua_header(user_agent_version_list);
-                headers.insert(
-                    HeaderName::from_str("sec-ch-ua")?,
-                    HeaderValue::from_str(ch_ua_value.as_str())?,
-                );
-            }
-            // Insert sec-ch-ua-mobile header
-            if let Some(user_agent_mobile) = &client.user_agent_mobile {
-                let mobile_value = format!("?{}", user_agent_mobile);
-                headers.insert(
-                    HeaderName::from_str("sec-ch-ua-mobile")?,
-                    HeaderValue::from_str(mobile_value.as_str())?,
-                );
-            }
-            // Insert sec-ch-ua-platform header
-            if let Some(os_name) = &client.os_name {
-                let platform_value = format!("\"{}\"", os_name);
-                headers.insert(
-                    HeaderName::from_str("sec-ch-ua-platform")?,
-                    HeaderValue::from_str(platform_value.as_str())?,
-                );
-            }
-        }
+    // Insert Accept-Language in the accept-language header
+    if !event.context.client.accept_language.is_empty() {
+        headers.insert(
+            header::ACCEPT_LANGUAGE,
+            HeaderValue::from_str(event.context.client.accept_language.as_str())?,
+        );
+    }
+
+    // Insert sec-ch-ua headers
+    // sec-ch-ua
+    if !event.context.client.user_agent_version_list.is_empty() {
+        let ch_ua_value = format_ch_ua_header(&event.context.client.user_agent_version_list);
+        headers.insert(
+            HeaderName::from_str("sec-ch-ua")?,
+            HeaderValue::from_str(ch_ua_value.as_str())?,
+        );
+    }
+    // sec-ch-ua-mobile
+    if !event.context.client.user_agent_mobile.is_empty() {
+        let mobile_value = format!("?{}", event.context.client.user_agent_mobile.clone());
+        headers.insert(
+            HeaderName::from_str("sec-ch-ua-mobile")?,
+            HeaderValue::from_str(mobile_value.as_str())?,
+        );
+    }
+    // sec-ch-ua-platform
+    if !event.context.client.os_name.is_empty() {
+        let platform_value = format!("\"{}\"", event.context.client.os_name.clone());
+        headers.insert(
+            HeaderName::from_str("sec-ch-ua-platform")?,
+            HeaderValue::from_str(platform_value.as_str())?,
+        );
     }
 
     Ok(())
@@ -425,7 +420,7 @@ fn debug_disabled_event(debug: bool, event: &str) {
 
 fn debug_request(
     debug: bool,
-    request: &provider::EdgeeRequest,
+    request: &data_collection::EdgeeRequest,
     headers: &HeaderMap,
     _incoming_consent: String,
     outgoing_consent: String,
@@ -436,10 +431,10 @@ fn debug_request(
     }
 
     let method_str = match request.method {
-        provider::HttpMethod::Get => "GET",
-        provider::HttpMethod::Put => "PUT",
-        provider::HttpMethod::Post => "POST",
-        provider::HttpMethod::Delete => "DELETE",
+        data_collection::HttpMethod::Get => "GET",
+        data_collection::HttpMethod::Put => "PUT",
+        data_collection::HttpMethod::Post => "POST",
+        data_collection::HttpMethod::Delete => "DELETE",
     };
 
     let anonymization_str = if anonymization { "true" } else { "false" };
