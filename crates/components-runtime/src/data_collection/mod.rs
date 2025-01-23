@@ -111,6 +111,15 @@ pub async fn send_events(
                 event.context.client.ip = request_info.ip.clone();
             }
 
+            // Native cookie support
+            if let Some(ref ids) = event.context.user.native_cookie_ids {
+                if ids.contains_key(&cfg.name) {
+                    event.context.user.edgee_id = ids.get(&cfg.name).unwrap().clone();
+                } else {
+                    event.context.user.edgee_id = request_info.edgee_id.clone();
+                }
+            }
+
             // Add one second to the timestamp if uuid is not the same than the first event, to prevent duplicate sessions
             if event.uuid != request_info.uuid {
                 event.timestamp = request_info.timestamp + chrono::Duration::seconds(1);
@@ -272,6 +281,7 @@ pub struct RequestInfo {
     pub consent: String,
     pub uuid: String,
     pub timestamp: DateTime<Utc>,
+    pub edgee_id: String,
 }
 
 impl RequestInfo {
@@ -283,6 +293,7 @@ impl RequestInfo {
             consent: "default".to_string(),
             uuid: "".to_string(),
             timestamp: chrono::Utc::now(),
+            edgee_id: "".to_string(),
         };
         if let Some(event) = events.first() {
             // set request_info from the first event
@@ -294,6 +305,7 @@ impl RequestInfo {
             }
             request_info.uuid = event.uuid.clone();
             request_info.timestamp = event.timestamp;
+            request_info.edgee_id = event.context.user.edgee_id.clone();
         }
         request_info
     }
