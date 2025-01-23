@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::{convert::Infallible, fs, io, net::SocketAddr};
 
 use bytes::Bytes;
-use edgee_components_runtime::components::context::ComponentsContext;
+use edgee_components_runtime::context::ComponentsContext;
 use http_body_util::combinators::BoxBody;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto::Builder;
@@ -33,7 +33,7 @@ pub fn init() -> anyhow::Result<()> {
         .map_err(|err| anyhow::anyhow!("Failed to register ComponentsContext: {err}"))
 }
 
-pub fn get() -> &'static ComponentsContext {
+pub fn get_components_ctx() -> &'static ComponentsContext {
     COMPONENTS_CONTEXT
         .get()
         .expect("ComponentsContext should be registered")

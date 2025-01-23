@@ -1,8 +1,4 @@
-pub mod components;
-pub mod payload;
-
-wasmtime::component::bindgen!({
-    world: "data-collection",
-    path: "wit/",
-    async: true,
-});
+pub mod config;
+pub mod consent_mapping;
+pub mod context;
+pub mod data_collection;
