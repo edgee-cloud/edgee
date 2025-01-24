@@ -1,6 +1,5 @@
 mod convert;
 mod debug;
-pub mod logger;
 pub mod payload;
 
 wasmtime::component::bindgen!({

@@ -31,7 +31,7 @@ pub struct DebugEntry {
 
 impl DebugEntry {
     pub fn new(params: DebugParams) -> DebugEntry {
-        let component_request = DebugComponentRequest::new(params.request, params.component_slug);
+        let component_request = DebugComponentRequest::new(params.request);
 
         let component_response = DebugComponentResponse::new(
             params.response_status,
@@ -93,7 +93,7 @@ pub struct DebugComponentRequest {
 }
 
 impl DebugComponentRequest {
-    pub fn new(edgee_request: &EdgeeRequest, component_slug: &str) -> DebugComponentRequest {
+    pub fn new(edgee_request: &EdgeeRequest) -> DebugComponentRequest {
         let method = match edgee_request.method {
             Component::HttpMethod::Get => "GET",
             Component::HttpMethod::Post => "POST",
@@ -110,7 +110,9 @@ impl DebugComponentRequest {
 
         let b: Option<serde_json::Value> = if edgee_request.body.is_empty() {
             None
-        } else if content_type.contains("application/json") || component_slug == "piano_analytics" {
+        } else if content_type.contains("application/json")
+            || is_body_json(edgee_request.body.as_str())
+        {
             Some(
                 serde_json::from_str(edgee_request.body.as_str())
                     .unwrap_or(serde_json::Value::String(edgee_request.body.clone())),
@@ -126,6 +128,10 @@ impl DebugComponentRequest {
             body: b,
         }
     }
+}
+
+fn is_body_json(body: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(body).is_ok()
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -274,17 +280,5 @@ pub async fn debug_and_trace_response(
     }
 
     // todo: log outgoing event
-    // log_outgoing_event!(
-    //     &request_info,
-    //     cfg.id.as_str(),
-    //     cfg.name.as_str(),
-    //     "500",
-    //     event_type,
-    //     path.as_str(),
-    //     outgoing_consent.as_str(),
-    //     0,
-    //     format!("Component error: {}", err).as_str()
-    // );
-
     Ok(())
 }
