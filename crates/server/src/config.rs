@@ -25,6 +25,9 @@ pub struct StaticConfiguration {
 
     #[serde(default)]
     pub components: ComponentsConfiguration,
+
+    #[serde(default)]
+    pub redirections: Vec<RedirectionsConfiguration>,
 }
 
 fn default_compute_config() -> ComputeConfiguration {
@@ -45,7 +48,7 @@ impl StaticConfiguration {
     pub fn validate(&self) -> Result<(), Vec<String>> {
         let validators: Vec<Box<dyn Fn() -> Result<(), String>>> = vec![
             Box::new(|| self.validate_no_duplicate_domains()),
-            // additional validation rules can be added here
+            Box::new(|| self.validate_no_duplicate_redirections()), // additional validation rules can be added here
         ];
 
         let errors: Vec<String> = validators
@@ -72,6 +75,23 @@ impl StaticConfiguration {
 
         if !duplicates.is_empty() {
             Err(format!("duplicate domains found: {:?}", duplicates))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn validate_no_duplicate_redirections(&self) -> Result<(), String> {
+        let mut seen = HashSet::new();
+        let mut duplicates = HashSet::new();
+
+        for redirection in &self.redirections {
+            if !seen.insert(&redirection.origin) {
+                duplicates.insert(&redirection.origin);
+            }
+        }
+
+        if !duplicates.is_empty() {
+            Err(format!("duplicate redirections found: {:?}", duplicates))
         } else {
             Ok(())
         }
@@ -123,6 +143,12 @@ pub struct RoutingConfiguration {
     #[serde(default)]
     pub rules: Vec<RoutingRulesConfiguration>,
     pub backends: Vec<BackendConfiguration>,
+}
+
+#[derive(Deserialize, Debug, Clone, Default)]
+pub struct RedirectionsConfiguration {
+    pub origin: String,
+    pub destination: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -229,6 +255,7 @@ pub fn init_test_config() {
         }],
         compute: default_compute_config(),
         components: ComponentsConfiguration::default(),
+        redirections: vec![],
     };
     config.validate().unwrap();
     CONFIG.get_or_init(|| config);
