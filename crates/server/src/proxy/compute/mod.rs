@@ -196,7 +196,7 @@ mod tests {
     fn empty_parts() -> Parts {
         let response = http::response::Builder::new().status(200).body("").unwrap();
         let (parts, _body) = response.into_parts();
-        return parts;
+        parts
     }
 
     #[tokio::test]

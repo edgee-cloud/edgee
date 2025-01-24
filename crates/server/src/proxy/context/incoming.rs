@@ -108,7 +108,7 @@ impl RequestHandle {
     #[cfg(test)]
     pub fn default_with_headers(headers: HeaderMap) -> Self {
         Self {
-            headers: headers,
+            headers,
             method: http::Method::GET,
             is_https: false,
             proto: String::new(),
