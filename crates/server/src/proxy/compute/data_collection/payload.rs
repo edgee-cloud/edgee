@@ -542,9 +542,13 @@ mod tests {
 
     #[test]
     fn test_context_fill_in() {
-        let mut empty_context = Context::default();
-        empty_context.page = Some(Page::default());
-        empty_context.user = Some(User::default());
+        let mut empty_context = Context {
+            page: Some(Page::default()),
+            user: Some(User::default()),
+            client: None,
+            campaign: None,
+            session: None,
+        };
 
         let context = Context {
             page: Some(Page {
