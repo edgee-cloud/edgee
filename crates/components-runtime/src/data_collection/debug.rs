@@ -1,0 +1,290 @@
+use crate::data_collection::{
+    exports::edgee::protocols::data_collection::{self as Component, EdgeeRequest},
+    payload::{Consent, Context, Data, Event, EventType},
+};
+use chrono::{DateTime, Utc};
+use http::HeaderMap;
+use json_pretty::PrettyFormatter;
+use serde::Deserialize;
+use serde::Serialize;
+use std::collections::HashMap;
+use std::time::Duration;
+
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct DebugEntry {
+    pub uuid: String,
+    pub timestamp: DateTime<Utc>,
+    #[serde(rename = "type")]
+    pub event_type: String,
+    pub from: String,
+    pub data: Data,
+    pub context: Context,
+    pub incoming_consent: String,
+    pub outgoing_consent: String,
+    pub anonymization: String,
+    pub project_id: String,
+    pub component_id: String,
+    pub component_slug: String,
+    pub component_request: DebugComponentRequest,
+    pub component_response: DebugComponentResponse,
+}
+
+impl DebugEntry {
+    pub fn new(params: DebugParams) -> DebugEntry {
+        let component_request = DebugComponentRequest::new(params.request, params.component_slug);
+
+        let component_response = DebugComponentResponse::new(
+            params.response_status,
+            params.response_body,
+            params.response_content_type.to_string(),
+            params.timer.elapsed().as_millis() as i32,
+        );
+
+        let outgoing_consent = match params.event.consent.clone().unwrap() {
+            Consent::Granted => "granted",
+            Consent::Denied => "denied",
+            Consent::Pending => "pending",
+        };
+
+        DebugEntry {
+            uuid: params.event.uuid.clone(),
+            timestamp: params.event.timestamp,
+            event_type: match params.event.event_type {
+                EventType::Page => "page".to_string(),
+                EventType::User => "user".to_string(),
+                EventType::Track => "track".to_string(),
+            },
+            from: params.from.to_string(),
+            project_id: params.project_id.to_string(),
+            data: params.event.data.clone(),
+            context: params.event.context.clone(),
+            incoming_consent: params.incoming_consent.to_string(),
+            outgoing_consent: outgoing_consent.to_string(),
+            anonymization: params.anonymization.to_string(),
+            component_id: params.component_id.to_string(),
+            component_slug: params.component_slug.to_string(),
+            component_request,
+            component_response,
+        }
+    }
+}
+
+pub struct DebugParams<'a> {
+    pub(crate) from: &'a str,
+    pub(crate) project_id: &'a str,
+    pub(crate) component_id: &'a str,
+    pub(crate) component_slug: &'a str,
+    pub(crate) event: &'a Event,
+    pub(crate) request: &'a EdgeeRequest,
+    pub(crate) response_content_type: &'a str,
+    pub(crate) response_status: i32,
+    pub(crate) response_body: Option<String>,
+    pub(crate) timer: std::time::Instant,
+    pub(crate) anonymization: bool,
+    pub(crate) incoming_consent: &'a str,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct DebugComponentRequest {
+    pub method: String,
+    pub url: String,
+    pub headers: Option<HashMap<String, String>>,
+    pub body: Option<serde_json::Value>,
+}
+
+impl DebugComponentRequest {
+    pub fn new(edgee_request: &EdgeeRequest, component_slug: &str) -> DebugComponentRequest {
+        let method = match edgee_request.method {
+            Component::HttpMethod::Get => "GET",
+            Component::HttpMethod::Post => "POST",
+            Component::HttpMethod::Put => "PUT",
+            Component::HttpMethod::Delete => "DELETE",
+        };
+
+        let content_type = edgee_request
+            .headers
+            .iter()
+            .find(|(k, _)| k.to_lowercase() == "content-type")
+            .map(|(_, v)| v.to_string())
+            .unwrap_or_else(|| "text/plain".to_string());
+
+        let b: Option<serde_json::Value> = if edgee_request.body.is_empty() {
+            None
+        } else if content_type.contains("application/json") || component_slug == "piano_analytics" {
+            Some(
+                serde_json::from_str(edgee_request.body.as_str())
+                    .unwrap_or(serde_json::Value::String(edgee_request.body.clone())),
+            )
+        } else {
+            Some(serde_json::Value::String(edgee_request.body.clone()))
+        };
+
+        DebugComponentRequest {
+            method: method.to_string(),
+            url: edgee_request.url.clone(),
+            headers: Some(edgee_request.headers.iter().cloned().collect()),
+            body: b,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct DebugComponentResponse {
+    pub status_code: i32,
+    pub body: Option<serde_json::Value>,
+    pub content_type: String,
+    pub duration: i32,
+}
+
+impl DebugComponentResponse {
+    pub fn new(
+        status_code: i32,
+        body: Option<String>,
+        content_type: String,
+        duration: i32,
+    ) -> DebugComponentResponse {
+        let b: Option<serde_json::Value> = if body.is_none() {
+            None
+        } else if content_type.contains("application/json") {
+            Some(
+                serde_json::from_str(body.clone().unwrap().as_str())
+                    .unwrap_or(serde_json::Value::String(body.clone().unwrap())),
+            )
+        } else {
+            Some(serde_json::Value::String(body.clone().unwrap()))
+        };
+
+        DebugComponentResponse {
+            status_code,
+            body: b,
+            content_type,
+            duration,
+        }
+    }
+}
+
+pub fn trace_disabled_event(trace: bool, event: &str) {
+    if !trace {
+        return;
+    }
+
+    println!("--------------------------------------------");
+    println!(" Event {} is disabled for this component", event);
+    println!("--------------------------------------------\n");
+}
+
+pub fn trace_request(
+    trace: bool,
+    request: &Component::EdgeeRequest,
+    headers: &HeaderMap,
+    outgoing_consent: &String,
+    anonymization: bool,
+) {
+    if !trace {
+        return;
+    }
+
+    let method_str = match request.method {
+        Component::HttpMethod::Get => "GET",
+        Component::HttpMethod::Put => "PUT",
+        Component::HttpMethod::Post => "POST",
+        Component::HttpMethod::Delete => "DELETE",
+    };
+
+    let anonymization_str = if anonymization { "true" } else { "false" };
+
+    println!("-----------");
+    println!("  REQUEST  ");
+    println!("-----------\n");
+    println!(
+        "Config:   Consent: {}, Anonymization: {}",
+        outgoing_consent, anonymization_str
+    );
+    println!("Method:   {}", method_str);
+    println!("Url:      {}", request.url);
+    if !headers.is_empty() {
+        print!("Headers:  ");
+        for (i, (key, value)) in headers.iter().enumerate() {
+            if i == 0 {
+                println!("{}: {:?}", key, value);
+            } else {
+                println!("          {}: {:?}", key, value);
+            }
+        }
+    } else {
+        println!("Headers:  None");
+    }
+
+    if !request.body.is_empty() {
+        println!("Body:");
+        let formatter = PrettyFormatter::from_str(request.body.as_str());
+        let result = formatter.pretty();
+        println!("{}", result);
+    } else {
+        println!("Body:     None");
+    }
+    println!();
+}
+
+pub async fn debug_and_trace_response(
+    debug: bool,
+    trace: bool,
+    params: DebugParams<'_>,
+    error: String,
+) -> anyhow::Result<()> {
+    let elapsed = params.timer.elapsed();
+
+    if trace {
+        println!("------------");
+        println!("  RESPONSE  ");
+        println!("------------\n");
+        println!("Status:   {}", params.response_status);
+        println!("Duration: {}ms", elapsed.as_millis());
+        if params.response_body.is_some() {
+            if let Some(body) = params.response_body.clone() {
+                println!("Body:");
+                let formatter = PrettyFormatter::from_str(body.as_str());
+                let result = formatter.pretty();
+                println!("{}", result);
+            }
+        }
+        if !error.is_empty() {
+            println!("Error:    {}", error);
+        }
+        println!();
+    }
+
+    if debug {
+        let api_secret = std::env::var("DEBUG_API_SECRET").unwrap_or_default();
+        let api_endpoint = std::env::var("DEBUG_API_ENDPOINT").unwrap_or_default();
+
+        if !api_secret.is_empty() && !api_endpoint.is_empty() && !params.project_id.is_empty() {
+            let debug_entry = DebugEntry::new(params);
+            let client = reqwest::Client::builder()
+                .timeout(Duration::from_secs(5))
+                .build()?;
+            let _r = client
+                .post(api_endpoint.as_str())
+                .header("Content-Type", "application/json")
+                .header("X-Api-Secret", api_secret.as_str())
+                .body(serde_json::to_string(&debug_entry).unwrap())
+                .send()
+                .await;
+        }
+    }
+
+    // todo: log outgoing event
+    // log_outgoing_event!(
+    //     &request_info,
+    //     cfg.id.as_str(),
+    //     cfg.name.as_str(),
+    //     "500",
+    //     event_type,
+    //     path.as_str(),
+    //     outgoing_consent.as_str(),
+    //     0,
+    //     format!("Component error: {}", err).as_str()
+    // );
+
+    Ok(())
+}

@@ -54,8 +54,8 @@ pub fn init(options: &Options) {
     let mut config = read_config(path).expect("should read config file");
     config.validate().unwrap();
 
-    if let Some(component) = options.debug_component.as_deref() {
-        config.log.debug_component = Some(component.to_string());
+    if let Some(component) = options.trace_component.as_deref() {
+        config.log.trace_component = Some(component.to_string());
     }
 
     edgee_server::config::set(config);

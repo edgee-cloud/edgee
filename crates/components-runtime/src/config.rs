@@ -13,6 +13,8 @@ pub struct ComponentsConfiguration {
 
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct DataCollectionComponents {
+    #[serde(default)]
+    pub id: String,
     pub name: String,
     pub component: String,
     pub credentials: HashMap<String, String>,
