@@ -17,7 +17,7 @@ struct Options {
 
     /// Log only the specified component's requests and responses to debug.
     #[arg(short, long, id = "COMPONENT_NAME")]
-    debug_component: Option<String>,
+    trace_component: Option<String>,
 
     #[command(subcommand)]
     command: commands::Command,
@@ -28,9 +28,9 @@ async fn main() {
     let options = Options::parse();
 
     config::init(&options);
-    // if debug_component is set, we only want to log the specified component. We change the options.log_format to do it.
+    // if trace_component is set, we only want to log the specified component. We change the options.log_format to do it.
     let mut log_filter = None;
-    if options.debug_component.is_some() {
+    if options.trace_component.is_some() {
         // We disable all logs because component will print things to stdout directly
         log_filter = Some("off".to_string());
     }

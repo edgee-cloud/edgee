@@ -1,4 +1,6 @@
 mod convert;
+mod debug;
+pub mod logger;
 pub mod payload;
 
 wasmtime::component::bindgen!({
@@ -12,9 +14,9 @@ use std::time::Duration;
 
 use crate::config::ComponentsConfiguration;
 use chrono::{DateTime, Utc};
+use debug::{debug_and_trace_response, trace_disabled_event, trace_request, DebugParams};
 use http::{header, HeaderMap, HeaderName, HeaderValue};
-use json_pretty::PrettyFormatter;
-use tracing::{error, info, span, Instrument, Level};
+use tracing::{error, span, Instrument, Level};
 
 use crate::{
     data_collection::exports::edgee::protocols::data_collection as Component,
@@ -27,27 +29,40 @@ pub async fn send_json_events(
     ctx: &ComponentsContext,
     events_json: &str,
     component_config: &ComponentsConfiguration,
-    log_component: &Option<String>,
+    trace_component: &Option<String>,
+    debug: bool,
 ) -> anyhow::Result<()> {
     if events_json.is_empty() {
         return Ok(());
     }
 
     let mut events: Vec<Event> = serde_json::from_str(events_json)?;
-    send_events(ctx, &mut events, component_config, log_component).await
+    send_events(
+        ctx,
+        &mut events,
+        component_config,
+        trace_component,
+        debug,
+        "",
+        "",
+    )
+    .await
 }
 
 pub async fn send_events(
     ctx: &ComponentsContext,
     events: &mut [Event],
     component_config: &ComponentsConfiguration,
-    log_component: &Option<String>,
+    trace_component: &Option<String>,
+    debug: bool,
+    project_id: &str,
+    proxy_host: &str,
 ) -> anyhow::Result<()> {
     if events.is_empty() {
         return Ok(());
     }
 
-    let request_info = RequestInfo::new(events);
+    let request_info = RequestInfo::new(events, project_id, proxy_host);
 
     let mut store = ctx.empty_store();
 
@@ -64,26 +79,26 @@ pub async fn send_events(
 
             let mut event = event.clone();
 
-            let debug =
-                log_component.is_some() && log_component.as_ref().unwrap() == cfg.name.as_str();
+            let trace =
+                trace_component.is_some() && trace_component.as_ref().unwrap() == cfg.name.as_str();
 
             // if event_type is not enabled in config.config.get(component_id).unwrap(), skip the event
             match event.event_type {
                 EventType::Page => {
                     if !cfg.config.page_event_enabled {
-                        debug_disabled_event(debug, "page");
+                        trace_disabled_event(trace, "page");
                         continue;
                     }
                 }
                 EventType::User => {
                     if !cfg.config.user_event_enabled {
-                        debug_disabled_event(debug, "user");
+                        trace_disabled_event(trace, "user");
                         continue;
                     }
                 }
                 EventType::Track => {
                     if !cfg.config.track_event_enabled {
-                        debug_disabled_event(debug, "track");
+                        trace_disabled_event(trace, "track");
                         continue;
                     }
                 }
@@ -96,6 +111,12 @@ pub async fn send_events(
             let initial_anonymization = cfg.config.anonymization;
             let default_consent = cfg.config.default_consent.clone();
             let incoming_consent = request_info.consent.clone();
+            let _path = event.context.page.path.clone();
+            let _event_type = match event.event_type {
+                EventType::Page => "page",
+                EventType::Track => "track",
+                EventType::User => "user",
+            };
 
             // Use the helper function to handle consent and determine anonymization
             let (anonymization, outgoing_consent) = handle_consent_and_anonymization(
@@ -156,6 +177,7 @@ pub async fn send_events(
             let request = match request {
                 Ok(Ok(request)) => request,
                 Ok(Err(err)) => {
+                    // todo: debug and trace response (error)
                     error!(
                         step = "request",
                         err = err.to_string(),
@@ -164,6 +186,7 @@ pub async fn send_events(
                     continue;
                 }
                 Err(err) => {
+                    // todo: debug and trace response (error)
                     error!(
                         step = "request",
                         err = err.to_string(),
@@ -182,35 +205,19 @@ pub async fn send_events(
             let client = reqwest::Client::builder()
                 .timeout(Duration::from_secs(5))
                 .build()?;
-            // let client = client.clone();
 
-            let method_str = match request.method {
-                Component::HttpMethod::Get => "GET",
-                Component::HttpMethod::Put => "PUT",
-                Component::HttpMethod::Post => "POST",
-                Component::HttpMethod::Delete => "DELETE",
-            };
-
-            info!(
-                step = "request",
-                method = method_str,
-                url = request.url,
-                body = request.body
-            );
-
-            debug_request(
-                debug,
-                &request,
-                &headers,
-                incoming_consent,
-                outgoing_consent,
-                anonymization,
-            );
+            trace_request(trace, &request, &headers, &outgoing_consent, anonymization);
 
             // spawn a separated async thread
+            let cfg_id = cfg.id.to_string();
+            let cfg_name = cfg.name.to_string();
+            let request_info_from = request_info.from.clone();
+            let project_id = project_id.to_string();
+
             tokio::spawn(
                 async move {
-                    let timer_start = std::time::Instant::now();
+                    let timer = std::time::Instant::now();
+                    let request_clone = request.clone();
                     let res = match request.method {
                         Component::HttpMethod::Get => {
                             client.get(request.url).headers(headers).send().await
@@ -236,34 +243,54 @@ pub async fn send_events(
                         }
                     };
 
+                    let mut debug_params = DebugParams {
+                        from: &request_info_from,
+                        project_id: &project_id,
+                        component_id: &cfg_id,
+                        component_slug: &cfg_name,
+                        event: &event,
+                        request: &request_clone,
+                        response_content_type: "",
+                        response_status: 500,
+                        response_body: None,
+                        timer,
+                        anonymization,
+                        incoming_consent: &incoming_consent,
+                    };
+
                     match res {
                         Ok(res) => {
-                            let is_success = res.status().is_success();
                             let status_str = format!("{:?}", res.status());
-                            let body_res_str = res.text().await.unwrap_or_default();
+                            debug_params.response_status = status_str.parse::<i32>().unwrap();
 
-                            if is_success {
-                                info!(step = "response", status = status_str, body = body_res_str);
-                            } else {
-                                error!(step = "response", status = status_str, body = body_res_str);
-                            }
-                            debug_response(
+                            let content_type = res
+                                .headers()
+                                .get("content-type")
+                                .and_then(|v| v.to_str().ok())
+                                .unwrap_or("text/plain")
+                                .to_string();
+                            debug_params.response_content_type = &content_type;
+
+                            let body = res.text().await.unwrap_or_default();
+                            debug_params.response_body = Some(body.clone());
+
+                            let _r = debug_and_trace_response(
                                 debug,
-                                &status_str,
-                                timer_start,
-                                body_res_str,
+                                trace,
+                                debug_params,
                                 "".to_string(),
-                            );
+                            )
+                            .await;
                         }
                         Err(err) => {
                             error!(step = "response", status = "500", err = err.to_string());
-                            debug_response(
+                            let _r = debug_and_trace_response(
                                 debug,
-                                "502",
-                                timer_start,
-                                "".to_string(),
+                                trace,
+                                debug_params,
                                 err.to_string(),
-                            );
+                            )
+                            .await;
                         }
                     }
                 }
@@ -274,6 +301,7 @@ pub async fn send_events(
     Ok(())
 }
 
+#[derive(Clone)]
 pub struct RequestInfo {
     pub from: String,
     pub ip: String,
@@ -282,10 +310,15 @@ pub struct RequestInfo {
     pub uuid: String,
     pub timestamp: DateTime<Utc>,
     pub edgee_id: String,
+    pub proxy_type: String,
+    pub proxy_desc: String,
+    pub as_name: String,
+    pub project_id: String,
+    pub proxy_host: String,
 }
 
 impl RequestInfo {
-    pub fn new(events: &[Event]) -> Self {
+    pub fn new(events: &[Event], project_id: &str, proxy_host: &str) -> Self {
         let mut request_info = RequestInfo {
             from: "-".to_string(),
             ip: "".to_string(),
@@ -294,6 +327,11 @@ impl RequestInfo {
             uuid: "".to_string(),
             timestamp: chrono::Utc::now(),
             edgee_id: "".to_string(),
+            proxy_type: "".to_string(),
+            proxy_desc: "".to_string(),
+            as_name: "".to_string(),
+            project_id: project_id.to_string(),
+            proxy_host: proxy_host.to_string(),
         };
         if let Some(event) = events.first() {
             // set request_info from the first event
@@ -306,6 +344,24 @@ impl RequestInfo {
             request_info.uuid = event.uuid.clone();
             request_info.timestamp = event.timestamp;
             request_info.edgee_id = event.context.user.edgee_id.clone();
+            request_info.proxy_type = event
+                .context
+                .client
+                .proxy_type
+                .clone()
+                .unwrap_or("-".to_string());
+            request_info.proxy_desc = event
+                .context
+                .client
+                .proxy_desc
+                .clone()
+                .unwrap_or("-".to_string());
+            request_info.as_name = event
+                .context
+                .client
+                .as_name
+                .clone()
+                .unwrap_or("-".to_string());
         }
         request_info
     }
@@ -426,98 +482,6 @@ fn insert_expected_headers(
     }
 
     Ok(())
-}
-
-fn debug_disabled_event(debug: bool, event: &str) {
-    if !debug {
-        return;
-    }
-
-    println!("--------------------------------------------");
-    println!(" Event {} is disabled for this component", event);
-    println!("--------------------------------------------\n");
-}
-
-fn debug_request(
-    debug: bool,
-    request: &Component::EdgeeRequest,
-    headers: &HeaderMap,
-    _incoming_consent: String,
-    outgoing_consent: String,
-    anonymization: bool,
-) {
-    if !debug {
-        return;
-    }
-
-    let method_str = match request.method {
-        Component::HttpMethod::Get => "GET",
-        Component::HttpMethod::Put => "PUT",
-        Component::HttpMethod::Post => "POST",
-        Component::HttpMethod::Delete => "DELETE",
-    };
-
-    let anonymization_str = if anonymization { "true" } else { "false" };
-
-    println!("-----------");
-    println!("  REQUEST  ");
-    println!("-----------\n");
-    println!(
-        "Config:   Consent: {}, Anonymization: {}",
-        outgoing_consent, anonymization_str
-    );
-    println!("Method:   {}", method_str);
-    println!("Url:      {}", request.url);
-    if !headers.is_empty() {
-        print!("Headers:  ");
-        for (i, (key, value)) in headers.iter().enumerate() {
-            if i == 0 {
-                println!("{}: {:?}", key, value);
-            } else {
-                println!("          {}: {:?}", key, value);
-            }
-        }
-    } else {
-        println!("Headers:  None");
-    }
-
-    if !request.body.is_empty() {
-        println!("Body:");
-        let formatter = PrettyFormatter::from_str(request.body.as_str());
-        let result = formatter.pretty();
-        println!("{}", result);
-    } else {
-        println!("Body:     None");
-    }
-    println!();
-}
-
-fn debug_response(
-    debug: bool,
-    status: &str,
-    timer_start: std::time::Instant,
-    body: String,
-    error: String,
-) {
-    if !debug {
-        return;
-    }
-
-    println!("------------");
-    println!("  RESPONSE  ");
-    println!("------------\n");
-    println!("Status:   {}", status);
-    println!("Duration: {}ms", timer_start.elapsed().as_millis());
-    if !body.is_empty() {
-        println!("Body:");
-        let formatter = PrettyFormatter::from_str(body.as_str());
-        let result = formatter.pretty();
-        println!("{}", result);
-    }
-    if !error.is_empty() {
-        println!("Error:    {}", error);
-    }
-    println!();
 }
 
 fn format_ch_ua_header(string: &str) -> String {

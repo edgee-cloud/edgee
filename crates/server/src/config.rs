@@ -38,8 +38,6 @@ fn default_compute_config() -> ComputeConfiguration {
         max_compressed_body_size: default_max_compressed_body_size(),
         proxy_only: false,
         enforce_no_store_policy: false,
-        data_collection_api_key: None,
-        data_collection_api_url: None,
     }
 }
 
@@ -86,7 +84,7 @@ pub struct LogConfiguration {
     #[serde_as(as = "serde_with::DisplayFromStr")]
     pub level: LevelFilter,
     pub span: Option<String>,
-    pub debug_component: Option<String>,
+    pub trace_component: Option<String>,
 }
 
 impl Default for LogConfiguration {
@@ -94,7 +92,7 @@ impl Default for LogConfiguration {
         Self {
             level: LevelFilter::INFO,
             span: None,
-            debug_component: None,
+            trace_component: None,
         }
     }
 }
@@ -178,8 +176,6 @@ pub struct ComputeConfiguration {
     pub proxy_only: bool,
     #[serde(default)]
     pub enforce_no_store_policy: bool,
-    pub data_collection_api_key: Option<String>,
-    pub data_collection_api_url: Option<String>,
 }
 
 fn default_cookie_name() -> String {
