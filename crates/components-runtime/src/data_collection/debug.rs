@@ -10,10 +10,10 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::time::Duration;
 
-use super::context::EventContext;
+use super::{context::EventContext, logger::Logger};
 
 #[derive(Serialize, Debug, Clone, Default)]
-pub struct DebugEntry {
+pub struct DebugPayload {
     pub uuid: String,
     pub timestamp: DateTime<Utc>,
     #[serde(rename = "type")]
@@ -31,8 +31,8 @@ pub struct DebugEntry {
     pub component_response: DebugComponentResponse,
 }
 
-impl DebugEntry {
-    pub fn new(params: DebugParams) -> DebugEntry {
+impl DebugPayload {
+    pub fn new(params: DebugParams) -> Self {
         let component_request = DebugComponentRequest::new(&params.request);
 
         let component_response = DebugComponentResponse::new(
@@ -42,13 +42,7 @@ impl DebugEntry {
             params.timer.elapsed().as_millis() as i32,
         );
 
-        let outgoing_consent = match params.event.consent.clone().unwrap() {
-            Consent::Granted => "granted",
-            Consent::Denied => "denied",
-            Consent::Pending => "pending",
-        };
-
-        DebugEntry {
+        Self {
             uuid: params.event.uuid.clone(),
             timestamp: params.event.timestamp,
             event_type: match params.event.event_type {
@@ -61,7 +55,11 @@ impl DebugEntry {
             data: params.event.data.clone(),
             context: params.event.context.clone(),
             incoming_consent: params.incoming_consent.to_string(),
-            outgoing_consent: outgoing_consent.to_string(),
+            outgoing_consent: match params.event.consent.clone().unwrap() {
+                Consent::Granted => "granted".to_string(),
+                Consent::Denied => "denied".to_string(),
+                Consent::Pending => "pending".to_string(),
+            },
             anonymization: params.anonymization.to_string(),
             component_id: params.component_id.to_string(),
             component_slug: params.component_slug.to_string(),
@@ -84,6 +82,11 @@ pub struct DebugParams {
     pub timer: std::time::Instant,
     pub anonymization: bool,
     pub incoming_consent: String,
+    pub proxy_host: String,
+    pub client_ip: String,
+    pub proxy_type: String,
+    pub proxy_desc: String,
+    pub as_name: String,
 }
 
 impl DebugParams {
@@ -109,6 +112,11 @@ impl DebugParams {
             timer,
             anonymization,
             incoming_consent: ctx.get_consent().clone(),
+            proxy_host: ctx.get_proxy_host().clone(),
+            client_ip: ctx.get_ip().clone(),
+            proxy_type: ctx.get_proxy_type().clone(),
+            proxy_desc: ctx.get_proxy_desc().clone(),
+            as_name: ctx.get_as_name().clone(),
         }
     }
 }
@@ -268,6 +276,7 @@ pub async fn debug_and_trace_response(
     error: String,
 ) -> anyhow::Result<()> {
     let elapsed = params.timer.elapsed();
+    Logger::log_outgoing_event(&params, elapsed.as_millis());
 
     if trace {
         println!("------------");
@@ -294,7 +303,7 @@ pub async fn debug_and_trace_response(
         let api_endpoint = std::env::var("DEBUG_API_ENDPOINT").unwrap_or_default();
 
         if !api_secret.is_empty() && !api_endpoint.is_empty() && !params.project_id.is_empty() {
-            let debug_entry = DebugEntry::new(params);
+            let debug_entry = DebugPayload::new(params);
             let client = reqwest::Client::builder()
                 .timeout(Duration::from_secs(5))
                 .build()?;
@@ -308,6 +317,5 @@ pub async fn debug_and_trace_response(
         }
     }
 
-    // todo: log outgoing event
     Ok(())
 }
