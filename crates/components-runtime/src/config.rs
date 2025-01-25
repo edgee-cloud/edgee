@@ -24,18 +24,31 @@ pub struct DataCollectionComponents {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct DataCollectionComponentConfig {
+    #[serde(default = "default_true")]
     pub anonymization: bool,
+    #[serde(default = "default_consent")]
     pub default_consent: String,
+    #[serde(default = "default_true")]
     pub track_event_enabled: bool,
+    #[serde(default = "default_true")]
     pub user_event_enabled: bool,
+    #[serde(default = "default_true")]
     pub page_event_enabled: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_consent() -> String {
+    "pending".to_string()
 }
 
 impl Default for DataCollectionComponentConfig {
     fn default() -> Self {
         DataCollectionComponentConfig {
             anonymization: true,
-            default_consent: "pending".to_string(),
+            default_consent: default_consent(),
             track_event_enabled: true,
             user_event_enabled: true,
             page_event_enabled: true,
