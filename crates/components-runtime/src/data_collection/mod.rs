@@ -1,6 +1,7 @@
 mod context;
 mod convert;
 mod debug;
+pub mod logger;
 pub mod payload;
 
 wasmtime::component::bindgen!({
@@ -110,12 +111,6 @@ pub async fn send_events(
 
             let initial_anonymization = cfg.config.anonymization;
             let default_consent = cfg.config.default_consent.clone();
-            let _path = event.context.page.path.clone();
-            let _event_type = match event.event_type {
-                EventType::Page => "page",
-                EventType::Track => "track",
-                EventType::User => "user",
-            };
 
             // Use the helper function to handle consent and determine anonymization
             let (anonymization, outgoing_consent) = handle_consent_and_anonymization(
