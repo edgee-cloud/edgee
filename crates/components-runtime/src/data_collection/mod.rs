@@ -1,3 +1,4 @@
+mod context;
 mod convert;
 mod debug;
 pub mod payload;
@@ -12,7 +13,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use crate::config::ComponentsConfiguration;
-use chrono::{DateTime, Utc};
+use context::EventContext;
 use debug::{debug_and_trace_response, trace_disabled_event, trace_request, DebugParams};
 use http::{header, HeaderMap, HeaderName, HeaderValue};
 use tracing::{error, span, Instrument, Level};
@@ -25,7 +26,7 @@ use crate::{
 use crate::context::ComponentsContext;
 
 pub async fn send_json_events(
-    ctx: &ComponentsContext,
+    component_ctx: &ComponentsContext,
     events_json: &str,
     component_config: &ComponentsConfiguration,
     trace_component: &Option<String>,
@@ -37,7 +38,7 @@ pub async fn send_json_events(
 
     let mut events: Vec<Event> = serde_json::from_str(events_json)?;
     send_events(
-        ctx,
+        component_ctx,
         &mut events,
         component_config,
         trace_component,
@@ -49,7 +50,7 @@ pub async fn send_json_events(
 }
 
 pub async fn send_events(
-    ctx: &ComponentsContext,
+    component_ctx: &ComponentsContext,
     events: &mut [Event],
     component_config: &ComponentsConfiguration,
     trace_component: &Option<String>,
@@ -61,9 +62,9 @@ pub async fn send_events(
         return Ok(());
     }
 
-    let request_info = RequestInfo::new(events, project_id, proxy_host);
+    let ctx = &EventContext::new(events, project_id, proxy_host);
 
-    let mut store = ctx.empty_store();
+    let mut store = component_ctx.empty_store();
 
     // iterate on each event
     for event in events.iter_mut() {
@@ -109,7 +110,6 @@ pub async fn send_events(
 
             let initial_anonymization = cfg.config.anonymization;
             let default_consent = cfg.config.default_consent.clone();
-            let incoming_consent = request_info.consent.clone();
             let _path = event.context.page.path.clone();
             let _event_type = match event.event_type {
                 EventType::Page => "page",
@@ -125,29 +125,29 @@ pub async fn send_events(
             );
 
             if anonymization {
-                event.context.client.ip = request_info.ip_anonymized.clone();
+                event.context.client.ip = ctx.get_ip_anonymized().clone();
                 // todo: anonymize other data, utm, referrer, etc.
             } else {
-                event.context.client.ip = request_info.ip.clone();
+                event.context.client.ip = ctx.get_ip().clone();
             }
 
             // Native cookie support
             if let Some(ref ids) = event.context.user.native_cookie_ids {
-                if ids.contains_key(&cfg.name) {
-                    event.context.user.edgee_id = ids.get(&cfg.name).unwrap().clone();
+                if ids.contains_key(&cfg.id) {
+                    event.context.user.edgee_id = ids.get(&cfg.id).unwrap().clone();
                 } else {
-                    event.context.user.edgee_id = request_info.edgee_id.clone();
+                    event.context.user.edgee_id = ctx.get_edgee_id().clone();
                 }
             }
 
             // Add one second to the timestamp if uuid is not the same than the first event, to prevent duplicate sessions
-            if event.uuid != request_info.uuid {
-                event.timestamp = request_info.timestamp + chrono::Duration::seconds(1);
+            if &event.uuid != ctx.get_uuid() {
+                event.timestamp = *ctx.get_timestamp() + chrono::Duration::seconds(1);
                 event.context.session.session_start = false;
             }
 
             // get the instance of the component
-            let instance = ctx
+            let instance = component_ctx
                 .get_data_collection_instance(&cfg.name, &mut store)
                 .await?;
             let component = instance.edgee_protocols_data_collection();
@@ -210,8 +210,7 @@ pub async fn send_events(
             // spawn a separated async thread
             let cfg_id = cfg.id.to_string();
             let cfg_name = cfg.name.to_string();
-            let request_info_from = request_info.from.clone();
-            let project_id = project_id.to_string();
+            let ctx_clone = ctx.clone();
 
             tokio::spawn(
                 async move {
@@ -242,36 +241,29 @@ pub async fn send_events(
                         }
                     };
 
-                    let mut debug_params = DebugParams {
-                        from: &request_info_from,
-                        project_id: &project_id,
-                        component_id: &cfg_id,
-                        component_slug: &cfg_name,
-                        event: &event,
-                        request: &request_clone,
-                        response_content_type: "",
-                        response_status: 500,
-                        response_body: None,
+                    let mut debug_params = DebugParams::new(
+                        &ctx_clone,
+                        &cfg_id,
+                        &cfg_name,
+                        &event,
+                        &request_clone,
                         timer,
                         anonymization,
-                        incoming_consent: &incoming_consent,
-                    };
+                    );
 
                     match res {
                         Ok(res) => {
-                            let status_str = format!("{:?}", res.status());
-                            debug_params.response_status = status_str.parse::<i32>().unwrap();
+                            debug_params.response_status =
+                                format!("{:?}", res.status()).parse::<i32>().unwrap();
 
-                            let content_type = res
+                            debug_params.response_content_type = res
                                 .headers()
                                 .get("content-type")
                                 .and_then(|v| v.to_str().ok())
                                 .unwrap_or("text/plain")
                                 .to_string();
-                            debug_params.response_content_type = &content_type;
 
-                            let body = res.text().await.unwrap_or_default();
-                            debug_params.response_body = Some(body.clone());
+                            debug_params.response_body = Some(res.text().await.unwrap_or_default());
 
                             let _r = debug_and_trace_response(
                                 debug,
@@ -300,72 +292,6 @@ pub async fn send_events(
     Ok(())
 }
 
-#[derive(Clone)]
-pub struct RequestInfo {
-    pub from: String,
-    pub ip: String,
-    pub ip_anonymized: String,
-    pub consent: String,
-    pub uuid: String,
-    pub timestamp: DateTime<Utc>,
-    pub edgee_id: String,
-    pub proxy_type: String,
-    pub proxy_desc: String,
-    pub as_name: String,
-    pub project_id: String,
-    pub proxy_host: String,
-}
-
-impl RequestInfo {
-    pub fn new(events: &[Event], project_id: &str, proxy_host: &str) -> Self {
-        let mut request_info = RequestInfo {
-            from: "-".to_string(),
-            ip: "".to_string(),
-            ip_anonymized: "".to_string(),
-            consent: "default".to_string(),
-            uuid: "".to_string(),
-            timestamp: chrono::Utc::now(),
-            edgee_id: "".to_string(),
-            proxy_type: "".to_string(),
-            proxy_desc: "".to_string(),
-            as_name: "".to_string(),
-            project_id: project_id.to_string(),
-            proxy_host: proxy_host.to_string(),
-        };
-        if let Some(event) = events.first() {
-            // set request_info from the first event
-            request_info.from = event.from.clone().unwrap_or("-".to_string());
-            request_info.ip = event.context.client.ip.clone();
-            request_info.ip_anonymized = anonymize_ip(request_info.ip.clone());
-            if event.consent.is_some() {
-                request_info.consent = event.consent.as_ref().unwrap().to_string();
-            }
-            request_info.uuid = event.uuid.clone();
-            request_info.timestamp = event.timestamp;
-            request_info.edgee_id = event.context.user.edgee_id.clone();
-            request_info.proxy_type = event
-                .context
-                .client
-                .proxy_type
-                .clone()
-                .unwrap_or("-".to_string());
-            request_info.proxy_desc = event
-                .context
-                .client
-                .proxy_desc
-                .clone()
-                .unwrap_or("-".to_string());
-            request_info.as_name = event
-                .context
-                .client
-                .as_name
-                .clone()
-                .unwrap_or("-".to_string());
-        }
-        request_info
-    }
-}
-
 fn handle_consent_and_anonymization(
     event: &mut Event,
     default_consent: &str,
@@ -387,33 +313,6 @@ fn handle_consent_and_anonymization(
         Some(Consent::Granted) => (false, outgoing_consent),
         _ => (initial_anonymization, outgoing_consent),
     }
-}
-
-fn anonymize_ip(ip: String) -> String {
-    if ip.is_empty() {
-        return ip;
-    }
-
-    use std::net::IpAddr;
-
-    const KEEP_IPV4_BYTES: usize = 3;
-    const KEEP_IPV6_BYTES: usize = 6;
-
-    let ip: IpAddr = ip.clone().parse().unwrap();
-    let anonymized_ip = match ip {
-        IpAddr::V4(ip) => {
-            let mut data = ip.octets();
-            data[KEEP_IPV4_BYTES..].fill(0);
-            IpAddr::V4(data.into())
-        }
-        IpAddr::V6(ip) => {
-            let mut data = ip.octets();
-            data[KEEP_IPV6_BYTES..].fill(0);
-            IpAddr::V6(data.into())
-        }
-    };
-
-    anonymized_ip.to_string()
 }
 
 fn insert_expected_headers(

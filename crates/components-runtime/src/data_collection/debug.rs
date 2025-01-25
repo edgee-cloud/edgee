@@ -10,6 +10,8 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::time::Duration;
 
+use super::context::EventContext;
+
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct DebugEntry {
     pub uuid: String,
@@ -31,7 +33,7 @@ pub struct DebugEntry {
 
 impl DebugEntry {
     pub fn new(params: DebugParams) -> DebugEntry {
-        let component_request = DebugComponentRequest::new(params.request);
+        let component_request = DebugComponentRequest::new(&params.request);
 
         let component_response = DebugComponentResponse::new(
             params.response_status,
@@ -69,19 +71,46 @@ impl DebugEntry {
     }
 }
 
-pub struct DebugParams<'a> {
-    pub(crate) from: &'a str,
-    pub(crate) project_id: &'a str,
-    pub(crate) component_id: &'a str,
-    pub(crate) component_slug: &'a str,
-    pub(crate) event: &'a Event,
-    pub(crate) request: &'a EdgeeRequest,
-    pub(crate) response_content_type: &'a str,
-    pub(crate) response_status: i32,
-    pub(crate) response_body: Option<String>,
-    pub(crate) timer: std::time::Instant,
-    pub(crate) anonymization: bool,
-    pub(crate) incoming_consent: &'a str,
+pub struct DebugParams {
+    pub from: String,
+    pub project_id: String,
+    pub component_id: String,
+    pub component_slug: String,
+    pub event: Event,
+    pub request: EdgeeRequest,
+    pub response_content_type: String,
+    pub response_status: i32,
+    pub response_body: Option<String>,
+    pub timer: std::time::Instant,
+    pub anonymization: bool,
+    pub incoming_consent: String,
+}
+
+impl DebugParams {
+    pub fn new(
+        ctx: &EventContext,
+        component_id: &str,
+        component_slug: &str,
+        event: &Event,
+        request: &EdgeeRequest,
+        timer: std::time::Instant,
+        anonymization: bool,
+    ) -> DebugParams {
+        DebugParams {
+            from: ctx.get_from().clone(),
+            project_id: ctx.get_project_id().clone(),
+            component_id: component_id.to_string(),
+            component_slug: component_slug.to_string(),
+            event: event.clone(),
+            request: request.clone(),
+            response_content_type: "".to_string(),
+            response_status: 500,
+            response_body: None,
+            timer,
+            anonymization,
+            incoming_consent: ctx.get_consent().clone(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -235,7 +264,7 @@ pub fn trace_request(
 pub async fn debug_and_trace_response(
     debug: bool,
     trace: bool,
-    params: DebugParams<'_>,
+    params: DebugParams,
     error: String,
 ) -> anyhow::Result<()> {
     let elapsed = params.timer.elapsed();
