@@ -87,7 +87,7 @@ pub async fn handle_request(
             );
             return controller::edgee_client_event(ctx).await;
         }
-        return controller::empty_json_response();
+        return controller::empty_pixel_response();
     }
 
     // event path for third party integration (Edgee installed like a third party, and use localstorage)
@@ -113,7 +113,7 @@ pub async fn handle_request(
             );
             return controller::edgee_client_event_from_third_party_sdk(ctx).await;
         }
-        return controller::empty_json_response();
+        return controller::empty_pixel_response();
     }
 
     // define the backend

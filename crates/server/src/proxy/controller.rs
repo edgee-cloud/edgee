@@ -146,13 +146,15 @@ pub async fn edgee_client_event_from_third_party_sdk(
     Ok(build_response(response, Bytes::new()))
 }
 
-pub fn empty_json_response() -> anyhow::Result<Response> {
+pub fn empty_pixel_response() -> anyhow::Result<Response> {
+    let body = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/public/pixel.gif"));
     Ok(http::Response::builder()
-        .status(StatusCode::NO_CONTENT)
-        .header(header::CONTENT_TYPE, "application/json")
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "image/gif")
         .header(header::CACHE_CONTROL, "private, no-store")
         .header("X-Robots-Tag", "noindex, nofollow")
-        .body(empty())?)
+        .body(Full::from(Bytes::from(&body[..])).boxed())
+        .expect("response builder should never fail"))
 }
 
 pub fn options(allow_methods: &str) -> anyhow::Result<Response> {
