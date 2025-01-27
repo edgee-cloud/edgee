@@ -176,6 +176,24 @@ backend = "api"
 
 This way, calling `/api/test` on port `80` will result in calling `/v1/test` on the API backend.
 
+## Redirections
+
+Edgee supports HTTP redirections, allowing you to redirect traffic from one URL to another. This can be useful for various purposes, such as redirecting HTTP to HTTPS, or setting up permanent or temporary redirects.
+
+### Example
+
+Here's how you can set up a redirection in your `edgee.toml` configuration file:
+
+```toml
+# edgee.toml
+[[redirections]]
+origin = "http://example.com/old-path"
+destination = "http://example.com/new-path"
+```
+
+In this example, requests to `http://example.com/old-path` will be temporarily redirected to `http://example.com/new-path`
+
+
 ## Integrating with edgee components
 
 Check out the [official components docs](https://www.edgee.cloud/docs/components/overview) to dive into the
