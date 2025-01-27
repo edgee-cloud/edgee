@@ -191,7 +191,7 @@ pub fn build_redirection(associated_redirection: &RedirectionContext) -> anyhow:
         .status(StatusCode::MOVED_PERMANENTLY)
         .header(
             header::LOCATION,
-            format!("{}", associated_redirection.destination),
+            associated_redirection.destination.as_str(),
         )
         .header(header::CONTENT_TYPE, "text/plain")
         .body(empty())
