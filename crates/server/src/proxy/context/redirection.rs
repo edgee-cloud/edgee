@@ -1,5 +1,3 @@
-use tracing::info;
-
 use super::incoming::RequestHandle;
 use crate::config;
 
