@@ -22,6 +22,12 @@ pub fn connect(#[builder(default = PROD_BASEURL)] baseurl: &str, api_token: Stri
 
     let mut default_headers = HeaderMap::new();
 
+    // if API_URL env var is set, redefine baseurl
+    let baseurl = std::env::var("API_URL").unwrap_or(baseurl.to_string());
+
+    // if API_TOKEN env var is set, redefine api_token
+    let api_token = std::env::var("API_TOKEN").unwrap_or(api_token.to_string());
+
     let auth_value = format!("Bearer {api_token}");
     default_headers.insert(header::AUTHORIZATION, auth_value.try_into().unwrap());
 
@@ -30,5 +36,5 @@ pub fn connect(#[builder(default = PROD_BASEURL)] baseurl: &str, api_token: Stri
         .build()
         .unwrap();
 
-    Client::new_with_client(baseurl, client)
+    Client::new_with_client(&baseurl, client)
 }
