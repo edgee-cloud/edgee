@@ -307,7 +307,7 @@ pub async fn debug_and_trace_response(
         let api_url = std::env::var("EDGEE_API_URL").unwrap_or_default();
 
         if !api_super_token.is_empty() && !api_url.is_empty() && !params.project_id.is_empty() {
-            let api_endpoint = format!("{}/v1/debug/data_collection_events", api_url);
+            let api_endpoint = format!("{}/v1/debug/data-collection", api_url);
             let debug_entry = DebugPayload::new(params, &error);
             let client = reqwest::Client::builder()
                 .timeout(Duration::from_secs(5))
