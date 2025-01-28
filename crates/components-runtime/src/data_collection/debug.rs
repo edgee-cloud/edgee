@@ -32,12 +32,16 @@ pub struct DebugPayload {
 }
 
 impl DebugPayload {
-    pub fn new(params: DebugParams) -> Self {
+    pub fn new(params: DebugParams, error: &str) -> Self {
         let component_request = DebugComponentRequest::new(&params.request);
 
+        let mut body = params.response_body;
+        if !error.is_empty() {
+            body = Some(error.to_string())
+        }
         let component_response = DebugComponentResponse::new(
             params.response_status,
-            params.response_body,
+            body,
             params.response_content_type.to_string(),
             params.timer.elapsed().as_millis() as i32,
         );
@@ -276,7 +280,7 @@ pub async fn debug_and_trace_response(
     error: String,
 ) -> anyhow::Result<()> {
     let elapsed = params.timer.elapsed();
-    Logger::log_outgoing_event(&params, elapsed.as_millis());
+    Logger::log_outgoing_event(&params, elapsed.as_millis(), &error);
 
     if trace {
         println!("------------");
@@ -293,24 +297,25 @@ pub async fn debug_and_trace_response(
             }
         }
         if !error.is_empty() {
-            println!("Error:    {}", error);
+            println!("Error:    {}", &error);
         }
         println!();
     }
 
     if debug {
-        let api_secret = std::env::var("DEBUG_API_SECRET").unwrap_or_default();
-        let api_endpoint = std::env::var("DEBUG_API_ENDPOINT").unwrap_or_default();
+        let api_super_token = std::env::var("EDGEE_API_SUPER_TOKEN").unwrap_or_default();
+        let api_url = std::env::var("EDGEE_API_URL").unwrap_or_default();
 
-        if !api_secret.is_empty() && !api_endpoint.is_empty() && !params.project_id.is_empty() {
-            let debug_entry = DebugPayload::new(params);
+        if !api_super_token.is_empty() && !api_url.is_empty() && !params.project_id.is_empty() {
+            let api_endpoint = format!("{}/v1/debug/data_collection_events", api_url);
+            let debug_entry = DebugPayload::new(params, &error);
             let client = reqwest::Client::builder()
                 .timeout(Duration::from_secs(5))
                 .build()?;
             let _r = client
                 .post(api_endpoint.as_str())
                 .header("Content-Type", "application/json")
-                .header("X-Api-Secret", api_secret.as_str())
+                .header("Authorization", format!("Bearer {}", api_super_token))
                 .body(serde_json::to_string(&debug_entry).unwrap())
                 .send()
                 .await;
