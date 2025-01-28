@@ -4,6 +4,7 @@ use std::sync::OnceLock;
 use edgee_components_runtime::config::ComponentsConfiguration;
 use serde::Deserialize;
 use tracing::level_filters::LevelFilter;
+use tracing::warn;
 
 static CONFIG: OnceLock<StaticConfiguration> = OnceLock::new();
 
@@ -91,10 +92,9 @@ impl StaticConfiguration {
         }
 
         if !duplicates.is_empty() {
-            Err(format!("duplicate redirections found: {:?}", duplicates))
-        } else {
-            Ok(())
+            warn!("duplicate redirections found: {:?}", duplicates)
         }
+        Ok(())
     }
 }
 

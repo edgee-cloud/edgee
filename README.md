@@ -191,7 +191,7 @@ origin = "http://example.com/old-path"
 destination = "http://example.com/new-path"
 ```
 
-In this example, requests to `http://example.com/old-path` will be temporarily redirected to `http://example.com/new-path`
+In this example, requests to `http://example.com/old-path` will be temporarily (HTTP 302) redirected to `http://example.com/new-path`
 
 
 ## Integrating with edgee components
