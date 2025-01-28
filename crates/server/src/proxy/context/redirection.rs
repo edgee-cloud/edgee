@@ -2,7 +2,6 @@ use super::incoming::RequestHandle;
 use crate::config;
 
 pub struct RedirectionContext {
-    pub _origin: String,
     pub destination: String,
 }
 
@@ -20,7 +19,6 @@ impl RedirectionContext {
                     )
             })
             .map(|redirection| Self {
-                _origin: redirection.origin.clone(),
                 destination: redirection.destination.clone(),
             })
     }
