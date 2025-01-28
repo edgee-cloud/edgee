@@ -7,7 +7,7 @@ use super::debug::DebugParams;
 pub struct Logger {}
 
 impl Logger {
-    pub fn log_outgoing_event(params: &DebugParams, duration: u128) {
+    pub fn log_outgoing_event(params: &DebugParams, duration: u128, error: &str) {
         let path = params.event.context.page.path.clone();
         let event_type = match params.event.event_type {
             EventType::Page => "page",
@@ -37,6 +37,7 @@ impl Logger {
             component = params.component_slug,
             status = params.response_status,
             duration = duration,
+            message = error
         );
     }
 }
