@@ -2111,7 +2111,7 @@
         }
       }
     },
-    "/v1/projects/{id}/debug/incoming_data_collection_events": {
+    "/v1/projects/{id}/debug/data-collection/incoming": {
       "get": {
         "operationId": "getIncomingDataCollectionEvents",
         "summary": "List all Incoming Data Collection Events",
@@ -2176,7 +2176,7 @@
         }
       }
     },
-    "/v1/projects/{id}/debug/outgoing_data_collection_events/{event_id}": {
+    "/v1/projects/{id}/debug/data-collection/outgoing/{event_id}": {
       "get": {
         "operationId": "getOutgoingDataCollectionEvents",
         "summary": "List all Outgoing Data Collection Events",
