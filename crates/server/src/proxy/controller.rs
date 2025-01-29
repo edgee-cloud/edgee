@@ -189,10 +189,7 @@ pub fn redirect_to_https(request: &RequestHandle) -> anyhow::Result<Response> {
 pub fn build_redirection(associated_redirection: &RedirectionContext) -> anyhow::Result<Response> {
     Ok(http::Response::builder()
         .status(StatusCode::FOUND)
-        .header(
-            header::LOCATION,
-            associated_redirection.target.as_str(),
-        )
+        .header(header::LOCATION, associated_redirection.target.as_str())
         .header(header::CONTENT_TYPE, "text/plain")
         .header(header::CACHE_CONTROL, "private, no-store")
         .body(empty())
