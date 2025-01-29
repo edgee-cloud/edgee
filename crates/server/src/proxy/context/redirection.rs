@@ -1,5 +1,3 @@
-use url::Url;
-
 use super::incoming::RequestHandle;
 use crate::config;
 
@@ -12,12 +10,13 @@ impl RedirectionContext {
         let cfg = &config::get().redirections;
         cfg.iter()
             .filter_map(|r| {
-                Url::parse(&r.origin)
-                    .ok()
-                    .filter(|parsed_url| parsed_url.path() == request.get_path())
-                    .map(|_| RedirectionContext {
+                if &r.origin == request.get_path() {
+                    Some(RedirectionContext {
                         destination: r.destination.clone(),
                     })
+                } else {
+                    None
+                }
             })
             .next()
     }
