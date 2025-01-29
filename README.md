@@ -187,8 +187,8 @@ Here's how you can set up a redirection in your `edgee.toml` configuration file:
 ```toml
 # edgee.toml
 [[redirections]]
-origin = "http://example.com/old-path"
-destination = "http://example.com/new-path"
+source = "http://example.com/old-path"
+target = "http://example.com/new-path"
 ```
 
 In this example, requests to `http://example.com/old-path` will be temporarily (HTTP 302) redirected to `http://example.com/new-path`

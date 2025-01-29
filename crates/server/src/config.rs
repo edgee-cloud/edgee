@@ -86,8 +86,8 @@ impl StaticConfiguration {
         let mut duplicates = HashSet::new();
 
         for redirection in &self.redirections {
-            if !seen.insert(&redirection.origin) {
-                duplicates.insert(&redirection.origin);
+            if !seen.insert(&redirection.source) {
+                duplicates.insert(&redirection.source);
             }
         }
 
@@ -147,8 +147,8 @@ pub struct RoutingConfiguration {
 
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct RedirectionsConfiguration {
-    pub origin: String,
-    pub destination: String,
+    pub source: String,
+    pub target: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]

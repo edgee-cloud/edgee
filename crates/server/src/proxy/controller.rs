@@ -191,7 +191,7 @@ pub fn build_redirection(associated_redirection: &RedirectionContext) -> anyhow:
         .status(StatusCode::FOUND)
         .header(
             header::LOCATION,
-            associated_redirection.destination.as_str(),
+            associated_redirection.target.as_str(),
         )
         .header(header::CONTENT_TYPE, "text/plain")
         .header(header::CACHE_CONTROL, "private, no-store")

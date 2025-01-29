@@ -2,7 +2,7 @@ use super::incoming::RequestHandle;
 use crate::config;
 
 pub struct RedirectionContext {
-    pub destination: String,
+    pub target: String,
 }
 
 impl RedirectionContext {
@@ -10,9 +10,9 @@ impl RedirectionContext {
         let cfg = &config::get().redirections;
         cfg.iter()
             .filter_map(|r| {
-                if &r.origin == request.get_path() {
+                if &r.source == request.get_path() {
                     Some(RedirectionContext {
-                        destination: r.destination.clone(),
+                        target: r.target.clone(),
                     })
                 } else {
                     None
