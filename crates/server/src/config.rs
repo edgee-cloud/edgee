@@ -26,9 +26,6 @@ pub struct StaticConfiguration {
 
     #[serde(default)]
     pub components: ComponentsConfiguration,
-
-    #[serde(default)]
-    pub redirections: Vec<RedirectionsConfiguration>,
 }
 
 fn default_compute_config() -> ComputeConfiguration {
@@ -47,10 +44,8 @@ fn default_compute_config() -> ComputeConfiguration {
 
 impl StaticConfiguration {
     pub fn validate(&self) -> Result<(), Vec<String>> {
-        let validators: Vec<Box<dyn Fn() -> Result<(), String>>> = vec![
-            Box::new(|| self.validate_no_duplicate_domains()),
-            Box::new(|| self.validate_no_duplicate_redirections()), // additional validation rules can be added here
-        ];
+        let validators: Vec<Box<dyn Fn() -> Result<(), String>>> =
+            vec![Box::new(|| self.validate_no_duplicate_domains())];
 
         let errors: Vec<String> = validators
             .iter()
@@ -72,6 +67,17 @@ impl StaticConfiguration {
             if !seen.insert(&route.domain) {
                 duplicates.insert(&route.domain);
             }
+            let mut seen_redirection = HashSet::new();
+            let mut redirection_duplicates = HashSet::new();
+            for redirection in &route.redirections {
+                if !seen_redirection.insert(&redirection.source) {
+                    redirection_duplicates.insert(&redirection.source);
+                }
+            }
+
+            if !redirection_duplicates.is_empty() {
+                warn!("duplicate redirections found: {:?}", duplicates)
+            }
         }
 
         if !duplicates.is_empty() {
@@ -79,22 +85,6 @@ impl StaticConfiguration {
         } else {
             Ok(())
         }
-    }
-
-    fn validate_no_duplicate_redirections(&self) -> Result<(), String> {
-        let mut seen = HashSet::new();
-        let mut duplicates = HashSet::new();
-
-        for redirection in &self.redirections {
-            if !seen.insert(&redirection.source) {
-                duplicates.insert(&redirection.source);
-            }
-        }
-
-        if !duplicates.is_empty() {
-            warn!("duplicate redirections found: {:?}", duplicates)
-        }
-        Ok(())
     }
 }
 
@@ -143,6 +133,8 @@ pub struct RoutingConfiguration {
     #[serde(default)]
     pub rules: Vec<RoutingRulesConfiguration>,
     pub backends: Vec<BackendConfiguration>,
+    #[serde(default)]
+    pub redirections: Vec<RedirectionsConfiguration>,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -255,7 +247,6 @@ pub fn init_test_config() {
         }],
         compute: default_compute_config(),
         components: ComponentsConfiguration::default(),
-        redirections: vec![],
     };
     config.validate().unwrap();
     CONFIG.get_or_init(|| config);
