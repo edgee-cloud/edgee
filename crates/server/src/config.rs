@@ -133,6 +133,7 @@ pub struct RoutingConfiguration {
     #[serde(default)]
     pub rules: Vec<RoutingRulesConfiguration>,
     pub backends: Vec<BackendConfiguration>,
+    #[serde(default)]
     pub redirections: Vec<RedirectionsConfiguration>,
 }
 
