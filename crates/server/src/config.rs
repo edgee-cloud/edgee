@@ -240,10 +240,12 @@ pub fn init_test_config() {
         monitor: Some(MonitorConfiguration {
             address: "127.0.0.1:9090".to_string(),
         }),
+
         routing: vec![RoutingConfiguration {
             domain: "test.com".to_string(),
             rules: vec![RoutingRulesConfiguration::default()],
             backends: vec![BackendConfiguration::default()],
+            redirections: vec![RedirectionsConfiguration::default()],
         }],
         compute: default_compute_config(),
         components: ComponentsConfiguration::default(),
