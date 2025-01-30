@@ -118,6 +118,13 @@ pub async fn handle_request(
     }
 
     if let Some(redirection_ctx) = RedirectionContext::from_request(request) {
+        info!(
+            "302 - {} {}{} - {}ms",
+            request.get_method(),
+            request.get_host(),
+            request.get_path(),
+            timer_start.elapsed().as_millis()
+        );
         return controller::build_redirection(&redirection_ctx);
     }
 
