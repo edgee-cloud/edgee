@@ -4,6 +4,7 @@ use std::sync::OnceLock;
 use edgee_components_runtime::config::ComponentsConfiguration;
 use serde::Deserialize;
 use tracing::level_filters::LevelFilter;
+use tracing::warn;
 
 static CONFIG: OnceLock<StaticConfiguration> = OnceLock::new();
 
@@ -43,10 +44,8 @@ fn default_compute_config() -> ComputeConfiguration {
 
 impl StaticConfiguration {
     pub fn validate(&self) -> Result<(), Vec<String>> {
-        let validators: Vec<Box<dyn Fn() -> Result<(), String>>> = vec![
-            Box::new(|| self.validate_no_duplicate_domains()),
-            // additional validation rules can be added here
-        ];
+        let validators: Vec<Box<dyn Fn() -> Result<(), String>>> =
+            vec![Box::new(|| self.validate_no_duplicate_domains())];
 
         let errors: Vec<String> = validators
             .iter()
@@ -67,6 +66,17 @@ impl StaticConfiguration {
         for route in &self.routing {
             if !seen.insert(&route.domain) {
                 duplicates.insert(&route.domain);
+            }
+            let mut seen_redirection = HashSet::new();
+            let mut redirection_duplicates = HashSet::new();
+            for redirection in &route.redirections {
+                if !seen_redirection.insert(&redirection.source) {
+                    redirection_duplicates.insert(&redirection.source);
+                }
+            }
+
+            if !redirection_duplicates.is_empty() {
+                warn!("duplicate redirections found: {:?}", duplicates)
             }
         }
 
@@ -123,6 +133,14 @@ pub struct RoutingConfiguration {
     #[serde(default)]
     pub rules: Vec<RoutingRulesConfiguration>,
     pub backends: Vec<BackendConfiguration>,
+    #[serde(default)]
+    pub redirections: Vec<RedirectionsConfiguration>,
+}
+
+#[derive(Deserialize, Debug, Clone, Default)]
+pub struct RedirectionsConfiguration {
+    pub source: String,
+    pub target: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -222,10 +240,12 @@ pub fn init_test_config() {
         monitor: Some(MonitorConfiguration {
             address: "127.0.0.1:9090".to_string(),
         }),
+
         routing: vec![RoutingConfiguration {
             domain: "test.com".to_string(),
             rules: vec![RoutingRulesConfiguration::default()],
             backends: vec![BackendConfiguration::default()],
+            redirections: vec![RedirectionsConfiguration::default()],
         }],
         compute: default_compute_config(),
         components: ComponentsConfiguration::default(),

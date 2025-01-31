@@ -11,6 +11,7 @@ use tracing::info;
 
 use super::compute::{self};
 use super::context::incoming::{IncomingContext, RequestHandle};
+use super::context::redirection::RedirectionContext;
 use crate::config;
 
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
@@ -181,6 +182,16 @@ pub fn redirect_to_https(request: &RequestHandle) -> anyhow::Result<Response> {
             ),
         )
         .header(header::CONTENT_TYPE, "text/plain")
+        .body(empty())
+        .expect("response builder should never fail"))
+}
+
+pub fn build_redirection(associated_redirection: &RedirectionContext) -> anyhow::Result<Response> {
+    Ok(http::Response::builder()
+        .status(StatusCode::FOUND)
+        .header(header::LOCATION, associated_redirection.target.as_str())
+        .header(header::CONTENT_TYPE, "text/plain")
+        .header(header::CACHE_CONTROL, "private, no-store")
         .body(empty())
         .expect("response builder should never fail"))
 }

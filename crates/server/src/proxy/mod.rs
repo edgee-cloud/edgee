@@ -11,7 +11,8 @@ use tracing::{error, info, warn};
 
 use crate::config;
 use context::{
-    body::ProxyBody, incoming::IncomingContext, proxy::ProxyContext, routing::RoutingContext,
+    body::ProxyBody, incoming::IncomingContext, proxy::ProxyContext,
+    redirection::RedirectionContext, routing::RoutingContext,
 };
 
 pub mod compute;
@@ -114,6 +115,17 @@ pub async fn handle_request(
             return controller::edgee_client_event_from_third_party_sdk(ctx).await;
         }
         return controller::empty_json_response();
+    }
+
+    if let Some(redirection_ctx) = RedirectionContext::from_request(request) {
+        info!(
+            "302 - {} {}{} - {}ms",
+            request.get_method(),
+            request.get_host(),
+            request.get_path(),
+            timer_start.elapsed().as_millis()
+        );
+        return controller::build_redirection(&redirection_ctx);
     }
 
     // define the backend
