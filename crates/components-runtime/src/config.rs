@@ -20,7 +20,7 @@ pub struct DataCollectionComponents {
     pub credentials: HashMap<String, String>,
     #[serde(default)]
     pub config: DataCollectionComponentConfig,
-    pub forward_headers: Option<bool>,
+    pub forward_client_headers: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
