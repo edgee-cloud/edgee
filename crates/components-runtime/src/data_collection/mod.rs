@@ -194,7 +194,10 @@ pub async fn send_events(
             for (key, value) in request.headers.iter() {
                 headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
             }
-            insert_expected_headers(&mut headers, &event, &component_event)?;
+
+            if cfg.forward_client_headers.unwrap_or(true) {
+                insert_expected_headers(&mut headers, &event, &component_event)?;
+            }
 
             let client = reqwest::Client::builder()
                 .timeout(Duration::from_secs(5))
