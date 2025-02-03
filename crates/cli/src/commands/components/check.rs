@@ -12,12 +12,12 @@ pub struct Options {
     pub consent_mapping_component: Option<Vec<String>>,
 }
 
-pub async fn run(_opts: Options) -> anyhow::Result<()> {
+pub async fn run(opts: Options) -> anyhow::Result<()> {
     use crate::components::manifest::{self, Manifest};
 
     let (dc_components, cmp_components) = match (
-        _opts.data_collection_component.as_ref(),
-        _opts.consent_mapping_component.as_ref(),
+        opts.data_collection_component.as_ref(),
+        opts.consent_mapping_component.as_ref(),
     ) {
         (None, None) => {
             let manifest_path = manifest::find_manifest_path()
@@ -37,8 +37,8 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             )
         }
         _ => (
-            _opts.data_collection_component.unwrap_or_default(),
-            _opts.consent_mapping_component.unwrap_or_default(),
+            opts.data_collection_component.unwrap_or_default(),
+            opts.consent_mapping_component.unwrap_or_default(),
         ),
     };
 
