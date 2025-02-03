@@ -1,9 +1,7 @@
 use edgee_components_runtime::config::{
-    ComponentsConfiguration, ConsentMappingComponents, DataCollectionComponentConfig,
-    DataCollectionComponents,
+    ComponentsConfiguration, ConsentMappingComponents, DataCollectionComponents,
 };
 use edgee_components_runtime::context::ComponentsContext;
-use std::collections::HashMap;
 
 #[derive(Debug, clap::Parser)]
 pub struct Options {
@@ -49,18 +47,9 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         data_collection: dc_components
             .into_iter()
             .map(|component_path| DataCollectionComponents {
-                id: "id".to_string(),
                 name: component_path.clone(),
                 component: component_path,
-                credentials: HashMap::new(),
-                config: DataCollectionComponentConfig {
-                    anonymization: true,
-                    default_consent: "pending".to_string(),
-                    track_event_enabled: true,
-                    user_event_enabled: true,
-                    page_event_enabled: true,
-                },
-                forward_client_headers: None,
+                ..Default::default()
             })
             .collect(),
         consent_mapping: cmp_components
