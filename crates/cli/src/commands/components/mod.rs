@@ -14,7 +14,9 @@ setup_commands! {
     /// List currently pulled components
     List(list),
     /// Check if a component implements the required interfaces
-    Check(check)
+    Check(check),
+    /// Test a component
+    Test(test)
 }
 
 pub type Options = Command;
