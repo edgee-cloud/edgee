@@ -12,6 +12,53 @@ pub struct Options {
     pub consent_mapping_component: Option<Vec<String>>,
 }
 
+enum ComponentType {
+    DataCollection,
+    ConsentMapping,
+}
+
+async fn check_component(
+    component_type: ComponentType,
+    component_path: &str,
+) -> anyhow::Result<()> {
+    let config = match component_type {
+        ComponentType::DataCollection => ComponentsConfiguration {
+            data_collection: vec![DataCollectionComponents {
+                name: component_path.to_string(),
+                component: component_path.to_string(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        },
+        ComponentType::ConsentMapping => ComponentsConfiguration {
+            consent_mapping: vec![ConsentMappingComponents {
+                name: component_path.to_string(),
+                component: component_path.to_string(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        },
+    };
+
+    let context = ComponentsContext::new(&config)?;
+    let mut store = context.empty_store();
+
+    match component_type {
+        ComponentType::DataCollection => {
+            let _ = context
+                .get_data_collection_instance(component_path, &mut store)
+                .await?;
+        }
+        ComponentType::ConsentMapping => {
+            let _ = context
+                .get_consent_mapping_instance(component_path, &mut store)
+                .await?;
+        }
+    }
+
+    Ok(())
+}
+
 pub async fn run(opts: Options) -> anyhow::Result<()> {
     use crate::components::manifest::{self, Manifest};
 
@@ -42,41 +89,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         ),
     };
 
-    // load a wasm host with a default configuration including the component we want to check
-    let config = ComponentsConfiguration {
-        data_collection: dc_components
-            .into_iter()
-            .map(|component_path| DataCollectionComponents {
-                name: component_path.clone(),
-                component: component_path,
-                ..Default::default()
-            })
-            .collect(),
-        consent_mapping: cmp_components
-            .into_iter()
-            .map(|component_path| ConsentMappingComponents {
-                name: component_path.clone(),
-                component: component_path,
-                config: Default::default(),
-            })
-            .collect(),
-        cache: None,
-    };
-
-    // check that the world is correctly implemented by components
-    let context = ComponentsContext::new(&config)?;
-    let mut store = context.empty_store();
-
-    for name in context.components.data_collection.keys() {
-        let _ = context
-            .get_data_collection_instance(name, &mut store)
-            .await?;
+    for component in dc_components {
+        check_component(ComponentType::DataCollection, &component).await?;
     }
-
-    for name in context.components.consent_mapping.keys() {
-        let _ = context
-            .get_consent_mapping_instance(name, &mut store)
-            .await?;
+    for component in cmp_components {
+        check_component(ComponentType::ConsentMapping, &component).await?;
     }
 
     Ok(())
