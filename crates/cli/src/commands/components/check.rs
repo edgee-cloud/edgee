@@ -21,6 +21,13 @@ async fn check_component(
     component_type: ComponentType,
     component_path: &str,
 ) -> anyhow::Result<()> {
+    if !std::path::Path::new(component_path).exists() {
+        return Err(anyhow::anyhow!(
+            "Component {} does not exist",
+            component_path
+        ));
+    }
+
     let config = match component_type {
         ComponentType::DataCollection => ComponentsConfiguration {
             data_collection: vec![DataCollectionComponents {
@@ -40,7 +47,9 @@ async fn check_component(
         },
     };
 
-    let context = ComponentsContext::new(&config)?;
+    let context = ComponentsContext::new(&config)
+        .map_err(|e| anyhow::anyhow!("Invalid component {}: {}", component_path, e))?;
+
     let mut store = context.empty_store();
 
     match component_type {
@@ -56,6 +65,7 @@ async fn check_component(
         }
     }
 
+    println!("Component {} is valid", component_path);
     Ok(())
 }
 
