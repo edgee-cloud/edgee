@@ -4,16 +4,11 @@ use edgee_components_runtime::config::{
 use edgee_components_runtime::context::ComponentsContext;
 
 #[derive(Debug, clap::Parser)]
-pub struct Options {
-    #[clap(short, long, num_args(1..))]
-    pub data_collection_component: Option<Vec<String>>,
-
-    #[clap(short, long, num_args(1..))]
-    pub consent_mapping_component: Option<Vec<String>>,
-}
+pub struct Options {}
 
 enum ComponentType {
     DataCollection,
+    #[allow(dead_code)]
     ConsentMapping,
 }
 
@@ -69,42 +64,23 @@ async fn check_component(
     Ok(())
 }
 
-pub async fn run(opts: Options) -> anyhow::Result<()> {
+pub async fn run(_opts: Options) -> anyhow::Result<()> {
     use crate::components::manifest::{self, Manifest};
 
-    let (dc_components, cmp_components) = match (
-        opts.data_collection_component.as_ref(),
-        opts.consent_mapping_component.as_ref(),
-    ) {
-        (None, None) => {
-            let manifest_path = manifest::find_manifest_path()
-                .ok_or_else(|| anyhow::anyhow!("Manifest not found"))?;
+    let manifest_path =
+        manifest::find_manifest_path().ok_or_else(|| anyhow::anyhow!("Manifest not found"))?;
 
-            let manifest = Manifest::load(&manifest_path)?;
-            // TODO: dont assume that it is a data collection component, add type in manifest
-            (
-                vec![manifest
-                    .package
-                    .build
-                    .output_path
-                    .into_os_string()
-                    .into_string()
-                    .map_err(|_| anyhow::anyhow!("Invalid path"))?],
-                vec![],
-            )
-        }
-        _ => (
-            opts.data_collection_component.unwrap_or_default(),
-            opts.consent_mapping_component.unwrap_or_default(),
-        ),
-    };
+    let manifest = Manifest::load(&manifest_path)?;
+    let component_path = manifest
+        .package
+        .build
+        .output_path
+        .into_os_string()
+        .into_string()
+        .map_err(|_| anyhow::anyhow!("Invalid path"))?;
 
-    for component in dc_components {
-        check_component(ComponentType::DataCollection, &component).await?;
-    }
-    for component in cmp_components {
-        check_component(ComponentType::ConsentMapping, &component).await?;
-    }
+    // TODO: dont assume that it is a data collection component, add type in manifest
+    check_component(ComponentType::DataCollection, &component_path).await?;
 
     Ok(())
 }
