@@ -102,12 +102,13 @@ interface data-collection {
         method: http-method,
         url: string,
         headers: dict,
+        forward-client-headers: bool,
         body: string,
     }
 
     enum http-method { GET, PUT, POST, DELETE }
 
-    page: func(e: event, cred: dict) -> result<edgee-request, string>;
-    track: func(e: event, cred: dict) -> result<edgee-request, string>;
-    user: func(e: event, cred:dict) -> result<edgee-request, string>;
+    page: func(e: event, settings: dict) -> result<edgee-request, string>;
+    track: func(e: event, settings: dict) -> result<edgee-request, string>;
+    user: func(e: event, settings:dict) -> result<edgee-request, string>;
 }

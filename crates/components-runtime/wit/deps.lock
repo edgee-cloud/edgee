@@ -1,4 +1,4 @@
 [protocols]
-url = "https://github.com/edgee-cloud/edgee-wit/archive/refs/tags/v0.3.0.tar.gz"
-sha256 = "4d412367fff6f826280acbe95f7067e362d9299d76e60994981e7e27c74d1576"
-sha512 = "65021cace5ed07990fdfb563699accb975a31cb22311739ff6189849b969b06b564a0f8f72de154fd086ba474757d3cffaef0175778e4989c467280cf1c86284"
+url = "https://github.com/edgee-cloud/edgee-wit/archive/refs/tags/v0.4.0.tar.gz"
+sha256 = "8b5c8ea97c81d1d6cf4f227e75afb8c4dc5c0a411c3a0401fb7e4f7b745e21ba"
+sha512 = "16771cd12095409e7c4857a8f5c0b4ad680959e3c35dcd7999e11131bcce05d3b1a1b829daefceabbd853ae5b7f6453e3e359ddfbdebd6e2a94db6c55780368f"
