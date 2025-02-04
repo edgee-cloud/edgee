@@ -14,7 +14,7 @@ use http::{header, HeaderMap};
 use json_comments::StripComments;
 use payload::{Consent, EventData, EventType, Payload};
 use regex::Regex;
-use tracing::{info, error, warn, Instrument};
+use tracing::{error, info, warn, Instrument};
 
 use crate::proxy::compute::html::Document;
 use crate::proxy::context::incoming::RequestHandle;

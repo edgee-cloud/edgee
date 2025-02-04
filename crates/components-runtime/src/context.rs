@@ -93,10 +93,7 @@ impl ComponentsContext {
         id: &str,
         store: &mut Store<HostState>,
     ) -> anyhow::Result<DataCollection> {
-        let instance_pre = self
-            .components
-            .data_collection
-            .get(id);
+        let instance_pre = self.components.data_collection.get(id);
 
         if instance_pre.is_none() {
             return Err(anyhow::anyhow!("component not found: {}", id));
@@ -114,10 +111,7 @@ impl ComponentsContext {
         id: &str,
         store: &mut Store<HostState>,
     ) -> anyhow::Result<ConsentMapping> {
-        let instance_pre = self
-            .components
-            .consent_mapping
-            .get(id);
+        let instance_pre = self.components.consent_mapping.get(id);
 
         if instance_pre.is_none() {
             return Err(anyhow::anyhow!("component not found: {}", id));
