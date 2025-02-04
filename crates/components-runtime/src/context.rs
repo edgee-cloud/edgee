@@ -41,18 +41,18 @@ impl ComponentsContext {
             .data_collection
             .iter()
             .map(|entry| {
-                let span = tracing::info_span!("component-context", component = %entry.name, category = "data-collection");
+                let span = tracing::info_span!("component-context", component = %entry.id, category = "data-collection");
                 let _span = span.enter();
 
                 tracing::debug!("Start pre-instantiate data collection component");
 
-                let component = Component::from_file(&engine, &entry.component)?;
+                let component = Component::from_file(&engine, &entry.file)?;
                 let instance_pre = linker.instantiate_pre(&component)?;
                 let instance_pre = DataCollectionPre::new(instance_pre)?;
 
                 tracing::debug!("Finished pre-instantiate data collection component");
 
-                Ok((entry.name.clone(), instance_pre))
+                Ok((entry.id.clone(), instance_pre))
             })
             .collect::<anyhow::Result<_>>()?;
 

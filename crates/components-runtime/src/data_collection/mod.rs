@@ -73,7 +73,7 @@ pub async fn send_events(
             let span = span!(
                 Level::INFO,
                 "component",
-                name = cfg.name.as_str(),
+                name = cfg.id.as_str(),
                 event = ?event.event_type
             );
             let _enter = span.enter();
@@ -81,36 +81,36 @@ pub async fn send_events(
             let mut event = event.clone();
 
             let trace =
-                trace_component.is_some() && trace_component.as_ref().unwrap() == cfg.name.as_str();
+                trace_component.is_some() && trace_component.as_ref().unwrap() == cfg.id.as_str();
 
             // if event_type is not enabled in config.config.get(component_id).unwrap(), skip the event
             match event.event_type {
                 EventType::Page => {
-                    if !cfg.config.page_event_enabled {
+                    if !cfg.settings.edgee_page_event_enabled {
                         trace_disabled_event(trace, "page");
                         continue;
                     }
                 }
                 EventType::User => {
-                    if !cfg.config.user_event_enabled {
+                    if !cfg.settings.edgee_user_event_enabled {
                         trace_disabled_event(trace, "user");
                         continue;
                     }
                 }
                 EventType::Track => {
-                    if !cfg.config.track_event_enabled {
+                    if !cfg.settings.edgee_track_event_enabled {
                         trace_disabled_event(trace, "track");
                         continue;
                     }
                 }
             }
 
-            if !event.is_component_enabled(&cfg.name) {
+            if !event.is_component_enabled(cfg) {
                 continue;
             }
 
-            let initial_anonymization = cfg.config.anonymization;
-            let default_consent = cfg.config.default_consent.clone();
+            let initial_anonymization = cfg.settings.edgee_anonymization;
+            let default_consent = cfg.settings.edgee_default_consent.clone();
 
             // Use the helper function to handle consent and determine anonymization
             let (anonymization, outgoing_consent) = handle_consent_and_anonymization(
@@ -128,8 +128,9 @@ pub async fn send_events(
 
             // Native cookie support
             if let Some(ref ids) = event.context.user.native_cookie_ids {
-                if ids.contains_key(&cfg.id) {
-                    event.context.user.edgee_id = ids.get(&cfg.id).unwrap().clone();
+                if ids.contains_key(&cfg.project_component_id) {
+                    event.context.user.edgee_id =
+                        ids.get(&cfg.project_component_id).unwrap().clone();
                 } else {
                     event.context.user.edgee_id = ctx.get_edgee_id().clone();
                 }
@@ -143,28 +144,33 @@ pub async fn send_events(
 
             // get the instance of the component
             let instance = component_ctx
-                .get_data_collection_instance(&cfg.name, &mut store)
+                .get_data_collection_instance(&cfg.id, &mut store)
                 .await?;
             let component = instance.edgee_protocols_data_collection();
 
             let component_event: Component::Event = event.clone().into();
-            let credentials: Vec<(String, String)> = cfg.credentials.clone().into_iter().collect();
+            let component_settings: Vec<(String, String)> = cfg
+                .settings
+                .additional_settings
+                .clone()
+                .into_iter()
+                .collect();
 
             // call the corresponding method of the component
             let request = match component_event.event_type {
                 Component::EventType::Page => {
                     component
-                        .call_page(&mut store, &component_event, &credentials)
+                        .call_page(&mut store, &component_event, &component_settings)
                         .await
                 }
                 Component::EventType::Track => {
                     component
-                        .call_track(&mut store, &component_event, &credentials)
+                        .call_track(&mut store, &component_event, &component_settings)
                         .await
                 }
                 Component::EventType::User => {
                     component
-                        .call_user(&mut store, &component_event, &credentials)
+                        .call_user(&mut store, &component_event, &component_settings)
                         .await
                 }
             };
@@ -206,8 +212,8 @@ pub async fn send_events(
             trace_request(trace, &request, &headers, &outgoing_consent, anonymization);
 
             // spawn a separated async thread
+            let cfg_project_component_id = cfg.project_component_id.to_string();
             let cfg_id = cfg.id.to_string();
-            let cfg_name = cfg.name.to_string();
             let ctx_clone = ctx.clone();
 
             tokio::spawn(
@@ -241,8 +247,8 @@ pub async fn send_events(
 
                     let mut debug_params = DebugParams::new(
                         &ctx_clone,
+                        &cfg_project_component_id,
                         &cfg_id,
-                        &cfg_name,
                         &event,
                         &request_clone,
                         timer,

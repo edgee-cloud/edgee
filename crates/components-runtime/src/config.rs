@@ -13,34 +13,40 @@ pub struct ComponentsConfiguration {
 
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct DataCollectionComponents {
+    #[serde(skip_deserializing)]
+    pub project_component_id: String,
+    #[serde(skip_deserializing)]
+    pub slug: String,
+    #[serde(skip_deserializing)]
+    pub subcategory: String,
+    pub id: String, // could be a slug (edgee/amplitude) or an alias (amplitude)
+    pub file: String,
     #[serde(default)]
-    pub id: String,
-    pub name: String,
-    pub component: String,
-    pub credentials: HashMap<String, String>,
-    #[serde(default)]
-    pub config: DataCollectionComponentConfig,
+    pub settings: DataCollectionComponentSettings,
     pub forward_client_headers: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(default)]
-pub struct DataCollectionComponentConfig {
-    pub anonymization: bool,
-    pub default_consent: String,
-    pub track_event_enabled: bool,
-    pub user_event_enabled: bool,
-    pub page_event_enabled: bool,
+pub struct DataCollectionComponentSettings {
+    pub edgee_anonymization: bool,
+    pub edgee_default_consent: String,
+    pub edgee_track_event_enabled: bool,
+    pub edgee_user_event_enabled: bool,
+    pub edgee_page_event_enabled: bool,
+    #[serde(flatten)]
+    pub additional_settings: HashMap<String, String>,
 }
 
-impl Default for DataCollectionComponentConfig {
+impl Default for DataCollectionComponentSettings {
     fn default() -> Self {
-        DataCollectionComponentConfig {
-            anonymization: true,
-            default_consent: "pending".to_string(),
-            track_event_enabled: true,
-            user_event_enabled: true,
-            page_event_enabled: true,
+        DataCollectionComponentSettings {
+            edgee_anonymization: true,
+            edgee_default_consent: "pending".to_string(),
+            edgee_track_event_enabled: true,
+            edgee_user_event_enabled: true,
+            edgee_page_event_enabled: true,
+            additional_settings: HashMap::new(),
         }
     }
 }
