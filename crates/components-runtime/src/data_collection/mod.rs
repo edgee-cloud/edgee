@@ -143,9 +143,13 @@ pub async fn send_events(
             }
 
             // get the instance of the component
-            let instance = component_ctx
-                .get_data_collection_instance(&cfg.id, &mut store)
-                .await?;
+            let instance = match component_ctx.get_data_collection_instance(&cfg.id, &mut store).await {
+                Ok(instance) => instance,
+                Err(err) => {
+                    error!("Failed to get data collection instance. Error: {}", err);
+                    continue;
+                }
+            };
             let component = instance.edgee_protocols_data_collection();
 
             let component_event: Component::Event = event.clone().into();

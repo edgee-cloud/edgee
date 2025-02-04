@@ -92,57 +92,16 @@ impl Event {
             return &true;
         }
 
+        let components = self.components.as_ref().unwrap();
+
         // get destinations.get("all")
-        let all = self
-            .components
-            .as_ref()
-            .unwrap()
-            .get("all")
-            .unwrap_or(&true);
+        let all = components.get("all").unwrap_or(&true);
 
-        // check if the components is enabled by id
-        if self
-            .components
-            .as_ref()
-            .unwrap()
-            .contains_key(config.id.as_str())
-        {
-            return self
-                .components
-                .as_ref()
-                .unwrap()
-                .get(config.id.as_str())
-                .unwrap();
-        }
-
-        // check if the components is enabled by project_component_id
-        if self
-            .components
-            .as_ref()
-            .unwrap()
-            .contains_key(config.project_component_id.as_str())
-        {
-            return self
-                .components
-                .as_ref()
-                .unwrap()
-                .get(config.project_component_id.as_str())
-                .unwrap();
-        }
-
-        // check if the components is enabled by slug
-        if self
-            .components
-            .as_ref()
-            .unwrap()
-            .contains_key(config.slug.as_str())
-        {
-            return self
-                .components
-                .as_ref()
-                .unwrap()
-                .get(config.slug.as_str())
-                .unwrap();
+        // Check each possible key in order of priority
+        for key in [&config.id, &config.project_component_id, &config.slug] {
+            if let Some(enabled) = components.get(key.as_str()) {
+                return enabled;
+            }
         }
 
         all
