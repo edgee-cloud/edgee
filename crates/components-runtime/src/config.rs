@@ -17,13 +17,10 @@ pub struct DataCollectionComponents {
     pub project_component_id: String,
     #[serde(skip_deserializing)]
     pub slug: String,
-    #[serde(skip_deserializing)]
-    pub subcategory: String,
     pub id: String, // could be a slug (edgee/amplitude) or an alias (amplitude)
     pub file: String,
     #[serde(default)]
     pub settings: DataCollectionComponentSettings,
-    pub forward_client_headers: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

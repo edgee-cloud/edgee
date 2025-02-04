@@ -201,7 +201,7 @@ pub async fn send_events(
                 headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
             }
 
-            if cfg.forward_client_headers.unwrap_or(true) {
+            if request.forward_client_headers {
                 insert_expected_headers(&mut headers, &event, &component_event)?;
             }
 
