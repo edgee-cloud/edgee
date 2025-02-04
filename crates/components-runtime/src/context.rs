@@ -90,16 +90,20 @@ impl ComponentsContext {
 
     pub async fn get_data_collection_instance(
         &self,
-        name: &str,
+        id: &str,
         store: &mut Store<HostState>,
     ) -> anyhow::Result<DataCollection> {
         let instance_pre = self
             .components
             .data_collection
-            .get(name)
-            .expect("Data collection component not found");
+            .get(id);
+
+        if instance_pre.is_none() {
+            return Err(anyhow::anyhow!("component not found: {}", id));
+        }
 
         instance_pre
+            .unwrap()
             .instantiate_async(store)
             .await
             .map_err(Into::into)
@@ -107,16 +111,20 @@ impl ComponentsContext {
 
     pub async fn get_consent_mapping_instance(
         &self,
-        name: &str,
+        id: &str,
         store: &mut Store<HostState>,
     ) -> anyhow::Result<ConsentMapping> {
         let instance_pre = self
             .components
             .consent_mapping
-            .get(name)
-            .expect("Consent mapping component not found");
+            .get(id);
+
+        if instance_pre.is_none() {
+            return Err(anyhow::anyhow!("component not found: {}", id));
+        }
 
         instance_pre
+            .unwrap()
             .instantiate_async(store)
             .await
             .map_err(Into::into)

@@ -14,7 +14,7 @@ use http::{header, HeaderMap};
 use json_comments::StripComments;
 use payload::{Consent, EventData, EventType, Payload};
 use regex::Regex;
-use tracing::{info, warn, Instrument};
+use tracing::{info, error, warn, Instrument};
 
 use crate::proxy::compute::html::Document;
 use crate::proxy::context::incoming::RequestHandle;
@@ -177,7 +177,7 @@ pub async fn process_from_html(
             )
             .await
             {
-                warn!(?err, "failed to send data collection payload");
+                error!("Failed to use data collection components. Error: {}", err);
             }
         }
         .in_current_span(),
@@ -313,7 +313,7 @@ pub async fn process_from_json(
             )
             .await
             {
-                warn!(?err, "failed to send data collection payload");
+                error!("Failed to use data collection components. Error: {}", err);
             }
         }
         .in_current_span(),
