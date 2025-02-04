@@ -18,20 +18,20 @@ proxy_only = false
 enforce_no_store_policy = true
 
 [[components.data_collection]]
-name = "amplitude"
-component = "local/wasm/amplitude.wasm"
-credentials.amplitude_api_key = "..."
+id = "amplitude"
+file = "local/wasm/amplitude.wasm"
+settings.amplitude_api_key = "..."
 
 [[components.data_collection]]
-name = "google analytics"
-component = "local/wasm/ga.wasm"
-credentials.ga_measurement_id = "..."
+id = "google analytics"
+file = "local/wasm/ga.wasm"
+settings.ga_measurement_id = "..."
 
 [[components.data_collection]]
-name = "segment"
-component = "local/wasm/segment.wasm"
-credentials.segment_project_id = "..."
-credentials.segment_write_key = "..."
+id = "segment"
+file = "local/wasm/segment.wasm"
+settings.segment_project_id = "..."
+settings.segment_write_key = "..."
 
 [[routing]]
 domain = "demo.edgee.dev"

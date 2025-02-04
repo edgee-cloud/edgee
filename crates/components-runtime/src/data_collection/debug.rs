@@ -96,7 +96,7 @@ pub struct DebugParams {
 impl DebugParams {
     pub fn new(
         ctx: &EventContext,
-        component_id: &str,
+        project_component_id: &str,
         component_slug: &str,
         event: &Event,
         request: &EdgeeRequest,
@@ -106,7 +106,7 @@ impl DebugParams {
         DebugParams {
             from: ctx.get_from().clone(),
             project_id: ctx.get_project_id().clone(),
-            component_id: component_id.to_string(),
+            component_id: project_component_id.to_string(),
             component_slug: component_slug.to_string(),
             event: event.clone(),
             request: request.clone(),

@@ -4,6 +4,8 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt;
 
+use crate::config::DataCollectionComponents;
+
 pub type Dict = HashMap<String, serde_json::Value>;
 
 #[derive(Serialize, Debug, Clone, Default)]
@@ -84,7 +86,7 @@ impl<'de> Deserialize<'de> for Event {
 }
 
 impl Event {
-    pub fn is_component_enabled(&self, name: &str) -> &bool {
+    pub fn is_component_enabled(&self, config: &DataCollectionComponents) -> &bool {
         // if destinations is not set, return true
         if self.components.is_none() {
             return &true;
@@ -98,10 +100,51 @@ impl Event {
             .get("all")
             .unwrap_or(&true);
 
-        // check if the components is enabled
-        if self.components.as_ref().unwrap().contains_key(name) {
-            return self.components.as_ref().unwrap().get(name).unwrap();
+        // check if the components is enabled by id
+        if self
+            .components
+            .as_ref()
+            .unwrap()
+            .contains_key(config.id.as_str())
+        {
+            return self
+                .components
+                .as_ref()
+                .unwrap()
+                .get(config.id.as_str())
+                .unwrap();
         }
+
+        // check if the components is enabled by project_component_id
+        if self
+            .components
+            .as_ref()
+            .unwrap()
+            .contains_key(config.project_component_id.as_str())
+        {
+            return self
+                .components
+                .as_ref()
+                .unwrap()
+                .get(config.project_component_id.as_str())
+                .unwrap();
+        }
+
+        // check if the components is enabled by slug
+        if self
+            .components
+            .as_ref()
+            .unwrap()
+            .contains_key(config.slug.as_str())
+        {
+            return self
+                .components
+                .as_ref()
+                .unwrap()
+                .get(config.slug.as_str())
+                .unwrap();
+        }
+
         all
     }
 }

@@ -223,9 +223,9 @@ You simply need to add a new session to your configuration pointing to the WebAs
 ```toml
 # edgee.toml
 [[components.data_collection]]
-name = "amplitude"
-component = "/var/edgee/wasm/amplitude.wasm"
-credentials.amplitude_api_key = "YOUR-API-KEY"
+id = "amplitude"
+file = "/var/edgee/wasm/amplitude.wasm"
+settings.amplitude_api_key = "YOUR-API-KEY"
 ```
 
 ### Debugging a component

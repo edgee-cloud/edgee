@@ -2887,6 +2887,11 @@
             "description": "Unique identifier for the component",
             "example": "d290f1ee-6c54-4b01-90e6-d701748f0851"
           },
+          "component_slug": {
+            "type": "string",
+            "description": "Slug of the component",
+            "example": "edgee/google_analytics"
+          },
           "component_version": {
             "type": "string",
             "description": "Version of the component",
@@ -2895,6 +2900,12 @@
           "category": {
             "type": "string",
             "description": "Category of the component",
+            "readOnly": true,
+            "example": "data_collection"
+          },
+          "subcategory": {
+            "type": "string",
+            "description": "Subcategory of the component",
             "readOnly": true,
             "example": "analytics"
           },
@@ -2905,7 +2916,8 @@
           },
           "settings": {
             "type": "object",
-            "description": "Settings of the component"
+            "description": "Settings of the component",
+            "nullable": true
           }
         }
       },
@@ -2944,7 +2956,7 @@
             "description": "Category of the component",
             "readOnly": true
           },
-          "sub_category": {
+          "subcategory": {
             "type": "string",
             "description": "Subcategory of the component",
             "readOnly": true
@@ -3080,7 +3092,7 @@
               "data_collection"
             ]
           },
-          "sub_category": {
+          "subcategory": {
             "type": "string",
             "description": "Subcategory of the component.",
             "enum": [
@@ -3108,7 +3120,7 @@
           "organization_id",
           "name",
           "category",
-          "sub_category"
+          "subcategory"
         ]
       },
       "ComponentUpdateParams" : {
@@ -3192,7 +3204,7 @@
               "data_collection"
             ]
           },
-          "sub_category": {
+          "subcategory": {
             "type": "string",
             "description": "Filter components by sub category.",
             "enum": [
