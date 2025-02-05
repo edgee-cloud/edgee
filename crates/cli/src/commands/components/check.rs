@@ -18,7 +18,7 @@ async fn check_component(
 ) -> anyhow::Result<()> {
     if !std::path::Path::new(component_path).exists() {
         return Err(anyhow::anyhow!(
-            "Component {} does not exist",
+            "Component {} does not exist. Please run `edgee component build` first",
             component_path
         ));
     }
@@ -67,8 +67,9 @@ async fn check_component(
 pub async fn run(_opts: Options) -> anyhow::Result<()> {
     use crate::components::manifest::{self, Manifest};
 
-    let manifest_path =
-        manifest::find_manifest_path().ok_or_else(|| anyhow::anyhow!("Manifest not found"))?;
+    let manifest_path = manifest::find_manifest_path().ok_or_else(|| {
+        anyhow::anyhow!("Edgee Manifest not found. Please run `edgee component create` and start from a template or `edgee component init` to create a new empty manifest in this folder.")
+    })?;
 
     let manifest = Manifest::load(&manifest_path)?;
     let component_path = manifest
@@ -77,7 +78,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         .output_path
         .into_os_string()
         .into_string()
-        .map_err(|_| anyhow::anyhow!("Invalid path"))?;
+        .map_err(|_| anyhow::anyhow!("No output path found in manifest."))?;
 
     // TODO: dont assume that it is a data collection component, add type in manifest
     check_component(ComponentType::DataCollection, &component_path).await?;
