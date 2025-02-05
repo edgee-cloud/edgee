@@ -26,8 +26,8 @@ async fn check_component(
     let config = match component_type {
         ComponentType::DataCollection => ComponentsConfiguration {
             data_collection: vec![DataCollectionComponents {
-                name: component_path.to_string(),
-                component: component_path.to_string(),
+                id: component_path.to_string(),
+                file: component_path.to_string(),
                 ..Default::default()
             }],
             ..Default::default()
