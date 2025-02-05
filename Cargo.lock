@@ -1058,6 +1058,7 @@ dependencies = [
  "miette",
  "openssl",
  "serde",
+ "serde_json",
  "serde_yml",
  "tokio",
  "toml",
