@@ -24,6 +24,7 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
 
 edgee-api-client.workspace = true
 edgee-server.workspace = true
+edgee-components-runtime.workspace = true
 
 [features]
 bundled = [

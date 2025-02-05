@@ -1052,6 +1052,7 @@ dependencies = [
  "anyhow",
  "clap",
  "edgee-api-client",
+ "edgee-components-runtime",
  "edgee-server",
  "inquire",
  "miette",
