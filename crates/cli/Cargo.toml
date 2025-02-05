@@ -13,7 +13,9 @@ edition.workspace = true
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 inquire.workspace = true
+miette = { workspace = true, features = ["fancy"] }
 openssl.workspace = true
+serde = { workspace = true, features = ["derive"] }
 serde_yml.workspace = true
 tracing.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

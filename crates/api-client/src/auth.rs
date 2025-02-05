@@ -65,6 +65,16 @@ impl Credentials {
         file.write_all(content.as_bytes())
             .context("Could not write credentials data")
     }
+
+    pub fn check_api_token(&self) -> Result<()> {
+        let Some(_api_token) = self.api_token.as_deref() else {
+            anyhow::bail!("Not logged in");
+        };
+
+        // TODO: Check API token is valid using the API
+
+        Ok(())
+    }
 }
 
 impl<'a, S: State> ConnectBuilder<'a, S> {

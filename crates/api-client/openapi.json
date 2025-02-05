@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.1",
   "info": {
-    "title": "Edgee API",
+    "title": "Edgee endpoints",
     "version": "1"
   },
   "servers": [
@@ -1563,6 +1563,43 @@
             }
           }
         }
+      },
+      "post": {
+        "operationId": "createComponent",
+        "summary": "Create a Component",
+        "description": "Create a Component.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComponentCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created Component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Component"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/components/{id}": {
@@ -1805,53 +1842,6 @@
                       }
                     }
                   }
-                }
-              }
-            }
-          },
-          "4XX": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "operationId": "createComponent",
-        "summary": "Create a Component",
-        "description": "Create a Component.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ComponentCreateInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "The created Component",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Component"
                 }
               }
             }
@@ -2111,7 +2101,7 @@
         }
       }
     },
-    "/v1/projects/{id}/debug/data-collection/incoming": {
+    "/v1/projects/{id}/incoming_data_collection_events": {
       "get": {
         "operationId": "getIncomingDataCollectionEvents",
         "summary": "List all Incoming Data Collection Events",
@@ -2176,7 +2166,7 @@
         }
       }
     },
-    "/v1/projects/{id}/debug/data-collection/outgoing/{event_id}": {
+    "/v1/projects/{id}/outgoing_data_collection_events/{event_id}": {
       "get": {
         "operationId": "getOutgoingDataCollectionEvents",
         "summary": "List all Outgoing Data Collection Events",
@@ -2242,6 +2232,24 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/upload/presign": {
+      "get": {
+        "operationId": "getUploadPresignedUrl",
+        "summary": "Get Upload Presigned URL",
+        "responses": {
+          "200": {
+            "description": "An Upload Presigned URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadPresign"
                 }
               }
             }
@@ -3114,6 +3122,10 @@
           "description": {
             "type": "string",
             "description": "Description of the component."
+          },
+          "organization_id": {
+            "type": "string",
+            "description": "Unique identifier for the organization the component belongs to"
           }
         },
         "required": [
@@ -3299,10 +3311,6 @@
             "description": "Slug of the user",
             "readOnly": true
           },
-          "role": {
-            "type": "string",
-            "readOnly": true
-          },
           "avatar_url": {
             "type": "string",
             "description": "Avatar of the user",
@@ -3323,7 +3331,11 @@
             "readOnly": true
           }
         },
-        "required": ["object", "id", "email", "name", "slug", "role", "created_at", "updated_at"]
+        "required": [
+          "id",
+          "email",
+          "name"
+        ]
       },
       "OrganizationUser": {
         "type": "object",
@@ -3506,6 +3518,17 @@
             "description": "If the object has been deleted, the value is true. If the object has not been deleted, the value is false."
           }
         }
+      },
+      "UploadPresign": {
+        "type": "object",
+        "properties": {
+          "upload_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload_url"
+        ]
       },
       "ErrorResponse": {
         "type": "object",

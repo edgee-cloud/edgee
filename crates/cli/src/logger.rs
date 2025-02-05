@@ -59,3 +59,29 @@ pub fn init(log_format: LogFormat, log_filter: Option<String>) {
         .with(fmt_layer)
         .init();
 }
+
+pub fn init_cli() {
+    use std::env;
+
+    use tracing::Level;
+    use tracing_subscriber::prelude::*;
+    use tracing_subscriber::{fmt, EnvFilter};
+
+    let fmt_layer = fmt::layer().with_target(true);
+
+    let filter_layer = {
+        let directives = env::var("EDGEE_LOG")
+            .ok()
+            .or_else(|| env::var("RUST_LOG").ok())
+            .unwrap_or_default();
+
+        EnvFilter::builder()
+            .with_default_directive(Level::ERROR.into())
+            .parse_lossy(directives)
+    };
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .init();
+}

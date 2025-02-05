@@ -1,4 +1,5 @@
 pub mod auth;
+mod upload;
 
 pub const PROD_BASEURL: &str = "https://api.edgee.app";
 
