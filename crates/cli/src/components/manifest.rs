@@ -4,14 +4,14 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use edgee_api_client::types as api_types;
 
 pub const MANIFEST_VERSION: u8 = 1;
 pub const MANIFEST_FILENAME: &str = "edgee-component.toml";
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Manifest {
     pub manifest_version: u8,
     pub package: Package,
@@ -107,6 +107,16 @@ impl Manifest {
         }
 
         Ok(manifest)
+    }
+
+    pub fn save(&self, path: &Path) -> Result<()> {
+        use std::fs;
+
+        let content = toml::to_string(self)?;
+
+        fs::write(path.join(MANIFEST_FILENAME), content)
+            .with_context(|| format!("Could not write manifest file at {}", path.display()))?;
+        Ok(())
     }
 }
 
