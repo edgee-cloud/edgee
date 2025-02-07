@@ -10,7 +10,7 @@ impl std::fmt::Display for LanguageConfig {
     }
 }
 
-pub static LANGUAGE_OPTIONS: &'static [LanguageConfig] = &[
+pub static LANGUAGE_OPTIONS: &[LanguageConfig] = &[
     LanguageConfig {
         name: "Rust",
         repo_url: "https://github.com/edgee-cloud/example-rust-component",
