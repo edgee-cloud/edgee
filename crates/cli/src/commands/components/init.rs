@@ -8,7 +8,7 @@ pub struct Options {}
 
 pub async fn run(_opts: Options) -> anyhow::Result<()> {
     use inquire::{Select, Text};
-    if let Some(_) = manifest::find_manifest_path() {
+    if manifest::find_manifest_path().is_some() {
         anyhow::bail!("Manifest already exists");
     }
 
