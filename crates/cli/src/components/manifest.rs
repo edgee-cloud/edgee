@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
+use edgee_api_client::types as api_types;
+
 pub const MANIFEST_VERSION: u8 = 1;
 pub const MANIFEST_FILENAME: &str = "edgee-component.toml";
 
@@ -16,10 +18,41 @@ pub struct Manifest {
 pub struct Package {
     pub name: String,
     pub version: String,
+    #[serde(with = "Category")]
+    pub category: api_types::ComponentCreateInputCategory,
+    #[serde(with = "SubCategory")]
+    pub subcategory: api_types::ComponentCreateInputSubcategory,
+    pub description: Option<String>,
+
+    #[serde(default)]
+    pub documentation: Option<url::Url>,
+    #[serde(default)]
+    pub repository: Option<url::Url>,
+
     #[serde(rename = "wit-world-version")]
     pub wit_world_version: String,
 
     pub build: Build,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(
+    remote = "api_types::ComponentCreateInputCategory",
+    rename_all = "kebab-case"
+)]
+pub enum Category {
+    DataCollection,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(
+    remote = "api_types::ComponentCreateInputSubcategory",
+    rename_all = "kebab-case"
+)]
+pub enum SubCategory {
+    Analytics,
+    Warehouse,
+    Attribution,
 }
 
 #[derive(Debug, Deserialize)]

@@ -67,7 +67,7 @@ pub fn init_cli() {
     use tracing_subscriber::prelude::*;
     use tracing_subscriber::{fmt, EnvFilter};
 
-    let fmt_layer = fmt::layer().with_target(true);
+    let fmt_layer = fmt::layer().with_target(false).without_time();
 
     let filter_layer = {
         let directives = env::var("EDGEE_LOG")

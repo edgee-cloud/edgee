@@ -2357,15 +2357,6 @@
             "description": "Avatar URL of the organization",
             "readOnly": true
           },
-          "type": {
-            "type": "string",
-            "description": "The type of the organization.",
-            "readOnly": true,
-            "enum": [
-              "perso",
-              "pro"
-            ]
-          },
           "current_billing_plan": {
             "type": "string",
             "description": "The current billing plan of the organization."
@@ -2382,7 +2373,16 @@
             "description": "Time at which the object was last updated.",
             "readOnly": true
           }
-        }
+        },
+        "required": [
+          "object",
+          "id",
+          "name",
+          "slug",
+          "current_billing_plan",
+          "created_at",
+          "updated_at"
+        ]
       },
       "OrganizationCreateInput": {
         "type": "object",
@@ -2975,9 +2975,9 @@
             "readOnly": true
           },
           "versions": {
-            "type": "array",
+            "type": "object",
             "description": "List of versions of the component",
-            "items": {
+            "additionalProperties": {
               "$ref": "#/components/schemas/ComponentVersion"
             }
           },
@@ -3546,7 +3546,8 @@
                   "update_error",
                   "deletion_error",
                   "forbidden_error",
-                  "authentication_error"
+                  "authentication_error",
+                  "conflict_error"
                 ],
                 "default": "invalid_request_error",
                 "description": "The type of error returned."
@@ -3575,9 +3576,15 @@
                   }
                 }
               }
-            }
+            },
+            "required": [
+              "message"
+            ]
           }
-        }
+        },
+        "required": [
+          "error"
+        ]
       }
     },
     "securitySchemes": {

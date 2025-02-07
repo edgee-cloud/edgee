@@ -1046,6 +1046,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
 
 [[package]]
+name = "easy-ext"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc5d6d6a8504f8caedd7de14576464383900cd3840b7033a7a3dce5ac00121ca"
+
+[[package]]
 name = "edgee"
 version = "0.7.4"
 dependencies = [
@@ -1064,6 +1070,7 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
+ "url",
 ]
 
 [[package]]
@@ -1074,6 +1081,7 @@ dependencies = [
  "bon",
  "chrono",
  "dirs 6.0.0",
+ "easy-ext",
  "futures",
  "progenitor",
  "reqwest",
@@ -3927,6 +3935,7 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]
