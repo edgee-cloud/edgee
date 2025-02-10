@@ -32,9 +32,9 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         package: Package {
             name: component_name,
             version: "0.1.0".to_string(),
-            wit_world_version: "0.1.0".to_string(),
+            wit_world_version: "0.4.0".to_string(),
             build: Build {
-                command: "".to_string(),
+                command: component_language.default_build_command.to_string(),
                 output_path: std::path::PathBuf::from(""),
             },
         },
