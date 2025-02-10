@@ -61,6 +61,6 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             outfile.write_all(&buffer)?;
         }
     }
-
+    println!("New project {} setup, check README to install the correct dependencies", component_name);
     Ok(())
 }
