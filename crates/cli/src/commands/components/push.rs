@@ -41,8 +41,9 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     };
 
     match client
-        .get_component()
-        .id(&manifest.package.name)
+        .get_component_by_slug()
+        .org_slug(&organization.slug)
+        .component_slug(&manifest.package.name)
         .send()
         .await
     {
@@ -55,7 +56,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 .create_component()
                 .body(
                     types::ComponentCreateInput::builder()
-                        .organization_id(organization.id)
+                        .organization_id(organization.id.clone())
                         .name(&manifest.package.name)
                         .description(manifest.package.description)
                         .category(manifest.package.category)
@@ -80,8 +81,9 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     tracing::info!("Creating component version...");
     client
-        .create_component_version()
-        .id(&manifest.package.name)
+        .create_component_version_by_slug()
+        .org_slug(organization.slug)
+        .component_slug(&manifest.package.name)
         .body(
             types::ComponentVersionCreateInput::builder()
                 .version(&manifest.package.version)
