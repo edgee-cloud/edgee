@@ -37,24 +37,9 @@ impl std::fmt::Display for SubCategoryConfig {
 
 pub static LANGUAGE_OPTIONS: &[LanguageConfig] = &[
     LanguageConfig {
-        name: "Rust",
-        repo_url: "https://github.com/edgee-cloud/example-rust-component",
-        default_build_command: "cargo build --release",
-    },
-    LanguageConfig {
-        name: "Go",
-        repo_url: "https://github.com/edgee-cloud/example-go-component",
-        default_build_command: "go build -o main .",
-    },
-    LanguageConfig {
-        name: "Python",
-        repo_url: "https://github.com/edgee-cloud/example-py-component",
-        default_build_command: "python main.py",
-    },
-    LanguageConfig {
-        name: "JavaScript",
-        repo_url: "https://github.com/edgee-cloud/example-js-component",
-        default_build_command: "node main.js",
+        name: "C",
+        repo_url: "https://github.com/edgee-cloud/example-c-component",
+        default_build_command: "gcc main.c -o main",
     },
     LanguageConfig {
         name: "CSharp",
@@ -62,9 +47,24 @@ pub static LANGUAGE_OPTIONS: &[LanguageConfig] = &[
         default_build_command: "dotnet build",
     },
     LanguageConfig {
-        name: "C",
-        repo_url: "https://github.com/edgee-cloud/example-c-component",
-        default_build_command: "gcc main.c -o main",
+        name: "Go",
+        repo_url: "https://github.com/edgee-cloud/example-go-component",
+        default_build_command: "go build -o main .",
+    },
+    LanguageConfig {
+        name: "JavaScript",
+        repo_url: "https://github.com/edgee-cloud/example-js-component",
+        default_build_command: "node main.js",
+    },
+    LanguageConfig {
+        name: "Python",
+        repo_url: "https://github.com/edgee-cloud/example-py-component",
+        default_build_command: "python main.py",
+    },
+    LanguageConfig {
+        name: "Rust",
+        repo_url: "https://github.com/edgee-cloud/example-rust-component",
+        default_build_command: "cargo build --release",
     },
 ];
 
@@ -79,11 +79,11 @@ pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
         value: &edgee_api_client::types::ComponentCreateInputSubcategory::Analytics,
     },
     SubCategoryConfig {
-        name: "Warehouse",
-        value: &edgee_api_client::types::ComponentCreateInputSubcategory::Warehouse,
-    },
-    SubCategoryConfig {
         name: "Attribution",
         value: &edgee_api_client::types::ComponentCreateInputSubcategory::Attribution,
+    },
+    SubCategoryConfig {
+        name: "Warehouse",
+        value: &edgee_api_client::types::ComponentCreateInputSubcategory::Warehouse,
     },
 ];

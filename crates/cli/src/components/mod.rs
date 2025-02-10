@@ -1,2 +1,2 @@
-pub mod boilerplates;
+pub mod boilerplate;
 pub mod manifest;

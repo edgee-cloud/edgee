@@ -1,5 +1,5 @@
 use crate::components::{
-    boilerplates::{CATEGORY_OPTIONS, LANGUAGE_OPTIONS, SUBCATEGORY_OPTIONS},
+    boilerplate::{CATEGORY_OPTIONS, LANGUAGE_OPTIONS, SUBCATEGORY_OPTIONS},
     manifest::{self, Build, Manifest, Package},
 };
 
@@ -14,6 +14,10 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
 
     let component_name = Text::new("Enter the name of the component:")
         .with_validator(inquire::required!("Component name cannot be empty"))
+        .with_validator(inquire::min_length!(
+            3,
+            "Component name must be at least 3 characters"
+        ))
         .prompt()?;
 
     let component_language = Select::new(

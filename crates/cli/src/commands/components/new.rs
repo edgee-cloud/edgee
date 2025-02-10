@@ -4,7 +4,7 @@ use std::io::{Cursor, Read, Write};
 use std::path::Path;
 use zip::read::ZipArchive;
 
-use crate::components::boilerplates::LANGUAGE_OPTIONS;
+use crate::components::boilerplate::LANGUAGE_OPTIONS;
 
 #[derive(Debug, clap::Parser)]
 pub struct Options {}
@@ -31,10 +31,13 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         "{}{}",
         component_language.repo_url, "/archive/refs/heads/main.zip"
     );
+
+    println!("Downloading sample code for {}...", component_language.name);
     let response = Client::new().get(url).send().await?.bytes().await?;
     let reader = Cursor::new(response);
     let mut archive = ZipArchive::new(reader)?;
 
+    println!("Extracting code...");
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
         let path = file.name();
