@@ -41,7 +41,7 @@ pub struct Package {
     pub build: Build,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(
     remote = "api_types::ComponentCreateInputCategory",
     rename_all = "kebab-case"
@@ -50,7 +50,7 @@ pub enum Category {
     DataCollection,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(
     remote = "api_types::ComponentCreateInputSubcategory",
     rename_all = "kebab-case"

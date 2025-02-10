@@ -1,5 +1,5 @@
 use crate::components::{
-    boilerplates::LANGUAGE_OPTIONS,
+    boilerplates::{CATEGORY_OPTIONS, LANGUAGE_OPTIONS, SUBCATEGORY_OPTIONS},
     manifest::{self, Build, Manifest, Package},
 };
 
@@ -21,6 +21,21 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         LANGUAGE_OPTIONS.to_vec(),
     )
     .prompt()?;
+    let component_category = if CATEGORY_OPTIONS.len() == 1 {
+        CATEGORY_OPTIONS[0].clone() // Accès direct car on sait qu'il y a un seul élément
+    } else {
+        Select::new(
+            "Select the category of the component:",
+            CATEGORY_OPTIONS.to_vec(), // Pas besoin de `.to_vec()`, on passe une slice
+        )
+        .prompt()?
+    };
+
+    let component_subcategory = Select::new(
+        "Select the language of the component:",
+        SUBCATEGORY_OPTIONS.to_vec(),
+    )
+    .prompt()?;
 
     println!(
         "Initiating component {} in {}",
@@ -33,6 +48,11 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             name: component_name,
             version: "0.1.0".to_string(),
             wit_world_version: "0.4.0".to_string(),
+            category: *component_category.value,
+            subcategory: *component_subcategory.value,
+            description: None,
+            documentation: None,
+            repository: None,
             build: Build {
                 command: component_language.default_build_command.to_string(),
                 output_path: std::path::PathBuf::from(""),
