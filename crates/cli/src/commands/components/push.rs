@@ -1,3 +1,6 @@
+use crate::components::manifest::Manifest;
+use edgee_api_client::types as api_types;
+
 #[derive(Debug, clap::Parser)]
 pub struct Options {
     /// Which organization to create the component into if not existing already.
@@ -7,9 +10,9 @@ pub struct Options {
 }
 
 pub async fn run(opts: Options) -> anyhow::Result<()> {
-    use edgee_api_client::{auth::Credentials, types, ResultExt};
+    use edgee_api_client::{auth::Credentials, ResultExt};
 
-    use crate::components::manifest::{self, Manifest};
+    use crate::components::manifest;
 
     let creds = Credentials::load()?;
     creds.check_api_token()?;
@@ -55,16 +58,26 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             client
                 .create_component()
                 .body(
-                    types::ComponentCreateInput::builder()
+                    api_types::ComponentCreateInput::builder()
                         .organization_id(organization.id.clone())
                         .name(&manifest.package.name)
-                        .description(manifest.package.description)
+                        .description(manifest.package.description.clone())
                         .category(manifest.package.category)
                         .subcategory(manifest.package.subcategory)
                         .documentation_link(
-                            manifest.package.documentation.map(|url| url.to_string()),
+                            manifest
+                                .package
+                                .documentation
+                                .as_ref()
+                                .map(|url| url.to_string()),
                         )
-                        .repo_link(manifest.package.repository.map(|url| url.to_string())),
+                        .repo_link(
+                            manifest
+                                .package
+                                .repository
+                                .as_ref()
+                                .map(|url| url.to_string()),
+                        ),
                 )
                 .send()
                 .await
@@ -85,10 +98,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         .org_slug(organization.slug)
         .component_slug(&manifest.package.name)
         .body(
-            types::ComponentVersionCreateInput::builder()
+            api_types::ComponentVersionCreateInput::builder()
                 .version(&manifest.package.version)
                 .wit_world_version(&manifest.package.wit_world_version)
-                .wasm_url(asset_url),
+                .wasm_url(asset_url)
+                .dynamic_fields(convert_manifest_config_fields(&manifest)),
         )
         .send()
         .await
@@ -101,4 +115,19 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     );
 
     Ok(())
+}
+
+fn convert_manifest_config_fields(manifest: &Manifest) -> Vec<api_types::ConfigurationField> {
+    manifest
+        .package
+        .config_fields
+        .iter()
+        .map(|(name, field)| api_types::ConfigurationField {
+            name: name.clone(),
+            title: field.title.clone(),
+            type_: field.type_,
+            required: field.required,
+            description: field.description.clone(),
+        })
+        .collect()
 }

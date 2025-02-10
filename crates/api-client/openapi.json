@@ -3266,9 +3266,9 @@
           },
           "dynamic_fields": {
             "type": "array",
-            "description": "List of dynamic fields",
+            "description": "List of configuration fields",
             "items": {
-              "$ref": "#/components/schemas/DynamicFieldsItem"
+              "$ref": "#/components/schemas/ConfigurationField"
             }
           },
           "changelog": {
@@ -3284,30 +3284,37 @@
           }
         }
       },
-      "DynamicFieldsItem": {
+      "ConfigurationField": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string",
-            "description": "The name of the dynamic field."
+            "description": "The name of the configuration field."
           },
           "title": {
             "type": "string",
-            "description": "The title of the dynamic field."
+            "description": "The title of the configuration field."
           },
           "type": {
             "type": "string",
-            "description": "The type of the dynamic field."
+            "description": "The type of the configuration field.",
+            "enum": ["string", "boolean", "number"]
           },
           "required": {
             "type": "boolean",
-            "description": "Whether the dynamic field is required."
+            "description": "Whether the configuration field is required."
           },
           "description": {
             "type": "string",
-            "description": "The description of the dynamic field."
+            "description": "The description of the configuration field."
           }
-        }
+        },
+        "required": [
+          "name",
+          "title",
+          "type",
+          "required"
+        ]
       },
       "ComponentCreateInput": {
         "type": "object",
@@ -3410,9 +3417,9 @@
           },
           "dynamic_fields": {
             "type": "array",
-            "description": "List of dynamic fields",
+            "description": "List of configuration fields",
             "items": {
-              "$ref": "#/components/schemas/DynamicFieldsItem"
+              "$ref": "#/components/schemas/ConfigurationField"
             }
           },
           "changelog": {

@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -15,6 +18,7 @@ pub struct Manifest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Package {
     pub name: String,
     pub version: String,
@@ -29,8 +33,10 @@ pub struct Package {
     #[serde(default)]
     pub repository: Option<url::Url>,
 
-    #[serde(rename = "wit-world-version")]
     pub wit_world_version: String,
+
+    #[serde(default)]
+    pub config_fields: HashMap<String, ConfigField>,
 
     pub build: Build,
 }
@@ -53,6 +59,27 @@ pub enum SubCategory {
     Analytics,
     Warehouse,
     Attribution,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConfigField {
+    pub title: String,
+    #[serde(rename = "type", with = "ConfigFieldType")]
+    pub type_: api_types::ConfigurationFieldType,
+    #[serde(default)]
+    pub required: bool,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(
+    remote = "api_types::ConfigurationFieldType",
+    rename_all = "kebab-case"
+)]
+pub enum ConfigFieldType {
+    String,
+    Boolean,
+    Number,
 }
 
 #[derive(Debug, Deserialize)]
