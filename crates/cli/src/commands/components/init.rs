@@ -36,7 +36,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
     };
 
     let component_subcategory = Select::new(
-        "Select the language of the component:",
+        "Select the subcategory of the component:",
         SUBCATEGORY_OPTIONS.to_vec(),
     )
     .prompt()?;
