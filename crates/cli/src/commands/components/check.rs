@@ -1,8 +1,3 @@
-use edgee_components_runtime::config::{
-    ComponentsConfiguration, ConsentMappingComponents, DataCollectionComponents,
-};
-use edgee_components_runtime::context::ComponentsContext;
-
 #[derive(Debug, clap::Parser)]
 pub struct Options {}
 
@@ -16,11 +11,16 @@ async fn check_component(
     component_type: ComponentType,
     component_path: &str,
 ) -> anyhow::Result<()> {
-    if !std::path::Path::new(component_path).exists() {
-        return Err(anyhow::anyhow!(
+    use edgee_components_runtime::config::{
+        ComponentsConfiguration, ConsentMappingComponents, DataCollectionComponents,
+    };
+    use edgee_components_runtime::context::ComponentsContext;
+
+    if !std::fs::exists(component_path)? {
+        anyhow::bail!(
             "Component {} does not exist. Please run `edgee component build` first",
             component_path
-        ));
+        );
     }
 
     let config = match component_type {
@@ -65,23 +65,24 @@ async fn check_component(
 }
 
 pub async fn run(_opts: Options) -> anyhow::Result<()> {
+    use anyhow::Context;
+
     use crate::components::manifest::{self, Manifest};
 
-    let manifest_path = manifest::find_manifest_path().ok_or_else(|| {
-        anyhow::anyhow!("Edgee Manifest not found. Please run `edgee component create` and start from a template or `edgee component init` to create a new empty manifest in this folder.")
-    })?;
+    let Some(manifest_path) = manifest::find_manifest_path() else {
+        anyhow::bail!("Edgee Manifest not found. Please run `edgee component create` and start from a template or `edgee component init` to create a new empty manifest in this folder.");
+    };
 
     let manifest = Manifest::load(&manifest_path)?;
     let component_path = manifest
         .package
         .build
         .output_path
-        .into_os_string()
-        .into_string()
-        .map_err(|_| anyhow::anyhow!("No output path found in manifest."))?;
+        .to_str()
+        .context("Output path should be a valid UTF-8 string")?;
 
     // TODO: dont assume that it is a data collection component, add type in manifest
-    check_component(ComponentType::DataCollection, &component_path).await?;
+    check_component(ComponentType::DataCollection, component_path).await?;
 
     Ok(())
 }

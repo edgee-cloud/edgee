@@ -3,7 +3,7 @@ use edgee_api_client::types as api_types;
 
 #[derive(Debug, clap::Parser)]
 pub struct Options {
-    /// Which organization to create the component into if not existing already.
+    /// The organization name used to create or update your component
     ///
     /// Defaults to the user "self" org
     pub organization: Option<String>,
@@ -18,14 +18,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     creds.check_api_token()?;
 
     let Some(manifest_path) = manifest::find_manifest_path() else {
-        anyhow::bail!("Manifest not found");
+        anyhow::bail!("Edgee Manifest not found. Please run `edgee component create` and start from a template or `edgee component init` to create a new empty manifest in this folder.");
     };
     let manifest = Manifest::load(&manifest_path)?;
 
-    let client = edgee_api_client::new()
-        .baseurl("https://api.edgee.dev")
-        .credentials(&creds)
-        .connect();
+    let client = edgee_api_client::new().credentials(&creds).connect();
 
     let organization = match opts.organization {
         Some(ref organization) => client
@@ -86,7 +83,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         Ok(_) | Err(_) => {}
     }
 
-    tracing::info!("Uploading output artifact...");
+    tracing::info!("Uploading WASM file...");
     let asset_url = client
         .upload_file(&manifest.package.build.output_path)
         .await

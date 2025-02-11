@@ -100,7 +100,7 @@ impl Manifest {
 
         if manifest.manifest_version != MANIFEST_VERSION {
             anyhow::bail!(
-                "Invalid manifest version ({} != {})",
+                "Invalid manifest version {}, the supported one is {}",
                 manifest.manifest_version,
                 MANIFEST_VERSION
             );
