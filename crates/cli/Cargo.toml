@@ -12,7 +12,7 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
-inquire.workspace = true
+inquire = { workspace = true, features = ["editor"] }
 miette = { workspace = true, features = ["fancy"] }
 openssl.workspace = true
 serde = { workspace = true, features = ["derive"] }

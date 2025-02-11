@@ -3,13 +3,15 @@ use edgee_api_client::types as api_types;
 
 #[derive(Debug, clap::Parser)]
 pub struct Options {
-    /// Which organization to create the component into if not existing already.
+    /// The organization name used to create or update your component
     ///
     /// Defaults to the user "self" org
     pub organization: Option<String>,
 }
 
 pub async fn run(opts: Options) -> anyhow::Result<()> {
+    use inquire::{Confirm, Editor};
+
     use edgee_api_client::{auth::Credentials, ResultExt};
 
     use crate::components::manifest;
@@ -18,14 +20,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     creds.check_api_token()?;
 
     let Some(manifest_path) = manifest::find_manifest_path() else {
-        anyhow::bail!("Manifest not found");
+        anyhow::bail!("Edgee Manifest not found. Please run `edgee component create` and start from a template or `edgee component init` to create a new empty manifest in this folder.");
     };
     let manifest = Manifest::load(&manifest_path)?;
 
-    let client = edgee_api_client::new()
-        .baseurl("https://api.edgee.dev")
-        .credentials(&creds)
-        .connect();
+    let client = edgee_api_client::new().credentials(&creds).connect();
 
     let organization = match opts.organization {
         Some(ref organization) => client
@@ -55,6 +54,16 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 == edgee_api_client::types::ErrorResponseErrorType::NotFoundError =>
         {
             tracing::info!("Component does not exist, creating...");
+            let confirm = Confirm::new(&format!(
+                "Component `{}/{}` does not exists, do you want to create it?",
+                organization.slug, manifest.package.name,
+            ))
+            .with_default(true)
+            .prompt()?;
+            if !confirm {
+                return Ok(());
+            }
+
             client
                 .create_component()
                 .body(
@@ -86,7 +95,20 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         Ok(_) | Err(_) => {}
     }
 
-    tracing::info!("Uploading output artifact...");
+    let changelog =
+        Editor::new("Please describe the changes from the previous version").prompt_skippable()?;
+
+    let confirm = Confirm::new(&format!(
+        "Please confirm to push the component `{}/{}`:",
+        organization.slug, manifest.package.name,
+    ))
+    .with_default(true)
+    .prompt()?;
+    if !confirm {
+        return Ok(());
+    }
+
+    tracing::info!("Uploading WASM file...");
     let asset_url = client
         .upload_file(&manifest.package.build.output_path)
         .await
@@ -102,7 +124,8 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 .version(&manifest.package.version)
                 .wit_world_version(&manifest.package.wit_world_version)
                 .wasm_url(asset_url)
-                .dynamic_fields(convert_manifest_config_fields(&manifest)),
+                .dynamic_fields(convert_manifest_config_fields(&manifest))
+                .changelog(changelog),
         )
         .send()
         .await
