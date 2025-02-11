@@ -57,6 +57,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             description: None,
             documentation: None,
             repository: None,
+            config_fields: Default::default(),
             build: Build {
                 command: component_language.default_build_command.to_string(),
                 output_path: std::path::PathBuf::from(""),

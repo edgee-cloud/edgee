@@ -17,7 +17,7 @@ pub struct Manifest {
     pub package: Package,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Package {
     pub name: String,
@@ -61,7 +61,7 @@ pub enum SubCategory {
     Attribution,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ConfigField {
     pub title: String,
     #[serde(rename = "type", with = "ConfigFieldType")]
@@ -71,7 +71,7 @@ pub struct ConfigField {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(
     remote = "api_types::ConfigurationFieldType",
     rename_all = "kebab-case"
@@ -82,7 +82,7 @@ pub enum ConfigFieldType {
     Number,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Build {
     pub command: String,
     pub output_path: PathBuf,
