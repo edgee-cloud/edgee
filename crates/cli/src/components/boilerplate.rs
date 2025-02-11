@@ -66,6 +66,11 @@ pub static LANGUAGE_OPTIONS: &[LanguageConfig] = &[
         repo_url: "https://github.com/edgee-cloud/example-rust-component",
         default_build_command: "cargo build --release",
     },
+    LanguageConfig {
+        name: "TypeScript",
+        repo_url: "https://github.com/edgee-cloud/example-ts-component",
+        default_build_command: "npx tsc",
+    },
 ];
 
 pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[CategoryConfig {
