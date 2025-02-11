@@ -4,20 +4,20 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use edgee_api_client::types as api_types;
 
 pub const MANIFEST_VERSION: u8 = 1;
 pub const MANIFEST_FILENAME: &str = "edgee-component.toml";
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Manifest {
     pub manifest_version: u8,
     pub package: Package,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Package {
     pub name: String,
@@ -41,7 +41,7 @@ pub struct Package {
     pub build: Build,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(
     remote = "api_types::ComponentCreateInputCategory",
     rename_all = "kebab-case"
@@ -50,7 +50,7 @@ pub enum Category {
     DataCollection,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(
     remote = "api_types::ComponentCreateInputSubcategory",
     rename_all = "kebab-case"
@@ -61,7 +61,7 @@ pub enum SubCategory {
     Attribution,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ConfigField {
     pub title: String,
     #[serde(rename = "type", with = "ConfigFieldType")]
@@ -71,7 +71,7 @@ pub struct ConfigField {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(
     remote = "api_types::ConfigurationFieldType",
     rename_all = "kebab-case"
@@ -82,7 +82,7 @@ pub enum ConfigFieldType {
     Number,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Build {
     pub command: String,
     pub output_path: PathBuf,
@@ -107,6 +107,16 @@ impl Manifest {
         }
 
         Ok(manifest)
+    }
+
+    pub fn save(&self, path: &Path) -> Result<()> {
+        use std::fs;
+
+        let content = toml::to_string(self)?;
+
+        fs::write(path.join(MANIFEST_FILENAME), content)
+            .with_context(|| format!("Could not write manifest file at {}", path.display()))?;
+        Ok(())
     }
 }
 

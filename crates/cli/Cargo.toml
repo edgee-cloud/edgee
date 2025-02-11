@@ -23,12 +23,12 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 toml.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
 url = { workspace = true, features = ["serde"] }
+reqwest = { workspace = true, features = ["blocking"] }
+zip.workspace = true
 
 edgee-api-client.workspace = true
 edgee-server.workspace = true
 edgee-components-runtime.workspace = true
 
 [features]
-bundled = [
-    "openssl/vendored",
-]
+bundled = ["openssl/vendored"]
