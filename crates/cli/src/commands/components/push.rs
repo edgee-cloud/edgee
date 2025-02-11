@@ -10,6 +10,8 @@ pub struct Options {
 }
 
 pub async fn run(opts: Options) -> anyhow::Result<()> {
+    use inquire::{Confirm, Editor};
+
     use edgee_api_client::{auth::Credentials, ResultExt};
 
     use crate::components::manifest;
@@ -52,6 +54,16 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 == edgee_api_client::types::ErrorResponseErrorType::NotFoundError =>
         {
             tracing::info!("Component does not exist, creating...");
+            let confirm = Confirm::new(&format!(
+                "Component `{}/{}` does not exists, do you want to create it?",
+                organization.slug, manifest.package.name,
+            ))
+            .with_default(true)
+            .prompt()?;
+            if !confirm {
+                return Ok(());
+            }
+
             client
                 .create_component()
                 .body(
@@ -83,6 +95,19 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         Ok(_) | Err(_) => {}
     }
 
+    let changelog =
+        Editor::new("Please describe the changes from the previous version").prompt_skippable()?;
+
+    let confirm = Confirm::new(&format!(
+        "Please confirm to push the component `{}/{}`:",
+        organization.slug, manifest.package.name,
+    ))
+    .with_default(true)
+    .prompt()?;
+    if !confirm {
+        return Ok(());
+    }
+
     tracing::info!("Uploading WASM file...");
     let asset_url = client
         .upload_file(&manifest.package.build.output_path)
@@ -99,7 +124,8 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 .version(&manifest.package.version)
                 .wit_world_version(&manifest.package.wit_world_version)
                 .wasm_url(asset_url)
-                .dynamic_fields(convert_manifest_config_fields(&manifest)),
+                .dynamic_fields(convert_manifest_config_fields(&manifest))
+                .changelog(changelog),
         )
         .send()
         .await
