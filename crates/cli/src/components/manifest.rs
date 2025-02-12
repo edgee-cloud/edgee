@@ -12,6 +12,7 @@ pub const MANIFEST_VERSION: u8 = 1;
 pub const MANIFEST_FILENAME: &str = "edgee-component.toml";
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Manifest {
     pub manifest_version: u8,
     pub package: Package,
