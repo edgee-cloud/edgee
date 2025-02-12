@@ -78,7 +78,7 @@ pub struct ConfigField {
 )]
 pub enum ConfigFieldType {
     String,
-    Boolean,
+    Bool,
     Number,
 }
 
