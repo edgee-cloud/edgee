@@ -117,7 +117,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     tracing::info!("Creating component version...");
     client
         .create_component_version_by_slug()
-        .org_slug(organization.slug)
+        .org_slug(organization.slug.clone())
         .component_slug(&manifest.package.name)
         .body(
             api_types::ComponentVersionCreateInput::builder()
@@ -132,9 +132,12 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         .api_context("Could not create version")?;
 
     tracing::info!(
-        "{} {} pushed successfully!",
+        "{} {} pushed successfully! You can view it at: https://edgee.cloud/~/{}/component-registry/{}/{}",
         manifest.package.name,
-        manifest.package.version
+        manifest.package.version,
+        organization.slug,
+        organization.slug,
+        manifest.package.name,
     );
 
     Ok(())
