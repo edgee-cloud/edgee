@@ -6,9 +6,10 @@ use wasmtime::{
 };
 use wasmtime_wasi::{WasiCtx, WasiView};
 
-use crate::config::ComponentsConfiguration;
+use crate::config::{ComponentsConfiguration, DataCollectionComponents};
 use crate::consent_mapping::{ConsentMapping, ConsentMappingPre};
 use crate::data_collection::{DataCollection, DataCollectionPre};
+
 pub struct ComponentsContext {
     pub engine: Engine,
     pub components: Components,
@@ -17,6 +18,27 @@ pub struct ComponentsContext {
 pub struct Components {
     pub data_collection: HashMap<String, DataCollectionPre<HostState>>,
     pub consent_mapping: HashMap<String, ConsentMappingPre<HostState>>,
+}
+
+pub fn pre_instanciate_data_collection_component_internal(
+    engine: &Engine,
+    component_config: &DataCollectionComponents,
+) -> anyhow::Result<DataCollectionPre<HostState>> {
+    let mut linker = Linker::new(engine);
+    wasmtime_wasi::add_to_linker_async(&mut linker)?;
+
+    let span = tracing::info_span!("component-context", component = %component_config.id, category = "data-collection");
+    let _span = span.enter();
+
+    tracing::debug!("Loading new data collection component");
+
+    let component = Component::from_file(engine, &component_config.file)?;
+    let instance_pre = linker.instantiate_pre(&component)?;
+    let instance_pre = DataCollectionPre::new(instance_pre)?;
+
+    tracing::debug!("loaded new data collection component");
+
+    Ok(instance_pre)
 }
 
 impl ComponentsContext {
@@ -41,17 +63,8 @@ impl ComponentsContext {
             .data_collection
             .iter()
             .map(|entry| {
-                let span = tracing::info_span!("component-context", component = %entry.id, category = "data-collection");
-                let _span = span.enter();
-
-                tracing::debug!("Start pre-instantiate data collection component");
-
-                let component = Component::from_file(&engine, &entry.file)?;
-                let instance_pre = linker.instantiate_pre(&component)?;
-                let instance_pre = DataCollectionPre::new(instance_pre)?;
-
-                tracing::debug!("Finished pre-instantiate data collection component");
-
+                let instance_pre =
+                    pre_instanciate_data_collection_component_internal(&engine, entry)?;
                 Ok((entry.id.clone(), instance_pre))
             })
             .collect::<anyhow::Result<_>>()?;
@@ -82,6 +95,31 @@ impl ComponentsContext {
         };
 
         Ok(Self { engine, components })
+    }
+
+    pub fn pre_instanciate_data_collection_component(
+        &self,
+        component_config: DataCollectionComponents,
+    ) -> anyhow::Result<DataCollectionPre<HostState>> {
+        let instance_pre =
+            pre_instanciate_data_collection_component_internal(&self.engine, &component_config)?;
+        Ok(instance_pre)
+    }
+
+    pub fn add_data_collection_component(
+        &mut self,
+        component_config: DataCollectionComponents,
+        instance_pre: DataCollectionPre<HostState>,
+    ) {
+        if !self
+            .components
+            .data_collection
+            .contains_key(&component_config.id)
+        {
+            self.components
+                .data_collection
+                .insert(component_config.id.clone(), instance_pre);
+        }
     }
 
     pub fn empty_store(&self) -> Store<HostState> {
