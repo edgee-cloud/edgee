@@ -14,8 +14,10 @@ anyhow.workspace = true
 bon.workspace = true
 chrono = { workspace = true, features = ["serde"] }
 dirs.workspace = true
+easy-ext.workspace = true
 futures.workspace = true
 progenitor.workspace = true
+progenitor-client.workspace = true
 reqwest = { workspace = true, features = ["json"] }
 schemars = { workspace = true, features = ["chrono"] }
 serde = { workspace = true, features = ["derive"] }

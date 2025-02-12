@@ -1,7 +1,5 @@
 use std::path::Path;
 
-use crate::Options;
-
 use edgee_server::config::StaticConfiguration;
 
 fn read_config(path: Option<&Path>) -> Result<StaticConfiguration, String> {
@@ -49,12 +47,11 @@ fn read_config(path: Option<&Path>) -> Result<StaticConfiguration, String> {
     }
 }
 
-pub fn init(options: &Options) {
-    let path = options.config_path.as_deref();
-    let mut config = read_config(path).expect("should read config file");
+pub fn init(config_path: Option<&Path>, trace_component: Option<&str>) {
+    let mut config = read_config(config_path).expect("should read config file");
     config.validate().unwrap();
 
-    if let Some(component) = options.trace_component.as_deref() {
+    if let Some(component) = trace_component {
         config.log.trace_component = Some(component.to_string());
     }
 

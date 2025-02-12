@@ -1,8 +1,11 @@
 macro_rules! setup_commands {
     {
         $(
+            #![run($($arg_name:ident: $arg_ty:ty),*$(,)?)]
+        )?
+        $(
             $(#[$variant_meta:meta])*
-            $variant_name:ident($mod_name:ident)
+            $variant_name:ident($mod_name:ident $(, $($pass_arg_name:ident),*$(,)?)?)
         ),*$(,)?
     } => {
         $(mod $mod_name;)*
@@ -16,9 +19,9 @@ macro_rules! setup_commands {
         }
 
         impl Command {
-            pub async fn run(self) {
+            pub async fn run(self, $($($arg_name: $arg_ty),*)?) -> anyhow::Result<()> {
                 match self {
-                    $(Self::$variant_name(opts) => $mod_name::run(opts).await),*
+                    $(Self::$variant_name(opts) => $mod_name::run(opts, $($($pass_arg_name),*)?).await),*
                 }
             }
         }

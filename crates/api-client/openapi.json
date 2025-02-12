@@ -851,6 +851,132 @@
         }
       }
     },
+    "/v1/projects/{id}/counters": {
+      "get": {
+        "operationId": "getProjectCounters",
+        "summary": "List all statistics for a given project",
+        "description": "List all statistics for a given project.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "The month to filter the statistics."
+            }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "The day to filter the statistics."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The retrieved project statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectCounters"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{id}/components/{componentId}/counters": {
+      "get": {
+        "operationId": "getProjectComponentCounters",
+        "summary": "List all Counters for a given project component",
+        "description": "List all Counters for a given project component.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "componentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "The month to filter the counters."
+            }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "The day to filter the counters."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The retrieved project counters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectComponentCounters"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/projects/{id}/domains": {
       "get": {
         "operationId": "listProjectDomains",
@@ -1563,16 +1689,61 @@
             }
           }
         }
+      },
+      "post": {
+        "operationId": "createComponent",
+        "summary": "Create a Component",
+        "description": "Create a Component.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComponentCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created Component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Component"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
-    "/v1/components/{id}": {
+    "/v1/components/{orgSlug}/{componentSlug}": {
       "get": {
-        "operationId": "getComponent",
-        "summary": "Get a Component",
-        "description": "Retrieve a Component.",
+        "operationId": "getComponentBySlug",
+        "summary": "Get a Component by Slug",
+        "description": "Retrieve a Component by Slug.",
         "parameters": [
           {
-            "name": "id",
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "componentSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -1604,12 +1775,20 @@
         }
       },
       "put": {
-        "operationId": "updateComponent",
-        "summary": "Update a Component",
-        "description": "Updates an existing Component.",
+        "operationId": "updateComponentBySlug",
+        "summary": "Update a Component by Slug",
+        "description": "Updates an existing Component by Slug.",
         "parameters": [
           {
-            "name": "id",
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "componentSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -1651,14 +1830,22 @@
         }
       }
     },
-    "/v1/components/{id}/versions": {
+    "/v1/components/{orgSlug}/{componentSlug}/versions": {
       "post": {
         "operationId": "createComponentVersion",
         "summary": "Create a Component Version",
         "description": "Create a Component Version.",
         "parameters": [
           {
-            "name": "id",
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "componentSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -1700,14 +1887,79 @@
         }
       }
     },
-    "/v1/components/{id}/versions/{versionId}": {
-      "put": {
-        "operationId": "updateComponentVersion",
-        "summary": "Update a Component Version",
-        "description": "Update a Component Version.",
+    "/v1/components/{orgSlug}/{componentSlug}/versions": {
+      "post": {
+        "operationId": "createComponentVersionBySlug",
+        "summary": "Create a Component Version by Slug",
+        "description": "Create a Component Version by Slug.",
         "parameters": [
           {
-            "name": "id",
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "componentSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComponentVersionCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created Component Version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentVersion"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/components/{orgSlug}/{componentSlug}/versions/{versionId}": {
+      "put": {
+        "operationId": "updateComponentVersionBySlug",
+        "summary": "Update a Component Version by Slug",
+        "description": "Update a Component Version by Slug.",
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "componentSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -1805,53 +2057,6 @@
                       }
                     }
                   }
-                }
-              }
-            }
-          },
-          "4XX": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "operationId": "createComponent",
-        "summary": "Create a Component",
-        "description": "Create a Component.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ComponentCreateInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "The created Component",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Component"
                 }
               }
             }
@@ -2054,7 +2259,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/User"
+                  "$ref": "#/components/schemas/UserWithRoles"
                 }
               }
             }
@@ -2093,7 +2298,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/User"
+                  "$ref": "#/components/schemas/UserWithRoles"
                 }
               }
             }
@@ -2248,6 +2453,24 @@
           }
         }
       }
+    },
+    "/v1/upload/presign": {
+      "get": {
+        "operationId": "getUploadPresignedUrl",
+        "summary": "Get Upload Presigned URL",
+        "responses": {
+          "200": {
+            "description": "An Upload Presigned URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadPresign"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2374,7 +2597,16 @@
             "description": "Time at which the object was last updated.",
             "readOnly": true
           }
-        }
+        },
+        "required": [
+          "object",
+          "id",
+          "name",
+          "slug",
+          "current_billing_plan",
+          "created_at",
+          "updated_at"
+        ]
       },
       "OrganizationCreateInput": {
         "type": "object",
@@ -2890,7 +3122,7 @@
           "component_slug": {
             "type": "string",
             "description": "Slug of the component",
-            "example": "edgee/google_analytics"
+            "example": "edgee/google-analytics"
           },
           "component_version": {
             "type": "string",
@@ -2967,9 +3199,9 @@
             "readOnly": true
           },
           "versions": {
-            "type": "array",
+            "type": "object",
             "description": "List of versions of the component",
-            "items": {
+            "additionalProperties": {
               "$ref": "#/components/schemas/ComponentVersion"
             }
           },
@@ -3034,9 +3266,9 @@
           },
           "dynamic_fields": {
             "type": "array",
-            "description": "List of dynamic fields",
+            "description": "List of configuration fields",
             "items": {
-              "$ref": "#/components/schemas/DynamicFieldsItem"
+              "$ref": "#/components/schemas/ConfigurationField"
             }
           },
           "changelog": {
@@ -3052,30 +3284,37 @@
           }
         }
       },
-      "DynamicFieldsItem": {
+      "ConfigurationField": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string",
-            "description": "The name of the dynamic field."
+            "description": "The name of the configuration field."
           },
           "title": {
             "type": "string",
-            "description": "The title of the dynamic field."
+            "description": "The title of the configuration field."
           },
           "type": {
             "type": "string",
-            "description": "The type of the dynamic field."
+            "description": "The type of the configuration field.",
+            "enum": ["string", "boolean", "number"]
           },
           "required": {
             "type": "boolean",
-            "description": "Whether the dynamic field is required."
+            "description": "Whether the configuration field is required."
           },
           "description": {
             "type": "string",
-            "description": "The description of the dynamic field."
+            "description": "The description of the configuration field."
           }
-        }
+        },
+        "required": [
+          "name",
+          "title",
+          "type",
+          "required"
+        ]
       },
       "ComponentCreateInput": {
         "type": "object",
@@ -3084,6 +3323,11 @@
             "type": "string",
             "description": "Name of the component.",
             "example": "My Component"
+          },
+          "slug": {
+            "type": "string",
+            "description": "Slug of the component.",
+            "example": "my-component"
           },
           "category": {
             "type": "string",
@@ -3143,6 +3387,10 @@
           "is_archived": {
             "type": "boolean",
             "description": "Whether the component is archived or not."
+          },
+          "public": {
+            "type": "boolean",
+            "description": "Whether the component is public or not."
           }
         }
       },
@@ -3169,9 +3417,9 @@
           },
           "dynamic_fields": {
             "type": "array",
-            "description": "List of dynamic fields",
+            "description": "List of configuration fields",
             "items": {
-              "$ref": "#/components/schemas/DynamicFieldsItem"
+              "$ref": "#/components/schemas/ConfigurationField"
             }
           },
           "changelog": {
@@ -3269,7 +3517,7 @@
           "role"
         ]
       },
-      "User": {
+      "UserBase": {
         "type": "object",
         "description": "A User is a unique identifier that you can use to manage and organize your work.",
         "properties": {
@@ -3299,10 +3547,6 @@
             "description": "Slug of the user",
             "readOnly": true
           },
-          "role": {
-            "type": "string",
-            "readOnly": true
-          },
           "avatar_url": {
             "type": "string",
             "description": "Avatar of the user",
@@ -3324,6 +3568,46 @@
           }
         },
         "required": ["object", "id", "email", "name", "slug", "role", "created_at", "updated_at"]
+      },
+      "User": {
+        "type": "object",
+        "description": "A User is a unique identifier that you can use to manage and organize your work.",
+        "allOf": [
+          { "$ref": "#/components/schemas/UserBase" }
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "Role of the user",
+            "readOnly": true
+          }
+        },
+        "required": [
+          "object",
+          "id",
+          "email",
+          "name",
+          "slug",
+          "role",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "UserWithRoles": {
+        "allOf": [
+          { "$ref": "#/components/schemas/UserBase" }
+        ],
+        "properties": {
+          "roles": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": ["admin", "member"],
+              "description": "The role of the user in each organization."
+            },
+            "description": "Roles of the user in multiple organizations. The keys are organization IDs, and values are roles ('admin', 'member')."
+          }
+        }
       },
       "OrganizationUser": {
         "type": "object",
@@ -3507,6 +3791,17 @@
           }
         }
       },
+      "UploadPresign": {
+        "type": "object",
+        "properties": {
+          "upload_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload_url"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "description": "An error response from the API. More info [here]('/docs/api-reference/errors')",
@@ -3523,7 +3818,8 @@
                   "update_error",
                   "deletion_error",
                   "forbidden_error",
-                  "authentication_error"
+                  "authentication_error",
+                  "conflict_error"
                 ],
                 "default": "invalid_request_error",
                 "description": "The type of error returned."
@@ -3552,7 +3848,103 @@
                   }
                 }
               }
-            }
+            },
+            "required": [
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "ProjectCounters": {
+        "type": "object",
+        "description": "A Project Counters object represents the statistics of a project.",
+        "example": {
+          "object": "project_counters",
+          "request_count": 32423432,
+          "event_count": 12390,
+          "month": "2023-12",
+          "project_id": "6d614bd5-4d81-4a9b-8ba4-6fe3ffd33748"
+        },
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "project_counters"
+          },
+          "request_count": {
+            "type": "integer",
+            "description": "The number of requests made to the project."
+          },
+          "event_count": {
+            "type": "integer",
+            "description": "The number of events made to the project."
+          },
+          "month": {
+            "type": "string",
+            "format": "date",
+            "description": "The month of the statistics."
+          },
+          "day": {
+            "type": "string",
+            "format": "date",
+            "description": "The day of the statistics."
+          },
+          "project_id": {
+            "type": "string",
+            "description": "The Project ID."
+          }
+        }
+      },
+      "ProjectComponentCounters": {
+        "type": "object",
+        "description": "A Project Counters object represents the counters of a project.",
+        "example": {
+          "object": "project_counters",
+          "user_count": 123,
+          "track_count": 456,
+          "page_count": 789,
+          "day": "2023-12-25",
+          "project_id": "6d614bd5-4d81-4a9b-8ba4-6fe3ffd33748",
+          "component_id": "abcdef"
+        },
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "String representing the object's type. Objects of the same type share the same value",
+            "example": "project_counters"
+          },
+          "user_count": {
+            "type": "integer",
+            "description": "The number of user events generated by the component."
+          },
+          "track_count": {
+            "type": "integer",
+            "description": "The number of track events generated by the component."
+          },
+          "page_count": {
+            "type": "integer",
+            "description": "The number of page events generated by the component."
+          },
+          "month": {
+            "type": "string",
+            "format": "date",
+            "description": "The month of the statistics."
+          },
+          "day": {
+            "type": "string",
+            "format": "date",
+            "description": "The day of the statistics."
+          },
+          "project_id": {
+            "type": "string",
+            "description": "The Project ID."
+          },
+          "component_id": {
+            "type": "string",
+            "description": "The Project component ID."
           }
         }
       }
