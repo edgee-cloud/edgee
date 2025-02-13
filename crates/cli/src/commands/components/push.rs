@@ -41,7 +41,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .api_context("Could not get user organization")?
             .into_inner(),
     };
-    let component_slug = slug::slugify(&manifest.package.name);
+    let component_slug = slug::slugify(&manifest.component.name);
     match client
         .get_component_by_slug()
         .org_slug(&organization.slug)
@@ -75,21 +75,21 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 .body(
                     api_types::ComponentCreateInput::builder()
                         .organization_id(organization.id.clone())
-                        .name(&manifest.package.name)
+                        .name(&manifest.component.name)
                         .slug(component_slug.clone())
-                        .description(manifest.package.description.clone())
-                        .category(manifest.package.category)
-                        .subcategory(manifest.package.subcategory)
+                        .description(manifest.component.description.clone())
+                        .category(manifest.component.category)
+                        .subcategory(manifest.component.subcategory)
                         .documentation_link(
                             manifest
-                                .package
+                                .component
                                 .documentation
                                 .as_ref()
                                 .map(|url| url.to_string()),
                         )
                         .repo_link(
                             manifest
-                                .package
+                                .component
                                 .repository
                                 .as_ref()
                                 .map(|url| url.to_string()),
@@ -123,7 +123,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     tracing::info!("Uploading WASM file...");
     let asset_url = client
-        .upload_file(&manifest.package.build.output_path)
+        .upload_file(&manifest.component.build.output_path)
         .await
         .expect("Could not upload component");
 
@@ -134,8 +134,8 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         .component_slug(&component_slug)
         .body(
             api_types::ComponentVersionCreateInput::builder()
-                .version(&manifest.package.version)
-                .wit_world_version(&manifest.package.wit_world_version)
+                .version(&manifest.component.version)
+                .wit_world_version(&manifest.component.wit_world_version)
                 .wasm_url(asset_url)
                 .dynamic_fields(convert_manifest_config_fields(&manifest))
                 .changelog(changelog),
@@ -147,7 +147,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     tracing::info!(
         "{} {} pushed successfully!",
         component_slug,
-        manifest.package.version
+        manifest.component.version,
     );
 
     Ok(())
@@ -155,7 +155,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
 fn convert_manifest_config_fields(manifest: &Manifest) -> Vec<api_types::ConfigurationField> {
     manifest
-        .package
+        .component
         .settings
         .iter()
         .map(|(name, field)| api_types::ConfigurationField {

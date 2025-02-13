@@ -1,6 +1,6 @@
 use crate::components::{
     boilerplate::{CATEGORY_OPTIONS, LANGUAGE_OPTIONS, SUBCATEGORY_OPTIONS},
-    manifest::{self, Build, Manifest, Package},
+    manifest::{self, Build, Component, Manifest},
 };
 
 #[derive(Debug, clap::Parser)]
@@ -48,7 +48,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
 
     Manifest {
         manifest_version: manifest::MANIFEST_VERSION,
-        package: Package {
+        component: Component {
             name: component_name,
             version: "0.1.0".to_string(),
             wit_world_version: "0.4.0".to_string(),

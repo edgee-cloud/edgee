@@ -15,12 +15,12 @@ pub const MANIFEST_FILENAME: &str = "edgee-component.toml";
 #[serde(rename_all = "kebab-case")]
 pub struct Manifest {
     pub manifest_version: u8,
-    pub package: Package,
+    pub component: Component,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct Package {
+pub struct Component {
     pub name: String,
     pub version: String,
     #[serde(with = "Category")]

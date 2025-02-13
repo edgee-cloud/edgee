@@ -43,7 +43,7 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
 
     let manifest = Manifest::load(&manifest_path)?;
     let component_path = manifest
-        .package
+        .component
         .build
         .output_path
         .into_os_string()
@@ -89,14 +89,14 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
     }
 
     // check that all required settings are provided
-    for (name, setting) in &manifest.package.settings {
+    for (name, setting) in &manifest.component.settings {
         if setting.required && !settings_map.contains_key(name) {
             return Err(anyhow::anyhow!("missing required setting {}", name));
         }
     }
 
     for name in settings_map.keys() {
-        if !manifest.package.settings.contains_key(name) {
+        if !manifest.component.settings.contains_key(name) {
             return Err(anyhow::anyhow!("unknown setting {}", name));
         }
     }

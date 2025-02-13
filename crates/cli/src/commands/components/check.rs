@@ -75,7 +75,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
 
     let manifest = Manifest::load(&manifest_path)?;
     let component_path = manifest
-        .package
+        .component
         .build
         .output_path
         .to_str()
