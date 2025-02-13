@@ -56,7 +56,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             wit_world_version: "0.4.0".to_string(),
             category: *component_category.value,
             subcategory: *component_subcategory.value,
-            description: Some("Description of the component".to_string()),
+            description: Some("Description of\nthe component".to_string()),
             documentation: Some(Url::parse("https://www.edgee.cloud/docs/introduction")?),
             repository: Some(Url::parse("https://www.github.com/edgee-cloud/edgee")?),
             settings: {
