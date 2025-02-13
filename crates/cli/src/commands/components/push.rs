@@ -43,11 +43,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .into_inner(),
     };
 
+    let component_slug = slug::slugify(&manifest.component.name);
     let component_url = format!(
         "https://www.edgee.cloud/~/registry/{}/{}",
-        organization.slug, manifest.component.name,
+        organization.slug, component_slug,
     );
-    let component_slug = slug::slugify(&manifest.component.name);
 
     match client
         .get_component_by_slug()
@@ -116,7 +116,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             client
                 .update_component_by_slug()
                 .org_slug(&organization.slug)
-                .component_slug(&manifest.component.name)
+                .component_slug(&component_slug)
                 .body(
                     api_types::ComponentUpdateParams::builder()
                         .description(manifest.component.description.clone())
