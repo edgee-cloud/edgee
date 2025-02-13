@@ -128,9 +128,8 @@ pub async fn send_events(
 
             // Native cookie support
             if let Some(ref ids) = event.context.user.native_cookie_ids {
-                if ids.contains_key(&cfg.project_component_id) {
-                    event.context.user.edgee_id =
-                        ids.get(&cfg.project_component_id).unwrap().clone();
+                if ids.contains_key(&cfg.id) {
+                    event.context.user.edgee_id = ids.get(&cfg.id).unwrap().clone();
                 } else {
                     event.context.user.edgee_id = ctx.get_edgee_id().clone();
                 }
