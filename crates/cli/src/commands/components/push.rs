@@ -42,7 +42,13 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .api_context("Could not get user organization")?
             .into_inner(),
     };
+
+    let component_url = format!(
+        "https://www.edgee.cloud/~/registry/{}/{}",
+        organization.slug, manifest.component.name,
+    );
     let component_slug = slug::slugify(&manifest.component.name);
+
     match client
         .get_component_by_slug()
         .org_slug(&organization.slug)
@@ -101,7 +107,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 .await
                 .api_context("Could not create component")?;
             tracing::info!(
-                "Component `{}/{}` created successfully!",
+                "Component `{}/{}` has been created successfully, you check it out here: {component_url}",
                 organization.slug,
                 component_slug
             );
@@ -132,6 +138,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 .send()
                 .await
                 .api_context("Could not update component infos")?;
+            tracing::info!(
+                "Component `{}/{}` has been updated and is accessible here: {component_url}",
+                organization.slug,
+                component_slug,
+            );
         }
     }
 
