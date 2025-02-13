@@ -36,10 +36,10 @@ pub struct Component {
 
     pub wit_world_version: String,
 
+    pub build: Build,
+
     #[serde(default)]
     pub settings: HashMap<String, Setting>,
-
-    pub build: Build,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
