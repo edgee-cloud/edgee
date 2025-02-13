@@ -1,6 +1,7 @@
-use crate::components::manifest::Manifest;
 use edgee_api_client::types as api_types;
-use slug;
+
+use crate::components::manifest::Manifest;
+
 #[derive(Debug, clap::Parser)]
 pub struct Options {
     /// The organization name used to create or update your component
@@ -119,6 +120,18 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     .prompt()?;
     if !confirm {
         return Ok(());
+    }
+
+    let output_path = &manifest.component.build.output_path;
+    if !output_path.exists() {
+        let confirm = Confirm::new("Component have not been built yet, do you want to build it?")
+            .with_default(true)
+            .prompt()?;
+        if !confirm {
+            return Ok(());
+        }
+
+        super::build::do_build(&manifest).await?;
     }
 
     tracing::info!("Uploading WASM file...");
