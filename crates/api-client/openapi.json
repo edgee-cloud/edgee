@@ -3358,6 +3358,10 @@
           "description": {
             "type": "string",
             "description": "Description of the component."
+          },
+          "public": {
+            "type": "boolean",
+            "description": "Whether the created component is public or not."
           }
         },
         "required": [
