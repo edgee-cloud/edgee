@@ -10,7 +10,7 @@ pub struct Options {
 }
 
 pub async fn run(opts: Options) -> anyhow::Result<()> {
-    use inquire::{Confirm, Editor};
+    use inquire::{Confirm, Editor, Select};
 
     use edgee_api_client::{auth::Credentials, ResultExt};
 
@@ -64,6 +64,12 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 return Ok(());
             }
 
+            let public = Select::new(
+                "Would you like to make this component public or private?",
+                vec!["private", "public"],
+            )
+            .prompt()?;
+
             client
                 .create_component()
                 .body(
@@ -86,7 +92,8 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                                 .repository
                                 .as_ref()
                                 .map(|url| url.to_string()),
-                        ),
+                        )
+                        .public(public == "public"),
                 )
                 .send()
                 .await
