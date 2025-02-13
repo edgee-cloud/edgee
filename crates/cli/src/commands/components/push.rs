@@ -1,6 +1,6 @@
 use crate::components::manifest::Manifest;
 use edgee_api_client::types as api_types;
-
+use slug;
 #[derive(Debug, clap::Parser)]
 pub struct Options {
     /// The organization name used to create or update your component
@@ -41,11 +41,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .api_context("Could not get user organization")?
             .into_inner(),
     };
-
+    let component_slug = slug::slugify(&manifest.package.name);
     match client
         .get_component_by_slug()
         .org_slug(&organization.slug)
-        .component_slug(&manifest.package.name)
+        .component_slug(&component_slug)
         .send()
         .await
     {
@@ -56,7 +56,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             tracing::info!("Component does not exist, creating...");
             let confirm = Confirm::new(&format!(
                 "Component `{}/{}` does not exists, do you want to create it?",
-                organization.slug, manifest.package.name,
+                organization.slug, &component_slug,
             ))
             .with_default(true)
             .prompt()?;
@@ -76,6 +76,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                     api_types::ComponentCreateInput::builder()
                         .organization_id(organization.id.clone())
                         .name(&manifest.package.name)
+                        .slug(component_slug.clone())
                         .description(manifest.package.description.clone())
                         .category(manifest.package.category)
                         .subcategory(manifest.package.subcategory)
@@ -101,7 +102,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             tracing::info!(
                 "Component `{}/{}` created successfully!",
                 organization.slug,
-                manifest.package.name
+                component_slug
             );
         }
         Ok(_) | Err(_) => {}
@@ -112,7 +113,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     let confirm = Confirm::new(&format!(
         "Please confirm to push the component `{}/{}`:",
-        organization.slug, manifest.package.name,
+        organization.slug, component_slug,
     ))
     .with_default(true)
     .prompt()?;
@@ -130,7 +131,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     client
         .create_component_version_by_slug()
         .org_slug(organization.slug)
-        .component_slug(&manifest.package.name)
+        .component_slug(&component_slug)
         .body(
             api_types::ComponentVersionCreateInput::builder()
                 .version(&manifest.package.version)
@@ -145,7 +146,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     tracing::info!(
         "{} {} pushed successfully!",
-        manifest.package.name,
+        component_slug,
         manifest.package.version
     );
 
