@@ -143,7 +143,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 fn convert_manifest_config_fields(manifest: &Manifest) -> Vec<api_types::ConfigurationField> {
     manifest
         .package
-        .config_fields
+        .settings
         .iter()
         .map(|(name, field)| api_types::ConfigurationField {
             name: name.clone(),

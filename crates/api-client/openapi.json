@@ -3298,7 +3298,7 @@
           "type": {
             "type": "string",
             "description": "The type of the configuration field.",
-            "enum": ["string", "boolean", "number"]
+            "enum": ["string", "bool", "number"]
           },
           "required": {
             "type": "boolean",

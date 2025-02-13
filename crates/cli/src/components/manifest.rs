@@ -12,6 +12,7 @@ pub const MANIFEST_VERSION: u8 = 1;
 pub const MANIFEST_FILENAME: &str = "edgee-component.toml";
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Manifest {
     pub manifest_version: u8,
     pub package: Package,
@@ -36,7 +37,7 @@ pub struct Package {
     pub wit_world_version: String,
 
     #[serde(default)]
-    pub config_fields: HashMap<String, ConfigField>,
+    pub settings: HashMap<String, Setting>,
 
     pub build: Build,
 }
@@ -62,9 +63,9 @@ pub enum SubCategory {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ConfigField {
+pub struct Setting {
     pub title: String,
-    #[serde(rename = "type", with = "ConfigFieldType")]
+    #[serde(rename = "type", with = "SettingType")]
     pub type_: api_types::ConfigurationFieldType,
     #[serde(default)]
     pub required: bool,
@@ -76,9 +77,9 @@ pub struct ConfigField {
     remote = "api_types::ConfigurationFieldType",
     rename_all = "kebab-case"
 )]
-pub enum ConfigFieldType {
+pub enum SettingType {
     String,
-    Boolean,
+    Bool,
     Number,
 }
 
