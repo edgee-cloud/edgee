@@ -98,6 +98,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 .send()
                 .await
                 .api_context("Could not create component")?;
+            tracing::info!(
+                "Component `{}/{}` created successfully!",
+                organization.slug,
+                manifest.package.name
+            );
         }
         Ok(_) | Err(_) => {}
     }
