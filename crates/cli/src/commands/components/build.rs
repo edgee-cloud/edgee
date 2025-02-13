@@ -11,9 +11,9 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
     };
     let manifest = Manifest::load(&manifest_path).map_err(|err| anyhow::anyhow!(err))?;
 
-    tracing::info!("Running: {}", manifest.package.build.command);
+    tracing::info!("Running: {}", manifest.component.build.command);
     let mut cmd = Command::new("sh");
-    cmd.arg("-c").arg(manifest.package.build.command);
+    cmd.arg("-c").arg(manifest.component.build.command);
     let status = cmd.status()?;
 
     if status.success() {

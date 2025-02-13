@@ -159,7 +159,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     let manifest = Manifest::load(&manifest_path)?;
     let component_path = manifest
-        .package
+        .component
         .build
         .output_path
         .into_os_string()

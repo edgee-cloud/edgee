@@ -45,7 +45,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     match client
         .get_component_by_slug()
         .org_slug(&organization.slug)
-        .component_slug(&manifest.package.name)
+        .component_slug(&manifest.component.name)
         .send()
         .await
     {
@@ -56,7 +56,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             tracing::info!("Component does not exist, creating...");
             let confirm = Confirm::new(&format!(
                 "Component `{}/{}` does not exists, do you want to create it?",
-                organization.slug, manifest.package.name,
+                organization.slug, manifest.component.name,
             ))
             .with_default(true)
             .prompt()?;
@@ -69,20 +69,20 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 .body(
                     api_types::ComponentCreateInput::builder()
                         .organization_id(organization.id.clone())
-                        .name(&manifest.package.name)
-                        .description(manifest.package.description.clone())
-                        .category(manifest.package.category)
-                        .subcategory(manifest.package.subcategory)
+                        .name(&manifest.component.name)
+                        .description(manifest.component.description.clone())
+                        .category(manifest.component.category)
+                        .subcategory(manifest.component.subcategory)
                         .documentation_link(
                             manifest
-                                .package
+                                .component
                                 .documentation
                                 .as_ref()
                                 .map(|url| url.to_string()),
                         )
                         .repo_link(
                             manifest
-                                .package
+                                .component
                                 .repository
                                 .as_ref()
                                 .map(|url| url.to_string()),
@@ -100,7 +100,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     let confirm = Confirm::new(&format!(
         "Please confirm to push the component `{}/{}`:",
-        organization.slug, manifest.package.name,
+        organization.slug, manifest.component.name,
     ))
     .with_default(true)
     .prompt()?;
@@ -110,7 +110,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     tracing::info!("Uploading WASM file...");
     let asset_url = client
-        .upload_file(&manifest.package.build.output_path)
+        .upload_file(&manifest.component.build.output_path)
         .await
         .expect("Could not upload component");
 
@@ -118,11 +118,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     client
         .create_component_version_by_slug()
         .org_slug(organization.slug)
-        .component_slug(&manifest.package.name)
+        .component_slug(&manifest.component.name)
         .body(
             api_types::ComponentVersionCreateInput::builder()
-                .version(&manifest.package.version)
-                .wit_world_version(&manifest.package.wit_world_version)
+                .version(&manifest.component.version)
+                .wit_world_version(&manifest.component.wit_world_version)
                 .wasm_url(asset_url)
                 .dynamic_fields(convert_manifest_config_fields(&manifest))
                 .changelog(changelog),
@@ -133,8 +133,8 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     tracing::info!(
         "{} {} pushed successfully!",
-        manifest.package.name,
-        manifest.package.version
+        manifest.component.name,
+        manifest.component.version
     );
 
     Ok(())
@@ -142,7 +142,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
 fn convert_manifest_config_fields(manifest: &Manifest) -> Vec<api_types::ConfigurationField> {
     manifest
-        .package
+        .component
         .settings
         .iter()
         .map(|(name, field)| api_types::ConfigurationField {
