@@ -1,6 +1,8 @@
+use url::Url;
+
 use crate::components::{
     boilerplate::{CATEGORY_OPTIONS, LANGUAGE_OPTIONS, SUBCATEGORY_OPTIONS},
-    manifest::{self, Build, Manifest, Package},
+    manifest::{self, Build, ConfigField, Manifest, Package},
 };
 
 #[derive(Debug, clap::Parser)]
@@ -54,10 +56,22 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             wit_world_version: "0.4.0".to_string(),
             category: *component_category.value,
             subcategory: *component_subcategory.value,
-            description: None,
-            documentation: None,
-            repository: None,
-            config_fields: Default::default(),
+            description: Some("Description of the component".to_string()),
+            documentation: Some(Url::parse("https://www.edgee.cloud/docs/introduction")?),
+            repository: Some(Url::parse("https://www.github.com/edgee-cloud/edgee")?),
+            config_fields: {
+                let mut fields = std::collections::HashMap::new();
+                fields.insert(
+                    "example".to_string(),
+                    ConfigField {
+                        description: Some("Example config field".to_string()),
+                        required: true,
+                        title: "ExampleConfigField".to_string(),
+                        type_: edgee_api_client::types::ConfigurationFieldType::String,
+                    },
+                );
+                fields
+            },
             build: Build {
                 command: component_language.default_build_command.to_string(),
                 output_path: std::path::PathBuf::from(""),
