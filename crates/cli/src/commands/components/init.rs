@@ -2,7 +2,7 @@ use url::Url;
 
 use crate::components::{
     boilerplate::{CATEGORY_OPTIONS, LANGUAGE_OPTIONS, SUBCATEGORY_OPTIONS},
-    manifest::{self, Build, ConfigField, Manifest, Package},
+    manifest::{self, Build, Component, Manifest, Setting},
 };
 
 #[derive(Debug, clap::Parser)]
@@ -50,7 +50,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
 
     Manifest {
         manifest_version: manifest::MANIFEST_VERSION,
-        package: Package {
+        component: Component {
             name: component_name,
             version: "0.1.0".to_string(),
             wit_world_version: "0.4.0".to_string(),
@@ -59,12 +59,12 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             description: Some("Description of the component".to_string()),
             documentation: Some(Url::parse("https://www.edgee.cloud/docs/introduction")?),
             repository: Some(Url::parse("https://www.github.com/edgee-cloud/edgee")?),
-            config_fields: {
+            settings: {
                 let mut fields = std::collections::HashMap::new();
                 fields.insert(
                     "example".to_string(),
-                    ConfigField {
-                        description: Some("Example config field".to_string()),
+                    Setting {
+                        description: Some("Here is a\nstring".to_string()),
                         required: true,
                         title: "ExampleConfigField".to_string(),
                         type_: edgee_api_client::types::ConfigurationFieldType::String,

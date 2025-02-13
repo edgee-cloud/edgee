@@ -1,6 +1,6 @@
 use crate::components::manifest::Manifest;
 use edgee_api_client::types as api_types;
-
+use slug;
 #[derive(Debug, clap::Parser)]
 pub struct Options {
     /// The organization name used to create or update your component
@@ -10,7 +10,7 @@ pub struct Options {
 }
 
 pub async fn run(opts: Options) -> anyhow::Result<()> {
-    use inquire::{Confirm, Editor};
+    use inquire::{Confirm, Editor, Select};
 
     use edgee_api_client::{auth::Credentials, ResultExt};
 
@@ -41,11 +41,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .api_context("Could not get user organization")?
             .into_inner(),
     };
-
+    let component_slug = slug::slugify(&manifest.component.name);
     match client
         .get_component_by_slug()
         .org_slug(&organization.slug)
-        .component_slug(&manifest.package.name)
+        .component_slug(&component_slug)
         .send()
         .await
     {
@@ -56,7 +56,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             tracing::info!("Component does not exist, creating...");
             let confirm = Confirm::new(&format!(
                 "Component `{}/{}` does not exists, do you want to create it?",
-                organization.slug, manifest.package.name,
+                organization.slug, &component_slug,
             ))
             .with_default(true)
             .prompt()?;
@@ -64,33 +64,46 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 return Ok(());
             }
 
+            let public = Select::new(
+                "Would you like to make this component public or private?",
+                vec!["private", "public"],
+            )
+            .prompt()?;
+
             client
                 .create_component()
                 .body(
                     api_types::ComponentCreateInput::builder()
                         .organization_id(organization.id.clone())
-                        .name(&manifest.package.name)
-                        .description(manifest.package.description.clone())
-                        .category(manifest.package.category)
-                        .subcategory(manifest.package.subcategory)
+                        .name(&manifest.component.name)
+                        .slug(component_slug.clone())
+                        .description(manifest.component.description.clone())
+                        .category(manifest.component.category)
+                        .subcategory(manifest.component.subcategory)
                         .documentation_link(
                             manifest
-                                .package
+                                .component
                                 .documentation
                                 .as_ref()
                                 .map(|url| url.to_string()),
                         )
                         .repo_link(
                             manifest
-                                .package
+                                .component
                                 .repository
                                 .as_ref()
                                 .map(|url| url.to_string()),
-                        ),
+                        )
+                        .public(public == "public"),
                 )
                 .send()
                 .await
                 .api_context("Could not create component")?;
+            tracing::info!(
+                "Component `{}/{}` created successfully!",
+                organization.slug,
+                component_slug
+            );
         }
         Ok(_) | Err(_) => {}
     }
@@ -100,7 +113,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     let confirm = Confirm::new(&format!(
         "Please confirm to push the component `{}/{}`:",
-        organization.slug, manifest.package.name,
+        organization.slug, component_slug,
     ))
     .with_default(true)
     .prompt()?;
@@ -110,7 +123,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     tracing::info!("Uploading WASM file...");
     let asset_url = client
-        .upload_file(&manifest.package.build.output_path)
+        .upload_file(&manifest.component.build.output_path)
         .await
         .expect("Could not upload component");
 
@@ -118,11 +131,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     client
         .create_component_version_by_slug()
         .org_slug(organization.slug)
-        .component_slug(&manifest.package.name)
+        .component_slug(&component_slug)
         .body(
             api_types::ComponentVersionCreateInput::builder()
-                .version(&manifest.package.version)
-                .wit_world_version(&manifest.package.wit_world_version)
+                .version(&manifest.component.version)
+                .wit_world_version(&manifest.component.wit_world_version)
                 .wasm_url(asset_url)
                 .dynamic_fields(convert_manifest_config_fields(&manifest))
                 .changelog(changelog),
@@ -133,8 +146,8 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     tracing::info!(
         "{} {} pushed successfully!",
-        manifest.package.name,
-        manifest.package.version
+        component_slug,
+        manifest.component.version,
     );
 
     Ok(())
@@ -142,8 +155,8 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
 fn convert_manifest_config_fields(manifest: &Manifest) -> Vec<api_types::ConfigurationField> {
     manifest
-        .package
-        .config_fields
+        .component
+        .settings
         .iter()
         .map(|(name, field)| api_types::ConfigurationField {
             name: name.clone(),

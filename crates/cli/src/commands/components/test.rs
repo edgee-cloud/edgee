@@ -34,8 +34,23 @@ fn parse_settings(settings_str: &str) -> Result<HashMap<String, String>, String>
     Ok(settings_map)
 }
 
-async fn test_data_collection_component(component_path: &str, opts: Options) -> anyhow::Result<()> {
-    if !std::path::Path::new(component_path).exists() {
+async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
+    use crate::components::manifest;
+    use crate::components::manifest::Manifest;
+
+    let manifest_path =
+        manifest::find_manifest_path().ok_or_else(|| anyhow::anyhow!("Manifest not found"))?;
+
+    let manifest = Manifest::load(&manifest_path)?;
+    let component_path = manifest
+        .component
+        .build
+        .output_path
+        .into_os_string()
+        .into_string()
+        .map_err(|_| anyhow::anyhow!("Invalid path"))?;
+
+    if !std::path::Path::new(&component_path).exists() {
         return Err(anyhow::anyhow!("Output path not found in manifest file.",));
     }
 
@@ -54,7 +69,7 @@ async fn test_data_collection_component(component_path: &str, opts: Options) -> 
     let mut store = context.empty_store();
 
     let instance = context
-        .get_data_collection_instance(component_path, &mut store)
+        .get_data_collection_instance(&component_path, &mut store)
         .await?;
     let component = instance.edgee_protocols_data_collection();
 
@@ -72,9 +87,21 @@ async fn test_data_collection_component(component_path: &str, opts: Options) -> 
             settings_map.insert(key, value);
         }
     }
-    // TODO generate settings from the missing settings in the component manifest
-    let settings = settings_map.clone().into_iter().collect();
 
+    // check that all required settings are provided
+    for (name, setting) in &manifest.component.settings {
+        if setting.required && !settings_map.contains_key(name) {
+            return Err(anyhow::anyhow!("missing required setting {}", name));
+        }
+    }
+
+    for name in settings_map.keys() {
+        if !manifest.component.settings.contains_key(name) {
+            return Err(anyhow::anyhow!("unknown setting {}", name));
+        }
+    }
+
+    let settings = settings_map.clone().into_iter().collect();
     // select events to run
     let mut events = vec![];
     match opts.event_type {
@@ -152,22 +179,8 @@ async fn test_data_collection_component(component_path: &str, opts: Options) -> 
     Ok(())
 }
 pub async fn run(opts: Options) -> anyhow::Result<()> {
-    use crate::components::manifest::{self, Manifest};
-
-    let manifest_path =
-        manifest::find_manifest_path().ok_or_else(|| anyhow::anyhow!("Manifest not found"))?;
-
-    let manifest = Manifest::load(&manifest_path)?;
-    let component_path = manifest
-        .package
-        .build
-        .output_path
-        .into_os_string()
-        .into_string()
-        .map_err(|_| anyhow::anyhow!("Invalid path"))?;
-
     // TODO: dont assume that it is a data collection component, add type in manifest
-    test_data_collection_component(&component_path, opts).await?;
+    test_data_collection_component(opts).await?;
 
     Ok(())
 }
