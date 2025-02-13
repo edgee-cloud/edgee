@@ -106,7 +106,33 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 component_slug
             );
         }
-        Ok(_) | Err(_) => {}
+        Ok(_) | Err(_) => {
+            client
+                .update_component_by_slug()
+                .org_slug(&organization.slug)
+                .component_slug(&manifest.component.name)
+                .body(
+                    api_types::ComponentUpdateParams::builder()
+                        .description(manifest.component.description.clone())
+                        .documentation_link(
+                            manifest
+                                .component
+                                .documentation
+                                .as_ref()
+                                .map(|url| url.to_string()),
+                        )
+                        .repo_link(
+                            manifest
+                                .component
+                                .repository
+                                .as_ref()
+                                .map(|url| url.to_string()),
+                        ),
+                )
+                .send()
+                .await
+                .api_context("Could not update component infos")?;
+        }
     }
 
     let changelog =
