@@ -1,6 +1,7 @@
-use crate::components::manifest::Manifest;
 use edgee_api_client::types as api_types;
-use slug;
+
+use crate::components::manifest::Manifest;
+
 #[derive(Debug, clap::Parser)]
 pub struct Options {
     /// The organization name used to create or update your component
@@ -41,7 +42,13 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .api_context("Could not get user organization")?
             .into_inner(),
     };
+
     let component_slug = slug::slugify(&manifest.component.name);
+    let component_url = format!(
+        "https://www.edgee.cloud/~/{0}/component-registry/{0}/{1}",
+        organization.slug, component_slug,
+    );
+
     match client
         .get_component_by_slug()
         .org_slug(&organization.slug)
@@ -100,12 +107,43 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 .await
                 .api_context("Could not create component")?;
             tracing::info!(
-                "Component `{}/{}` created successfully!",
+                "Component `{}/{}` has been created successfully!",
                 organization.slug,
-                component_slug
+                component_slug,
             );
         }
-        Ok(_) | Err(_) => {}
+        Ok(_) | Err(_) => {
+            client
+                .update_component_by_slug()
+                .org_slug(&organization.slug)
+                .component_slug(&component_slug)
+                .body(
+                    api_types::ComponentUpdateParams::builder()
+                        .description(manifest.component.description.clone())
+                        .documentation_link(
+                            manifest
+                                .component
+                                .documentation
+                                .as_ref()
+                                .map(|url| url.to_string()),
+                        )
+                        .repo_link(
+                            manifest
+                                .component
+                                .repository
+                                .as_ref()
+                                .map(|url| url.to_string()),
+                        ),
+                )
+                .send()
+                .await
+                .api_context("Could not update component infos")?;
+            tracing::info!(
+                "Component `{}/{}` has been updated successfully!",
+                organization.slug,
+                component_slug,
+            );
+        }
     }
 
     let changelog =
@@ -121,6 +159,20 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         return Ok(());
     }
 
+    let output_path = &manifest.component.build.output_path;
+    if !output_path.exists() {
+        let confirm = Confirm::new(
+            "No WASM file was found. Would you like to run `edgee components build` first?",
+        )
+        .with_default(true)
+        .prompt()?;
+        if !confirm {
+            return Ok(());
+        }
+
+        super::build::do_build(&manifest).await?;
+    }
+
     tracing::info!("Uploading WASM file...");
     let asset_url = client
         .upload_file(&manifest.component.build.output_path)
@@ -130,7 +182,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     tracing::info!("Creating component version...");
     client
         .create_component_version_by_slug()
-        .org_slug(organization.slug)
+        .org_slug(&organization.slug)
         .component_slug(&component_slug)
         .body(
             api_types::ComponentVersionCreateInput::builder()
@@ -145,10 +197,12 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         .api_context("Could not create version")?;
 
     tracing::info!(
-        "{} {} pushed successfully!",
+        "{}/{} {} pushed successfully",
+        organization.slug,
         component_slug,
         manifest.component.version,
     );
+    tracing::info!("Check it out here: {component_url}");
 
     Ok(())
 }

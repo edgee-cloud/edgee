@@ -76,7 +76,7 @@ pub fn init_cli() {
             .unwrap_or_default();
 
         EnvFilter::builder()
-            .with_default_directive(Level::ERROR.into())
+            .with_default_directive(Level::INFO.into())
             .parse_lossy(directives)
     };
 
