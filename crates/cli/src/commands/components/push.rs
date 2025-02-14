@@ -13,7 +13,7 @@ pub struct Options {
 pub async fn run(opts: Options) -> anyhow::Result<()> {
     use inquire::{Confirm, Editor, Select};
 
-    use edgee_api_client::{auth::Credentials, ResultExt};
+    use edgee_api_client::{auth::Credentials, ErrorExt, ResultExt};
 
     use crate::components::manifest;
 
@@ -49,7 +49,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         organization.slug, component_slug,
     );
 
-    match client
+    let (do_update, component) = match client
         .get_component_by_slug()
         .org_slug(&organization.slug)
         .component_slug(&component_slug)
@@ -77,7 +77,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             )
             .prompt()?;
 
-            client
+            let component = client
                 .create_component()
                 .body(
                     api_types::ComponentCreateInput::builder()
@@ -111,40 +111,12 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 organization.slug,
                 component_slug,
             );
+
+            (false, component.into_inner())
         }
-        Ok(_) | Err(_) => {
-            client
-                .update_component_by_slug()
-                .org_slug(&organization.slug)
-                .component_slug(&component_slug)
-                .body(
-                    api_types::ComponentUpdateParams::builder()
-                        .description(manifest.component.description.clone())
-                        .documentation_link(
-                            manifest
-                                .component
-                                .documentation
-                                .as_ref()
-                                .map(|url| url.to_string()),
-                        )
-                        .repo_link(
-                            manifest
-                                .component
-                                .repository
-                                .as_ref()
-                                .map(|url| url.to_string()),
-                        ),
-                )
-                .send()
-                .await
-                .api_context("Could not update component infos")?;
-            tracing::info!(
-                "Component `{}/{}` has been updated successfully!",
-                organization.slug,
-                component_slug,
-            );
-        }
-    }
+        Ok(res) => (true, res.into_inner()),
+        Err(err) => anyhow::bail!("Error contacting API: {}", err.into_message()),
+    };
 
     let changelog =
         Editor::new("Please describe the changes from the previous version").prompt_skippable()?;
@@ -178,6 +150,40 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         .upload_file(&manifest.component.build.output_path)
         .await
         .expect("Could not upload component");
+
+    if do_update {
+        client
+            .update_component_by_slug()
+            .org_slug(&organization.slug)
+            .component_slug(&component_slug)
+            .body(
+                api_types::ComponentUpdateParams::builder()
+                    .description(manifest.component.description.clone())
+                    .public(component.is_public)
+                    .documentation_link(
+                        manifest
+                            .component
+                            .documentation
+                            .as_ref()
+                            .map(|url| url.to_string()),
+                    )
+                    .repo_link(
+                        manifest
+                            .component
+                            .repository
+                            .as_ref()
+                            .map(|url| url.to_string()),
+                    ),
+            )
+            .send()
+            .await
+            .api_context("Could not update component infos")?;
+        tracing::info!(
+            "Component `{}/{}` has been updated successfully!",
+            organization.slug,
+            component_slug,
+        );
+    }
 
     tracing::info!("Creating component version...");
     client
