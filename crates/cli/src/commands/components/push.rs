@@ -44,10 +44,6 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     };
 
     let component_slug = slug::slugify(&manifest.component.name);
-    let component_url = format!(
-        "https://www.edgee.cloud/~/{0}/component-registry/{0}/{1}",
-        organization.slug, component_slug,
-    );
 
     let (do_update, component) = match client
         .get_component_by_slug()
@@ -208,7 +204,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         component_slug,
         manifest.component.version,
     );
-    tracing::info!("Check it out here: {component_url}");
+    tracing::info!(
+        "Check it out here: https://www.edgee.cloud/~/registry/{}/{}",
+        organization.slug,
+        component_slug,
+    );
 
     Ok(())
 }
