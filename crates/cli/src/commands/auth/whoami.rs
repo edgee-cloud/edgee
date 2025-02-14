@@ -1,3 +1,5 @@
+use edgee_api_client::ResultExt;
+
 setup_command! {}
 
 pub async fn run(_opts: Options) -> anyhow::Result<()> {
@@ -7,7 +9,11 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
     creds.check_api_token()?;
 
     let client = edgee_api_client::new().credentials(&creds).connect();
-    let user = client.get_me().send().await?;
+    let user = client
+        .get_me()
+        .send()
+        .await
+        .api_context("Could not get user infos")?;
 
     println!("Logged in as:");
     println!("  ID:    {}", user.id);

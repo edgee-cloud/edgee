@@ -1,5 +1,7 @@
 use anyhow::Result;
 
+use edgee_api_client::ResultExt;
+
 setup_command! {}
 
 pub async fn run(_opts: Options) -> Result<()> {
@@ -27,7 +29,12 @@ pub async fn run(_opts: Options) -> Result<()> {
 
     let client = edgee_api_client::new().credentials(&creds).connect();
 
-    let user = client.get_me().send().await?.into_inner();
+    let user = client
+        .get_me()
+        .send()
+        .await
+        .api_context("Could not get user infos")?
+        .into_inner();
     println!("Logged as {} ({})", user.name, user.email);
 
     creds.save()
