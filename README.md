@@ -20,221 +20,141 @@
 
 </div>
 
-⚠️ Edgee OSS Edition (v0.7.X) is in Development
+⚠️ Edgee Open Source Edition (v0.8.X) is in Development
 
-Edgee OSS is currently in version 0.7.X and is considered unstable as we continue to enhance and refine the platform.
+Please consider this repository unstable as we continue to enhance and refine the platform.
 We're actively working towards a stable v1.0.0 release, which will be available in the coming weeks.
 
-We welcome feedback and contributions during this development phase, and appreciate your patience as we work hard to bring you a robust edge computing solution.
+Feedback and contributions are welcome during this development phase: we appreciate your patience as we work hard to bring you robust tooling for a great development experience.
 
-<!-- TODO: Add FAQ -->
-<!-- TODO: Add Video introduction -->
-## Documentation
-- [Official Website](https://www.edgee.cloud)
-- [Official Documentation](https://www.edgee.cloud/docs/introduction)
+### Useful resources
 
-## Contacts
-- [Twitter](https://x.com/edgee_cloud)
-- [LinkedIn](https://www.linkedin.com/company/edgee-cloud/)
-- [Slack](https://www.edgee.cloud/slack)
+- Edgee's [Website](https://www.edgee.cloud), [Roadmap](https://www.edgee.cloud/roadmap), and [Documentation](https://www.edgee.cloud/docs/introduction)
+- Edgee's [Community Slack](https://www.edgee.cloud/slack)
+- Edgee on [X](https://x.com/edgee_cloud) and [LinkedIn](https://www.linkedin.com/company/edgee-cloud/)
 
-Check out [the official docs](https://www.edgee.cloud/docs/introduction) to dive into Edgee's main concepts and architecture.
 
-# Running Edgee
+## Getting started with the Edgee CLI
 
-Once you have a valid configuration file (see next section), you can run Edgee in different ways, using the installer, Docker or running as a Rust crate.
+The Edgee CLI lets you create and build Wasm components locally with commands such as `edgee components new` and `edgee components build`.
+When your component is ready, the Edgee CLI lets you push it to the Edgee Component Registry as a public or private component under your organization’s account, with `edgee components push`. Under the hood, the CLI interacts with the Edgee API and its goal is to simplify the local development experience across all supported languages.
 
-⚠️ Note: all the examples below assume that TLS certificates and WebAssembly components can be found in `/var/edgee/cert` and  `/var/edgee/wasm` respectively. Feel free to use `/local/cert` and `/local/wasm` for local development.
-
-## Using the installer
-
-You can install and run `edgee` locally using the installer script:
-
+Install the Edgee CLI as follows:
+​
 ```shell
 $ curl https://install.edgee.cloud | sh
-[...]
-$ ./edgee serve
 ```
 
-
-## Using docker
-
-You can run it using the CLI:
+Or via homebrew:
 
 ```shell
-docker run \
-  -v $PWD/edgee.toml:/app/edgee.toml \
-  -v $PWD/cert:/var/edgee/cert \
-  -v $PWD/wasm:/var/edgee/wasm \
-  -p80:80 \
-  -p443:443 \
-  edgeecloud/edgee
+$ brew tap edgee-cloud/edgee
+$ brew install edgee
 ```
 
-Or as part of a `docker-compose.yml`:
+## Edgee CLI commands
 
-```yaml
-service:
-  edgee:
-    image: edgeecloud/edgee
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - "./edgee.toml:/app/edgee.toml"
-      - "./cert:/var/edgee/cert"
-      - "./wasm:/var/edgee/wasm"
+### `edgee login`
+
+This command lets you log in using your Edgee account's API token (you can [create one here](https://www.edgee.cloud/~/me/settings/tokens)):
+
+
+```shell 
+$ edgee login
+Enter Edgee API token (press Ctrl+R to toggle input display): ****
 ```
 
-## Building from source
+### `edgee whoami`
 
-Edgee is built in Rust and can be installed using Cargo:
+This command lets you verify that the API is working correctly:
 
-```console
-cargo build --release
+```shell 
+$ edgee whoami
+Logged in as:
+  ID:    XYZ-XYZ-DYZ
+  Name:  Your name
+  Email: your@email.com
 ```
 
-Then you can run it:
+### `edgee help`
 
-```console
-cargo run --release
+This command lets you get help about existing commands, sub-commands, and their respective options:
+
+```bash 
+$ edgee help
+Usage: edgee <COMMAND>
+Commands:
+  login       Log in to the Edgee Console
+  whoami      Print currently login informations
+  components  Components management commands  [aliases: component]
+  serve       Run the Edgee server [aliases: server]
 ```
 
-# Configuration
+### `edgee component[s]`
 
-Edgee proxy is customized through the `edgee.toml` file (or `edgee.yaml`), which is expected in the same directory where edgee is running from.
+This command includes a few sub-commands that let you create, build, test, and push components.
 
-You can get started by coping the existing `edgee.sample.toml` file:
+#### `edgee components new`
+
+This command lets you create a component in a new directory (including sample code)
+
+```bash 
+$ edgee components new
+? Enter the name of the component: my-component
+? Select the language of the component:
+  C
+  CSharp
+  Go
+  JavaScript
+  Python
+> Rust
+  TypeScript
+Downloading sample code for Rust...
+Extracting code...
+New project my-component setup, check README to install the correct dependencies.
+```
+
+#### `edgee components build`
+
+This command lets you compile the component in the current folder into a WebAssembly binary file.
+
+You can customize the behavior of the build command in the manifest file by changing the target file name
+and the default build script. If you've created a new component with `edgee component new` the default build script
+should be a great starting point. By default, the output of this command will be a new .wasm file in the current folder.
+
+
+#### `edgee components check`
+
+This command lets you validate the local .wasm file to make sure it's compliant with the WIT interface.
+
+#### `edgee components test`
+
+This command lets you run the local .wasm file with a sample event and provided settings.
+This helps ensure your component behaves as expected from the proxy's perspective, in addition to your unit tests.
 
 ```bash
-cp edgee.sample.toml edgee.toml
+$ edgee components test \
+    --event-type page \
+    --settings "setting1=value1,setting2=value2"
 ```
 
-Here's a minimal configuration sample that sets Edgee to work as a regular reverse proxy. Later we'll see how to enable edge components.
+#### `edgee components push`
 
-```toml
-# edgee.toml
-[log]
-level = "info"
+This command lets you push the local .wasm file to the Edgee Component Registry.
 
-[http]
-address = "0.0.0.0:80"
-force_https = true
-
-[https]
-address = "0.0.0.0:443"
-cert = "/var/edgee/cert/server.pem"
-key = "/var/edgee/cert/edgee.key"
-
-[[routing]]
-domain = "demo.edgee.dev"
-
-[[routing.backends]]
-name = "demo"
-default = true
-address = "192.168.0.10"
-enable_ssl = true
+```shell
+$ edgee components push
+? Component org/name does not exists, do you want to create it? Y/n
+? Would you like to make this component public or private?
+> private
+  public
+Component created successfully!
+You can view and edit it at: https://edgee.cloud/~/registry/{organization}/{component}
 ```
 
-## Log levels
-Edgee allows you to control the granularity of logs you want to be displayed. The possible values are:
-`trace`, `debug`, `info`, `warn`, `error`, and `fatal`. This setting defines the minimal level to
-be displayed, so setting it to `warn` will show `warn`, `error`, and `fatal` messages while hidding the others.
+### `edgee serve`
 
-## Routing
-The example above sets up one backend called "demo". As the default backend, it will receive all traffic directed to `demo.edgee.dev`. Additionaly, projects can have a number of backends and use routing rules to distribute traffic among them.
-
-For example, we could add a second backend called "api" to handle all requests to `demo.edgee.dev/api`:
-
-```toml
-# edgee.toml
-[[routing.rules]]
-path_prefix = "/api/"
-backend = "api"
-
-[[routing.backends]]
-name = "api"
-enable_ssl = true
-address = "192.168.0.30"
-```
-
-The supported matchers are:
-- *path*: the path matches exactly the provided value
-- *path_prefix*: the path starts with the provided value
-- *path_regexp*: the path matches the provided regexp
-
-In addition to proxying the request, you could also rewrite the path:
-
-```toml
-# edgee.toml
-
-[[routing.rules]]
-path_prefix = "/api/"
-rewrite = "/v1/"
-backend = "api"
-```
-
-This way, calling `/api/test` on port `80` will result in calling `/v1/test` on the API backend.
-
-### Redirections
-
-Edgee supports HTTP redirections, allowing you to redirect traffic temporarily from one URL to another. 
-
-#### Example
-
-Here's how you can set up a redirection in your `edgee.toml` configuration file:
-
-```toml
-# edgee.toml
-[[routing.redirections]]
-source = "/old-path"
-target = "https://example.com/new-path"
-
-
-[[routing.redirections]]
-source = "/foo"
-target = "/bar"
-```
-
-In this example, requests to `https://demo.edgee.dev/old-path` will be temporarily (HTTP 302) redirected to `https://example.com/new-path` and requests to `https://demo.edgee.dev/foo` will be redirected to `https://demo.edgee.dev/bar`
-
-
-
-## Integrating with edgee components
-
-Check out the [official components docs](https://www.edgee.cloud/docs/components/overview) to dive into the
-components architecture.
-
-The Edgee proxy is designed for performance and extensibility, so you can easily integrate open source components based on the platforms you need. Here's a list of the components we've built so far:
-- [Amplitude](https://github.com/edgee-cloud/amplitude-component)
-- [Google Analytics](https://github.com/edgee-cloud/ga-component)
-- [Segment](https://github.com/edgee-cloud/segment-component)
-- [Piano Analytics](https://github.com/edgee-cloud/piano-analytics-component)
-
-You just need point to the WebAssembly implementation in your proxy configuration. You may also build your
-own components for integrations we don't provide yet.
-
-### Example
-
-Let's see how to implement data collection using the [amplitude component](https://github.com/edgee-cloud/amplitude-component).
-
-You simply need to add a new session to your configuration pointing to the WebAssembly component that implements the data collection protocol:
-
-```toml
-# edgee.toml
-[[components.data_collection]]
-id = "amplitude"
-file = "/var/edgee/wasm/amplitude.wasm"
-settings.amplitude_api_key = "YOUR-API-KEY"
-```
-
-### Debugging a component
-
-You can enable debug logs for a specific component by setting the `debug` flag to `true`:
-
-```bash
-./edgee --debug-component amplitude serve
-```
+Learn more about [running the Edgee proxy locally](./README-proxy.md).
 
 
 ## Contributing
