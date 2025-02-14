@@ -45,7 +45,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     let component_slug = slug::slugify(&manifest.component.name);
     let component_url = format!(
-        "https://www.edgee.cloud/~/registry/{}/{}",
+        "https://www.edgee.cloud/~/{0}/component-registry/{0}/{1}",
         organization.slug, component_slug,
     );
 
@@ -107,9 +107,9 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 .await
                 .api_context("Could not create component")?;
             tracing::info!(
-                "Component `{}/{}` has been created successfully, you check it out here: {component_url}",
+                "Component `{}/{}` has been created successfully!",
                 organization.slug,
-                component_slug
+                component_slug,
             );
         }
         Ok(_) | Err(_) => {
@@ -139,7 +139,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 .await
                 .api_context("Could not update component infos")?;
             tracing::info!(
-                "Component `{}/{}` has been updated and is accessible here: {component_url}",
+                "Component `{}/{}` has been updated successfully!",
                 organization.slug,
                 component_slug,
             );
@@ -161,9 +161,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     let output_path = &manifest.component.build.output_path;
     if !output_path.exists() {
-        let confirm = Confirm::new("Component have not been built yet, do you want to build it?")
-            .with_default(true)
-            .prompt()?;
+        let confirm = Confirm::new(
+            "No WASM file was found. Would you like to run `edgee components build` first?",
+        )
+        .with_default(true)
+        .prompt()?;
         if !confirm {
             return Ok(());
         }
@@ -180,7 +182,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     tracing::info!("Creating component version...");
     client
         .create_component_version_by_slug()
-        .org_slug(organization.slug)
+        .org_slug(&organization.slug)
         .component_slug(&component_slug)
         .body(
             api_types::ComponentVersionCreateInput::builder()
@@ -195,10 +197,12 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         .api_context("Could not create version")?;
 
     tracing::info!(
-        "{} {} pushed successfully!",
+        "{}/{} {} pushed successfully",
+        organization.slug,
         component_slug,
         manifest.component.version,
     );
+    tracing::info!("Check it out here: {component_url}");
 
     Ok(())
 }
