@@ -126,6 +126,10 @@ impl ComponentsContext {
         Store::new(&self.engine, HostState::new())
     }
 
+    pub fn empty_store_with_stdout(&self) -> Store<HostState> {
+        Store::new(&self.engine, HostState::new_with_stdout())
+    }
+
     pub async fn get_data_collection_instance(
         &self,
         id: &str,
@@ -171,6 +175,14 @@ pub struct HostState {
 impl HostState {
     fn new() -> Self {
         let ctx = WasiCtx::builder().build();
+
+        let table = ResourceTable::new();
+
+        Self { ctx, table }
+    }
+
+    fn new_with_stdout() -> Self {
+        let ctx = WasiCtx::builder().inherit_stdout().build();
 
         let table = ResourceTable::new();
 
