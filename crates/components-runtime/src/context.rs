@@ -174,18 +174,15 @@ pub struct HostState {
 
 impl HostState {
     fn new() -> Self {
-        let ctx = WasiCtx::builder().build();
-
-        let table = ResourceTable::new();
-
-        Self { ctx, table }
+        Self::new_with_ctx(WasiCtx::builder().build())
     }
 
     fn new_with_stdout() -> Self {
-        let ctx = WasiCtx::builder().inherit_stdout().build();
+        Self::new_with_ctx(WasiCtx::builder().inherit_stdout().build())
+    }
 
+    fn new_with_ctx(ctx: WasiCtx) -> Self {
         let table = ResourceTable::new();
-
         Self { ctx, table }
     }
 }
