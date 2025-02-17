@@ -12,7 +12,7 @@ pub async fn run(_opts: Options) -> Result<()> {
     let mut creds = Credentials::load()?;
 
     let confirm_overwrite =
-        Confirm::new("An API token is already present, do you want to overwrite it?")
+        Confirm::new("An API token is already configured, do you want to overwrite it?")
             .with_default(false);
     if creds.api_token.is_some() && !confirm_overwrite.prompt()? {
         return Ok(());
@@ -33,7 +33,7 @@ pub async fn run(_opts: Options) -> Result<()> {
         .get_me()
         .send()
         .await
-        .api_context("Could not get user infos")?
+        .api_context("Could not get user info")?
         .into_inner();
     println!("Logged as {} ({})", user.name, user.email);
 

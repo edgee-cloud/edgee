@@ -12,11 +12,11 @@ pub struct Options {
     #[arg(long="settings", value_parser = parse_settings)]
     pub settings: Option<HashMap<String, String>>,
 
-    /// The event type you want to test (valid values: page, track, or user)
+    /// The event type you want to test
     #[arg(long = "event-type", value_parser = ["page", "track", "user"])]
     pub event_type: Option<String>,
 
-    /// Whether to log the full input event in stdout or not (false by default)
+    /// Whether to log the full input event or not (false by default)
     #[arg(long = "display-input", default_value = "false")]
     pub display_input: bool,
 }

@@ -1,20 +1,25 @@
 setup_commands! {
-    /// Init a new component manifest in the current directory
+    /// Compile the component in the current directory into Wasm
+    Build(build),
+
+    /// Check if the local Wasm file file is valid
+    Check(check),
+
+    /// Initialize a new manifest file in the current directory
     Init(init),
+
+    /// List components you've previously pulled (coming soon)
+    List(list),
+
     /// Create component in a new directory with sample code
     New(new),
 
-    /// Compile the component in the current directory into WASM
-    Build(build),
-
-    /// Pull a component from the Edgee Component Registry
+    /// Pull a component from the Edgee Component Registry (coming soon)
     Pull(pull),
+
     /// Push a component to the Edgee Component Registry
     Push(push),
-    /// List components you've previously pulled
-    List(list),
-    /// Check if the local WASM component file is valid
-    Check(check),
+
     /// Run the component in the current folder with sample events
     Test(test)
 }
