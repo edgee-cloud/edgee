@@ -114,6 +114,15 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         Err(err) => anyhow::bail!("Error contacting API: {}", err.into_message()),
     };
 
+    // Check if version already exists
+    if component.versions.contains_key(&manifest.component.version) {
+        anyhow::bail!(
+            "The version {} for {}/{} already exists in the registry, did you maybe forgot to update the manifest?",
+            manifest.component.version,
+            organization.slug, component_slug,
+        );
+    }
+
     let changelog =
         Editor::new("Please describe the changes from the previous version").prompt_skippable()?;
 
