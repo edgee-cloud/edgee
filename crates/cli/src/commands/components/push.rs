@@ -117,7 +117,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     // Check if version already exists
     if component.versions.contains_key(&manifest.component.version) {
         anyhow::bail!(
-            "The version {} for {}/{} already exists in the registry, did you maybe forgot to update the manifest?",
+            "The version {} for {}/{} already exists in the registry. Did you forget to update the manifest?",
             manifest.component.version,
             organization.slug, component_slug,
         );
