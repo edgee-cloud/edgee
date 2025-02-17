@@ -1,6 +1,8 @@
 use edgee_components_runtime::config::{ComponentsConfiguration, DataCollectionComponents};
 use edgee_components_runtime::context::ComponentsContext;
 use std::collections::HashMap;
+use colored_json::prelude::*;
+use colored::Colorize;
 
 use edgee_components_runtime::data_collection::payload::{Event, EventType};
 
@@ -66,7 +68,7 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
     let context = ComponentsContext::new(&config)
         .map_err(|_e| anyhow::anyhow!("Something went wrong when trying to load the Wasm file. Please re-build and try again."))?;
 
-    let mut store = context.empty_store();
+    let mut store = context.empty_store_with_stdout();
 
     let instance = context
         .get_data_collection_instance(&component_path, &mut store)
@@ -130,25 +132,25 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
     }
 
     if opts.display_input {
-        println!("Settings: {:#?}", settings_map);
+        println!("{}: {}", "Settings".green(), serde_json::to_string_pretty(&settings_map)?.to_colored_json_auto()?);
     }
     for event in events {
         println!("---------------------------------------------------");
         let request = match event.event_type {
             EventType::Page => {
-                println!("Calling page");
+                tracing::info!("Running test with `page` event\n");
                 component
                     .call_page(&mut store, &event.clone().into(), &settings)
                     .await
             }
             EventType::Track => {
-                println!("Calling track");
+                tracing::info!("Running test with `track` event\n");
                 component
                     .call_track(&mut store, &event.clone().into(), &settings)
                     .await
             }
             EventType::User => {
-                println!("Calling user");
+                tracing::info!("Running test with `user` event\n");
                 component
                     .call_user(&mut store, &event.clone().into(), &settings)
                     .await
@@ -162,18 +164,22 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
         };
 
         if opts.display_input {
-            println!("Input Event: {}", serde_json::to_string_pretty(&event)?);
+            tracing::info!("Input event:\n");
+            println!("{}: {}\n", "Event".green(), serde_json::to_string_pretty(&event)?.to_colored_json_auto()?);
         }
 
-        println!("EdgeeRequest object:");
-        println!("Method: {:#?}", request.method);
-        println!("URL: {:#?}", request.url);
-        println!("Headers: {:#?}", request.headers);
+        tracing::info!("Output from Wasm:");
+        println!("\n{} {{", "EdgeeRequest".green());
+        println!("\t{}: {:#?}", "Method".green(), request.method);
+        println!("\t{}: {}", "URL".green(), request.url.green());
+        let pretty_headers: HashMap<String, String> = request.headers.into_iter().collect();
+        println!("\t{}: {}", "Headers".green(), serde_json::to_string_pretty(&pretty_headers)?.to_colored_json_auto()?.replace("\n", "\n\t"));
         if let Ok(pretty_json) = serde_json::from_str::<serde_json::Value>(&request.body) {
-            println!("Body: {}", serde_json::to_string_pretty(&pretty_json)?);
+            println!("\t{}: {}", "Body".green(), serde_json::to_string_pretty(&pretty_json)?.to_colored_json_auto()?.replace("\n", "\n\t"));
         } else {
-            println!("Body: {:#?}", request.body);
+            println!("\t{}: {:#?}", "Body".green(), request.body);
         }
+        println!("}}");
     }
 
     Ok(())

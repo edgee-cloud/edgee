@@ -12,6 +12,8 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
+colored.workspace = true
+colored_json.workspace = true
 inquire = { workspace = true, features = ["editor"] }
 miette = { workspace = true, features = ["fancy"] }
 openssl.workspace = true
