@@ -40,7 +40,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest", "macOS-latest", "windows-latest"]
-        rust: ["1.86.0 nightly", "1.85.0", "1.84.1", "1.84.0"]
+        rust: ["nightly", "stable"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
