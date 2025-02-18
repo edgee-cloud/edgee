@@ -1,8 +1,8 @@
+use colored::Colorize;
+use colored_json::prelude::*;
 use edgee_components_runtime::config::{ComponentsConfiguration, DataCollectionComponents};
 use edgee_components_runtime::context::ComponentsContext;
 use std::collections::HashMap;
-use colored_json::prelude::*;
-use colored::Colorize;
 
 use edgee_components_runtime::data_collection::payload::{Event, EventType};
 
@@ -132,7 +132,11 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
     }
 
     if opts.display_input {
-        println!("{}: {}", "Settings".green(), serde_json::to_string_pretty(&settings_map)?.to_colored_json_auto()?);
+        println!(
+            "{}: {}",
+            "Settings".green(),
+            serde_json::to_string_pretty(&settings_map)?.to_colored_json_auto()?
+        );
     }
     for event in events {
         println!("---------------------------------------------------");
@@ -165,7 +169,11 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
 
         if opts.display_input {
             tracing::info!("Input event:\n");
-            println!("{}: {}\n", "Event".green(), serde_json::to_string_pretty(&event)?.to_colored_json_auto()?);
+            println!(
+                "{}: {}\n",
+                "Event".green(),
+                serde_json::to_string_pretty(&event)?.to_colored_json_auto()?
+            );
         }
 
         tracing::info!("Output from Wasm:");
@@ -173,9 +181,21 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
         println!("\t{}: {:#?}", "Method".green(), request.method);
         println!("\t{}: {}", "URL".green(), request.url.green());
         let pretty_headers: HashMap<String, String> = request.headers.into_iter().collect();
-        println!("\t{}: {}", "Headers".green(), serde_json::to_string_pretty(&pretty_headers)?.to_colored_json_auto()?.replace("\n", "\n\t"));
+        println!(
+            "\t{}: {}",
+            "Headers".green(),
+            serde_json::to_string_pretty(&pretty_headers)?
+                .to_colored_json_auto()?
+                .replace("\n", "\n\t")
+        );
         if let Ok(pretty_json) = serde_json::from_str::<serde_json::Value>(&request.body) {
-            println!("\t{}: {}", "Body".green(), serde_json::to_string_pretty(&pretty_json)?.to_colored_json_auto()?.replace("\n", "\n\t"));
+            println!(
+                "\t{}: {}",
+                "Body".green(),
+                serde_json::to_string_pretty(&pretty_json)?
+                    .to_colored_json_auto()?
+                    .replace("\n", "\n\t")
+            );
         } else {
             println!("\t{}: {:#?}", "Body".green(), request.body);
         }
