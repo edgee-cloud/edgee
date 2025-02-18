@@ -4,6 +4,8 @@ use edgee_components_runtime::config::{ComponentsConfiguration, DataCollectionCo
 use edgee_components_runtime::context::ComponentsContext;
 use std::collections::HashMap;
 
+use edgee_components_runtime::data_collection::exports::edgee::protocols::data_collection::EdgeeRequest;
+use edgee_components_runtime::data_collection::exports::edgee::protocols::data_collection::HttpMethod;
 use edgee_components_runtime::data_collection::payload::{Event, EventType};
 
 #[derive(Debug, clap::Parser)]
@@ -19,6 +21,37 @@ pub struct Options {
     /// Whether to log the full input event or not (false by default)
     #[arg(long = "display-input", default_value = "false")]
     pub display_input: bool,
+
+    #[arg(long = "curl", default_value = "false")]
+    pub curl: bool,
+}
+
+trait IntoCurl {
+    fn to_curl(self) -> String;
+}
+
+impl IntoCurl for HttpMethod {
+    fn to_curl(self) -> String {
+        match self {
+            HttpMethod::Get => "GET".to_string(),
+            HttpMethod::Post => "POST".to_string(),
+            HttpMethod::Put => "PUT".to_string(),
+            HttpMethod::Delete => "DELETE".to_string(),
+        }
+    }
+}
+
+impl IntoCurl for EdgeeRequest {
+    fn to_curl(self) -> String {
+        let mut curl = format!("curl -X {} {}", self.method.to_curl(), self.url);
+        for (key, value) in self.headers {
+            curl.push_str(&format!(" -H '{}: {}'", key, value));
+        }
+        if !self.body.is_empty() {
+            curl.push_str(&format!(" -d '{}'", self.body));
+        }
+        curl
+    }
 }
 
 fn parse_settings(settings_str: &str) -> Result<HashMap<String, String>, String> {
@@ -180,7 +213,7 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
         println!("\n{} {{", "EdgeeRequest".green());
         println!("\t{}: {:#?}", "Method".green(), request.method);
         println!("\t{}: {}", "URL".green(), request.url.green());
-        let pretty_headers: HashMap<String, String> = request.headers.into_iter().collect();
+        let pretty_headers: HashMap<String, String> = request.headers.clone().into_iter().collect();
         println!(
             "\t{}: {}",
             "Headers".green(),
@@ -200,6 +233,10 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
             println!("\t{}: {:#?}", "Body".green(), request.body);
         }
         println!("}}");
+
+        if opts.curl {
+            println!("\n{}: {}", "cURL".green(), &request.to_curl());
+        }
     }
 
     Ok(())
