@@ -1156,6 +1156,7 @@ dependencies = [
  "inquire",
  "miette",
  "openssl",
+ "pretty_assertions",
  "reqwest",
  "serde",
  "serde_json",

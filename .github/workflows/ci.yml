@@ -36,10 +36,16 @@ jobs:
 
   test:
     name: cargo test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "macOS-latest", "windows-latest"]
+        rust: ["1.86.0 nightly", "1.85.0", "1.84.1", "1.84.0"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
       - run: make ci.test
 
   coverage:
