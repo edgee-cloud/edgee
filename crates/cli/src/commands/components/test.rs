@@ -284,7 +284,7 @@ async fn run_request(request: EdgeeRequest) -> anyhow::Result<()> {
         HttpMethod::Delete => client.delete(request.url).headers(headers).send().await,
     };
 
-    tracing::info!("Output from HTTP request:");
+    tracing::info!("HTTP response:");
     match res {
         Ok(res) => {
             println!("\n{}: {}", "Response".green(), res.status());
