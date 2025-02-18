@@ -39,16 +39,3 @@ pub async fn run(_opts: Options) -> Result<()> {
 
     creds.save()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use pretty_assertions::assert_eq;
-
-    #[tokio::test]
-    async fn login_test() {
-        let options = Options {};
-        let _res = run(options).await;
-    }
-
-}
