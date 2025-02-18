@@ -29,7 +29,6 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
 url = { workspace = true, features = ["serde"] }
 reqwest = { workspace = true, features = ["blocking"] }
 zip.workspace = true
-pretty_assertions.workspace = true
 
 edgee-api-client.workspace = true
 edgee-server.workspace = true
