@@ -25,7 +25,7 @@ fn parse_settings(settings_str: &str) -> Result<HashMap<String, String>, String>
     let mut settings_map = HashMap::new();
 
     for setting in settings_str.split(',') {
-        let parts: Vec<&str> = setting.split('=').collect();
+        let parts: Vec<&str> = setting.splitn(2, '=').collect();
         if parts.len() == 2 {
             settings_map.insert(parts[0].to_string(), parts[1].to_string());
         } else {
