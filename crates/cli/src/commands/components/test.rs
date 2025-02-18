@@ -1,9 +1,11 @@
+use colored::Colorize;
+use colored_json::prelude::*;
 use edgee_components_runtime::config::{ComponentsConfiguration, DataCollectionComponents};
 use edgee_components_runtime::context::ComponentsContext;
 use std::collections::HashMap;
-use colored_json::prelude::*;
-use colored::Colorize;
 
+use edgee_components_runtime::data_collection::exports::edgee::protocols::data_collection::EdgeeRequest;
+use edgee_components_runtime::data_collection::exports::edgee::protocols::data_collection::HttpMethod;
 use edgee_components_runtime::data_collection::payload::{Event, EventType};
 
 #[derive(Debug, clap::Parser)]
@@ -19,6 +21,40 @@ pub struct Options {
     /// Whether to log the full input event or not (false by default)
     #[arg(long = "display-input", default_value = "false")]
     pub display_input: bool,
+
+    #[arg(long = "curl", default_value = "false")]
+    pub curl: bool,
+
+    #[arg(long = "make-http-request", default_value = "false")]
+    pub make_http_request: bool,
+}
+
+trait IntoCurl {
+    fn to_curl(&self) -> String;
+}
+
+impl IntoCurl for HttpMethod {
+    fn to_curl(&self) -> String {
+        match self {
+            HttpMethod::Get => "GET".to_string(),
+            HttpMethod::Post => "POST".to_string(),
+            HttpMethod::Put => "PUT".to_string(),
+            HttpMethod::Delete => "DELETE".to_string(),
+        }
+    }
+}
+
+impl IntoCurl for EdgeeRequest {
+    fn to_curl(&self) -> String {
+        let mut curl = format!("curl -X {} {}", self.method.to_curl(), self.url);
+        for (key, value) in &self.headers {
+            curl.push_str(&format!(" -H '{}: {}'", key, value));
+        }
+        if !self.body.is_empty() {
+            curl.push_str(&format!(" -d '{}'", self.body));
+        }
+        curl
+    }
 }
 
 fn parse_settings(settings_str: &str) -> Result<HashMap<String, String>, String> {
@@ -132,7 +168,11 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
     }
 
     if opts.display_input {
-        println!("{}: {}", "Settings".green(), serde_json::to_string_pretty(&settings_map)?.to_colored_json_auto()?);
+        println!(
+            "{}: {}",
+            "Settings".green(),
+            serde_json::to_string_pretty(&settings_map)?.to_colored_json_auto()?
+        );
     }
     for event in events {
         println!("---------------------------------------------------");
@@ -165,25 +205,126 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
 
         if opts.display_input {
             tracing::info!("Input event:\n");
-            println!("{}: {}\n", "Event".green(), serde_json::to_string_pretty(&event)?.to_colored_json_auto()?);
+            println!(
+                "{}: {}\n",
+                "Event".green(),
+                serde_json::to_string_pretty(&event)?.to_colored_json_auto()?
+            );
         }
 
         tracing::info!("Output from Wasm:");
         println!("\n{} {{", "EdgeeRequest".green());
         println!("\t{}: {:#?}", "Method".green(), request.method);
         println!("\t{}: {}", "URL".green(), request.url.green());
-        let pretty_headers: HashMap<String, String> = request.headers.into_iter().collect();
-        println!("\t{}: {}", "Headers".green(), serde_json::to_string_pretty(&pretty_headers)?.to_colored_json_auto()?.replace("\n", "\n\t"));
+        let pretty_headers: HashMap<String, String> = request.headers.clone().into_iter().collect();
+        println!(
+            "\t{}: {}",
+            "Headers".green(),
+            serde_json::to_string_pretty(&pretty_headers)?
+                .to_colored_json_auto()?
+                .replace("\n", "\n\t")
+        );
         if let Ok(pretty_json) = serde_json::from_str::<serde_json::Value>(&request.body) {
-            println!("\t{}: {}", "Body".green(), serde_json::to_string_pretty(&pretty_json)?.to_colored_json_auto()?.replace("\n", "\n\t"));
+            println!(
+                "\t{}: {}",
+                "Body".green(),
+                serde_json::to_string_pretty(&pretty_json)?
+                    .to_colored_json_auto()?
+                    .replace("\n", "\n\t")
+            );
         } else {
             println!("\t{}: {:#?}", "Body".green(), request.body);
         }
         println!("}}");
+
+        if opts.curl {
+            println!("\n{}: {}", "cURL".green(), &request.to_curl());
+        }
+
+        if opts.make_http_request {
+            run_request(request.clone()).await?;
+        }
     }
 
     Ok(())
 }
+
+async fn run_request(request: EdgeeRequest) -> anyhow::Result<()> {
+    use http::{HeaderMap, HeaderName, HeaderValue};
+    use std::str::FromStr;
+    use std::time::Duration;
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()?;
+
+    let mut headers = HeaderMap::new();
+    for (key, value) in request.headers.iter() {
+        headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
+    }
+
+    let res = match request.method {
+        HttpMethod::Get => client.get(request.url).headers(headers).send().await,
+        HttpMethod::Put => {
+            client
+                .put(request.url)
+                .headers(headers)
+                .body(request.body)
+                .send()
+                .await
+        }
+        HttpMethod::Post => {
+            client
+                .post(request.url)
+                .headers(headers)
+                .body(request.body)
+                .send()
+                .await
+        }
+        HttpMethod::Delete => client.delete(request.url).headers(headers).send().await,
+    };
+
+    tracing::info!("HTTP response:");
+    match res {
+        Ok(res) => {
+            println!("\n{}: {}", "Response".green(), res.status());
+            let headers = res.headers();
+            let mut pretty_headers = HashMap::new();
+            for (key, value) in headers {
+                pretty_headers.insert(key.to_string(), value.to_str()?.to_string());
+            }
+            println!(
+                "{}: {}",
+                "Headers".green(),
+                serde_json::to_string_pretty(&pretty_headers)?
+                    .to_colored_json_auto()?
+                    .replace("\n", "\n\t")
+            );
+            let body = res.text().await?;
+            let pretty_json = serde_json::from_str::<serde_json::Value>(&body);
+            match pretty_json {
+                Ok(pretty_json) => {
+                    println!(
+                        "{}: {}",
+                        "Body".green(),
+                        serde_json::to_string_pretty(&pretty_json)?
+                            .to_colored_json_auto()?
+                            .replace("\n", "\n\t")
+                    );
+                }
+                Err(_) => {
+                    println!("{}: {:#?}", "Body".green(), body);
+                }
+            }
+        }
+        Err(e) => {
+            println!("{}: {}", "Error".red(), e);
+        }
+    }
+
+    Ok(())
+}
+
 pub async fn run(opts: Options) -> anyhow::Result<()> {
     // TODO: dont assume that it is a data collection component, add type in manifest
     test_data_collection_component(opts).await?;
