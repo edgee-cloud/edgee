@@ -4,7 +4,7 @@ use std::io::{Cursor, Read, Write};
 use std::path::Path;
 use zip::read::ZipArchive;
 
-use crate::components::boilerplate::LANGUAGE_OPTIONS;
+use crate::components::boilerplate::{LanguageConfig, LANGUAGE_OPTIONS};
 
 #[derive(Debug, clap::Parser)]
 pub struct Options {
@@ -29,31 +29,31 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             .prompt()?,
     };
 
-    let component_language = match _opts.language.as_deref() {
-        Some(language) => {
-            if let Some(lang) = LANGUAGE_OPTIONS
-                .iter()
-                .find(|l| l.alias.contains(&language.to_lowercase().as_str()))
-            {
-                lang
-            } else {
-                tracing::info!(
-                    "Language '{}' not available. Please select from the list:",
-                    language
-                );
-                &Select::new(
-                    "Select the language of the component:",
-                    LANGUAGE_OPTIONS.to_vec(),
-                )
-                .prompt()?
-            }
-        }
-        None => &Select::new(
+    let prompt_language = || -> LanguageConfig {
+        Select::new(
             "Select the language of the component:",
             LANGUAGE_OPTIONS.to_vec(),
         )
-        .prompt()?,
+        .prompt()
+        .expect("Failed to prompt for language")
     };
+
+    let component_language = _opts
+        .language
+        .as_deref()
+        .and_then(|language| {
+            LANGUAGE_OPTIONS
+                .iter()
+                .find(|l| l.alias.contains(&language.to_lowercase().as_str()))
+                .cloned()
+        })
+        .unwrap_or_else(|| {
+            tracing::info!(
+                "Language '{}' not available. Please select from the list:",
+                _opts.language.as_deref().unwrap_or("Unknown")
+            );
+            prompt_language()
+        });
 
     let component_path = Path::new(&component_name);
     if component_path.exists() {
