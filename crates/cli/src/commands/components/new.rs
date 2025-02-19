@@ -7,20 +7,49 @@ use zip::read::ZipArchive;
 use crate::components::boilerplate::LANGUAGE_OPTIONS;
 
 #[derive(Debug, clap::Parser)]
-pub struct Options {}
+pub struct Options {
+    #[clap(long, short)]
+    pub name: Option<String>,
+
+    #[clap(long, short)]
+    pub language: Option<String>,
+}
 
 pub async fn run(_opts: Options) -> anyhow::Result<()> {
     use inquire::{Select, Text};
 
-    let component_name = Text::new("Enter the name of the component:")
-        .with_validator(inquire::required!("Component name cannot be empty"))
-        .prompt()?;
+    let component_name = match _opts.name {
+        Some(name) => name,
+        None => Text::new("Enter the name of the component:")
+            .with_validator(inquire::required!("Component name cannot be empty"))
+            .with_validator(inquire::min_length!(
+                3,
+                "Component name must be at least 3 characters"
+            ))
+            .prompt()?,
+    };
 
-    let component_language = Select::new(
-        "Select the language of the component:",
-        LANGUAGE_OPTIONS.to_vec(),
-    )
-    .prompt()?;
+    let component_language = _opts
+        .language
+        .as_deref()
+        .and_then(|language| {
+            LANGUAGE_OPTIONS
+                .iter()
+                .find(|l| l.alias.contains(&language.to_lowercase().as_str()))
+                .cloned()
+        })
+        .unwrap_or_else(|| {
+            tracing::info!(
+                "Language '{}' not available. Please select from the list:",
+                _opts.language.as_deref().unwrap_or("Unknown")
+            );
+            Select::new(
+                "Select the language of the component:",
+                LANGUAGE_OPTIONS.to_vec(),
+            )
+            .prompt()
+            .expect("Failed to prompt for language")
+        });
 
     let component_path = Path::new(&component_name);
     if component_path.exists() {
@@ -61,6 +90,9 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             outfile.write_all(&buffer)?;
         }
     }
-    println!("New project {} setup, check README to install the correct dependencies", component_name);
+    println!(
+        "New project {} setup, check README to install the correct dependencies",
+        component_name
+    );
     Ok(())
 }

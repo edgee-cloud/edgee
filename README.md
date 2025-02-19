@@ -59,7 +59,7 @@ $ brew install edgee
 This command lets you log in using your Edgee account's API token (you can [create one here](https://www.edgee.cloud/~/me/settings/tokens)):
 
 
-```shell 
+```shell
 $ edgee login
 Enter Edgee API token (press Ctrl+R to toggle input display): ****
 ```
@@ -68,7 +68,7 @@ Enter Edgee API token (press Ctrl+R to toggle input display): ****
 
 This command lets you verify that the API is working correctly:
 
-```shell 
+```shell
 $ edgee whoami
 Logged in as:
   ID:    XYZ-XYZ-DYZ
@@ -80,7 +80,7 @@ Logged in as:
 
 This command lets you get help about existing commands, sub-commands, and their respective options:
 
-```bash 
+```bash
 $ edgee help
 Usage: edgee <COMMAND>
 Commands:
@@ -98,7 +98,7 @@ This command includes a few sub-commands that let you create, build, test, and p
 
 This command lets you create a component in a new directory (including sample code)
 
-```bash 
+```bash
 $ edgee components new
 ? Enter the name of the component: my-component
 ? Select the language of the component:
@@ -112,6 +112,15 @@ $ edgee components new
 Downloading sample code for Rust...
 Extracting code...
 New project my-component setup, check README to install the correct dependencies.
+```
+
+You can also use command arguments to skip the prompts
+
+```bash
+$ edgee components new --name foo --language javascript
+Downloading sample code for Javascript...
+Extracting code...
+New project foo setup, check README to install the correct dependencies.
 ```
 
 #### `edgee components build`
