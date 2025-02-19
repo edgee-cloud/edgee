@@ -25,6 +25,38 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     };
     let manifest = Manifest::load(&manifest_path)?;
 
+    // check if the output file exists
+    // if not, ask if the user wants to build it
+    let output_path = &manifest.component.build.output_path;
+    if !output_path.exists() {
+        let confirm = Confirm::new(
+            "No WASM file was found. Would you like to run `edgee components build` first?",
+        )
+        .with_default(true)
+        .prompt()?;
+        if !confirm {
+            return Ok(());
+        }
+
+        super::build::do_build(&manifest).await?;
+    }
+
+    // check if the output file is a valid Data Collection component
+    match super::check::check_component(
+        super::check::ComponentType::DataCollection,
+        output_path.to_str().unwrap(),
+    )
+    .await
+    {
+        Ok(_) => {}
+        Err(_) => {
+            anyhow::bail!(format!(
+                "File {} is not a valid Data Collection component. Run `edgee component check` for more information.",
+                output_path.display(),
+            ));
+        }
+    }
+
     let client = edgee_api_client::new().credentials(&creds).connect();
 
     let organization = match opts.organization {
@@ -134,35 +166,6 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     .prompt()?;
     if !confirm {
         return Ok(());
-    }
-
-    let output_path = &manifest.component.build.output_path;
-    if !output_path.exists() {
-        let confirm = Confirm::new(
-            "No WASM file was found. Would you like to run `edgee components build` first?",
-        )
-        .with_default(true)
-        .prompt()?;
-        if !confirm {
-            return Ok(());
-        }
-
-        super::build::do_build(&manifest).await?;
-    }
-
-    match super::check::check_component(
-        super::check::ComponentType::DataCollection,
-        output_path.to_str().unwrap(),
-    )
-    .await
-    {
-        Ok(_) => {}
-        Err(_) => {
-            anyhow::bail!(format!(
-                "File {} is not a valid Data Collection component. Run `edgee component check` for more information.",
-                output_path.display(),
-            ));
-        }
     }
 
     tracing::info!("Uploading WASM file...");
