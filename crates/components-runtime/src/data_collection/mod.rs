@@ -208,7 +208,7 @@ pub async fn send_events(
             }
 
             if request.forward_client_headers {
-                insert_expected_headers(&mut headers, &event, &component_event)?;
+                insert_expected_headers(&mut headers, &event)?;
             }
 
             let client = reqwest::Client::builder()
@@ -325,21 +325,17 @@ fn handle_consent_and_anonymization(
     }
 }
 
-fn insert_expected_headers(
-    headers: &mut HeaderMap,
-    event: &Event,
-    data_collection_event: &Component::Event,
-) -> anyhow::Result<()> {
+pub fn insert_expected_headers(headers: &mut HeaderMap, event: &Event) -> anyhow::Result<()> {
     // Insert client ip in the x-forwarded-for header
     headers.insert(
         HeaderName::from_str("x-forwarded-for")?,
-        HeaderValue::from_str(&data_collection_event.context.client.ip)?,
+        HeaderValue::from_str(&event.context.client.ip)?,
     );
 
     // Insert User-Agent in the user-agent header
     headers.insert(
         header::USER_AGENT,
-        HeaderValue::from_str(&data_collection_event.context.client.user_agent)?,
+        HeaderValue::from_str(&event.context.client.user_agent)?,
     );
 
     // Insert referrer in the referer header like an analytics client-side collect does
