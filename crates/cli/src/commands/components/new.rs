@@ -29,15 +29,6 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             .prompt()?,
     };
 
-    let prompt_language = || -> LanguageConfig {
-        Select::new(
-            "Select the language of the component:",
-            LANGUAGE_OPTIONS.to_vec(),
-        )
-        .prompt()
-        .expect("Failed to prompt for language")
-    };
-
     let component_language = _opts
         .language
         .as_deref()
@@ -52,7 +43,12 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
                 "Language '{}' not available. Please select from the list:",
                 _opts.language.as_deref().unwrap_or("Unknown")
             );
-            prompt_language()
+            Select::new(
+                "Select the language of the component:",
+                LANGUAGE_OPTIONS.to_vec(),
+            )
+            .prompt()
+            .expect("Failed to prompt for language")
         });
 
     let component_path = Path::new(&component_name);
