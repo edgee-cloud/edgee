@@ -26,11 +26,13 @@ ci.build: ## Build release version
 	cargo build --release
 
 ci.test: ## Run tests
-	cargo test -- --test-threads 1
-
+	cargo test --locked
 
 test.coverage:
 	cargo llvm-cov --all-features
+
+test.coverage.lcov:
+	cargo llvm-cov --all-features --lcov --output-path lcov.info
 
 test.coverage.html:
 	cargo llvm-cov --all-features --open

@@ -17,6 +17,7 @@
 [![Docker](https://img.shields.io/docker/v/edgeecloud/edgee.svg?logo=docker&label=docker&color=0db7ed)](https://hub.docker.com/r/edgeecloud/edgee)
 [![Edgee](https://img.shields.io/badge/slack-edgee-blueviolet.svg?logo=slack)](https://www.edgee.cloud/slack)
 [![Docs](https://img.shields.io/badge/docs-published-blue)](https://www.edgee.cloud/docs/introduction)
+[![Coverage Status](https://coveralls.io/repos/github/edgee-cloud/edgee/badge.svg)](https://coveralls.io/github/edgee-cloud/edgee)
 
 </div>
 
