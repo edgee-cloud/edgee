@@ -4,7 +4,7 @@ use std::io::{Cursor, Read, Write};
 use std::path::Path;
 use zip::read::ZipArchive;
 
-use crate::components::boilerplate::{LanguageConfig, LANGUAGE_OPTIONS};
+use crate::components::boilerplate::LANGUAGE_OPTIONS;
 
 #[derive(Debug, clap::Parser)]
 pub struct Options {
