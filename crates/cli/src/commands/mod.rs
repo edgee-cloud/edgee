@@ -10,4 +10,7 @@ setup_commands! {
     /// Run the Edgee server
     #[command(visible_alias = "server")]
     Serve(serve),
+    [cfg(not(feature = "no-self-update"))]
+    /// Update the Edgee executable
+    SelfUpdate(update),
 }
