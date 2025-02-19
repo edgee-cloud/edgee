@@ -1,5 +1,8 @@
 #[derive(Debug, clap::Parser)]
-pub struct Options {}
+pub struct Options {
+    #[arg(long = "filename")]
+    filename: Option<String>,
+}
 
 pub enum ComponentType {
     DataCollection,
@@ -69,20 +72,26 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
 
     use crate::components::manifest::{self, Manifest};
 
-    let Some(manifest_path) = manifest::find_manifest_path() else {
-        anyhow::bail!("Edgee Manifest not found. Please run `edgee component new` and start from a template or `edgee component init` to create a new empty manifest in this folder.");
+    let component_path = match _opts.filename {
+        Some(filename) => filename,
+        None => {
+            let Some(manifest_path) = manifest::find_manifest_path() else {
+                anyhow::bail!("Edgee Manifest not found. Please run `edgee component new` and start from a template or `edgee component init` to create a new empty manifest in this folder.");
+            };
+
+            let manifest = Manifest::load(&manifest_path)?;
+            let component_path = manifest
+                .component
+                .build
+                .output_path
+                .to_str()
+                .context("Output path should be a valid UTF-8 string")?;
+            component_path.to_string()
+        }
     };
 
-    let manifest = Manifest::load(&manifest_path)?;
-    let component_path = manifest
-        .component
-        .build
-        .output_path
-        .to_str()
-        .context("Output path should be a valid UTF-8 string")?;
-
     // TODO: dont assume that it is a data collection component, add type in manifest
-    check_component(ComponentType::DataCollection, component_path).await?;
+    check_component(ComponentType::DataCollection, component_path.as_str()).await?;
 
     Ok(())
 }
