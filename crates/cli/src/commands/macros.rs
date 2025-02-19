@@ -4,15 +4,20 @@ macro_rules! setup_commands {
             #![run($($arg_name:ident: $arg_ty:ty),*$(,)?)]
         )?
         $(
+            $([cfg($($cfg_tt:tt)*)])?
             $(#[$variant_meta:meta])*
             $variant_name:ident($mod_name:ident $(, $($pass_arg_name:ident),*$(,)?)?)
         ),*$(,)?
     } => {
-        $(mod $mod_name;)*
+        $(
+            $(#[cfg($($cfg_tt)*)])?
+            mod $mod_name;
+        )*
 
         #[derive(Debug, clap::Parser)]
         pub enum Command {
             $(
+                $(#[cfg($($cfg_tt)*)])?
                 $(#[$variant_meta])*
                 $variant_name($mod_name::Options)
             ),*
@@ -21,7 +26,10 @@ macro_rules! setup_commands {
         impl Command {
             pub async fn run(self, $($($arg_name: $arg_ty),*)?) -> anyhow::Result<()> {
                 match self {
-                    $(Self::$variant_name(opts) => $mod_name::run(opts, $($($pass_arg_name),*)?).await),*
+                    $(
+                        $(#[cfg($($cfg_tt)*)])?
+                        Self::$variant_name(opts) => $mod_name::run(opts, $($($pass_arg_name),*)?).await
+                    ),*
                 }
             }
         }

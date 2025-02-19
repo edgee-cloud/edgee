@@ -37,3 +37,4 @@ edgee-components-runtime.workspace = true
 
 [features]
 bundled = ["openssl/vendored"]
+no-self-update = []
