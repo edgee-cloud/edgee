@@ -13,13 +13,11 @@ jobs:
       checks: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2024-10-15
           components: rustfmt
-      - uses: clechasseur/rs-fmt-check@v2
-        with:
-          toolchain: nightly-2024-10-15
+      - uses: actions-rust-lang/rustfmt@v1
+
   clippy:
     name: clippy
     runs-on: ubuntu-latest
@@ -27,7 +25,7 @@ jobs:
       checks: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: wearerequired/lint-action@master
@@ -40,12 +38,9 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest", "macOS-latest"]
-        rust: ["nightly", "stable"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
+      - uses: dtolnay/rust-toolchain@stable
       - run: make ci.test
 
   coverage:
@@ -53,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
       - uses: taiki-e/install-action@cargo-llvm-cov
       - run: make test.coverage.lcov
       - uses: coverallsapp/github-action@v2
