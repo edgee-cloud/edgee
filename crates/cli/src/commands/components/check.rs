@@ -1,13 +1,13 @@
 #[derive(Debug, clap::Parser)]
 pub struct Options {}
 
-enum ComponentType {
+pub enum ComponentType {
     DataCollection,
     #[allow(dead_code)]
     ConsentMapping,
 }
 
-async fn check_component(
+pub async fn check_component(
     component_type: ComponentType,
     component_path: &str,
 ) -> anyhow::Result<()> {
