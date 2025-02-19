@@ -150,6 +150,21 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         super::build::do_build(&manifest).await?;
     }
 
+    match super::check::check_component(
+        super::check::ComponentType::DataCollection,
+        output_path.to_str().unwrap(),
+    )
+    .await
+    {
+        Ok(_) => {}
+        Err(_) => {
+            anyhow::bail!(format!(
+                "File {} is not a valid Data Collection component. Run `edgee component check` for more information.",
+                output_path.display(),
+            ));
+        }
+    }
+
     tracing::info!("Uploading WASM file...");
     let asset_url = client
         .upload_file(&manifest.component.build.output_path)
