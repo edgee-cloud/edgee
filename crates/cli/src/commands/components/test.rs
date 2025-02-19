@@ -4,10 +4,13 @@ use edgee_components_runtime::config::{ComponentsConfiguration, DataCollectionCo
 use edgee_components_runtime::context::ComponentsContext;
 use std::collections::HashMap;
 
+use edgee_components_runtime::data_collection;
+use std::str::FromStr;
+
 use edgee_components_runtime::data_collection::exports::edgee::protocols::data_collection::EdgeeRequest;
 use edgee_components_runtime::data_collection::exports::edgee::protocols::data_collection::HttpMethod;
 use edgee_components_runtime::data_collection::payload::{Event, EventType};
-
+use http::{HeaderMap, HeaderName, HeaderValue};
 #[derive(Debug, clap::Parser)]
 pub struct Options {
     /// Comma-separated key=value pairs for settings
@@ -212,17 +215,34 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
             );
         }
 
+        let mut headers = HeaderMap::new();
+        for (key, value) in request.headers.iter() {
+            headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
+        }
+
+        if request.forward_client_headers {
+            let _ = data_collection::insert_expected_headers(&mut headers, &event);
+        }
+
         tracing::info!("Output from Wasm:");
         println!("\n{} {{", "EdgeeRequest".green());
         println!("\t{}: {:#?}", "Method".green(), request.method);
         println!("\t{}: {}", "URL".green(), request.url.green());
-        let pretty_headers: HashMap<String, String> = request.headers.clone().into_iter().collect();
+        let pretty_headers: HashMap<String, String> = headers
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_str().unwrap().to_string()))
+            .collect();
         println!(
             "\t{}: {}",
             "Headers".green(),
             serde_json::to_string_pretty(&pretty_headers)?
                 .to_colored_json_auto()?
                 .replace("\n", "\n\t")
+        );
+        println!(
+            "\t{}: {}",
+            "Forward Client Headers".green(),
+            request.forward_client_headers
         );
         if let Ok(pretty_json) = serde_json::from_str::<serde_json::Value>(&request.body) {
             println!(
@@ -250,7 +270,6 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
 }
 
 async fn run_request(request: EdgeeRequest) -> anyhow::Result<()> {
-    use http::{HeaderMap, HeaderName, HeaderValue};
     use std::str::FromStr;
     use std::time::Duration;
 
