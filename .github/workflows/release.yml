@@ -12,6 +12,9 @@ jobs:
       matrix:
         platform:
           - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            features: bundled
+          - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             features: bundled
           - os: macos-latest
@@ -22,6 +25,8 @@ jobs:
             features: bundled
     name: Build release binary (${{ matrix.platform.target }} on ${{ matrix.platform.os }})
     runs-on: ${{ matrix.platform.os }}
+    env:
+      RUSTFLAGS: ${{ matrix.platform.rustflags || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
