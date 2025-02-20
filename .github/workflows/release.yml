@@ -23,6 +23,11 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             features: bundled
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            features: bundled
+            rustflags: -C target-feature=+crt-static
+            bin_suffix: .exe
     name: Build release binary (${{ matrix.platform.target }} on ${{ matrix.platform.os }})
     runs-on: ${{ matrix.platform.os }}
     env:
@@ -30,25 +35,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup cache
-        uses: Swatinem/rust-cache@v2
+
       - name: Build binary
-        uses: houseabsolute/actions-rust-cross@v0.0.17
+        uses: houseabsolute/actions-rust-cross@v1
         with:
           command: build
           target: ${{ matrix.platform.target }}
           args: '-p edgee --bin edgee --release --features "${{ matrix.platform.features }}"'
+
       - name: Save binary
         uses: actions/upload-artifact@v4
         with:
-          name: edgee.${{ matrix.platform.target }}
-          path: target/${{ matrix.platform.target }}/release/edgee
+          name: edgee.${{ matrix.platform.target }}${{ matrix.platform.bin_suffix || '' }}
+          path: target/${{ matrix.platform.target }}/release/edgee${{ matrix.platform.bin_suffix || '' }}
           retention-days: 3
-      - run: cp target/${{ matrix.platform.target }}/release/edgee edgee.${{ matrix.platform.target }}
+
+      - run: cp target/${{ matrix.platform.target }}/release/edgee${{ matrix.platform.bin_suffix || '' }} edgee.${{ matrix.platform.target }}${{ matrix.platform.bin_suffix || '' }}
       - name: Publish artifacts and release
         uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: edgee.${{ matrix.platform.target }}
+          file: edgee.${{ matrix.platform.target }}${{ matrix.platform.bin_suffix || '' }}
           tags: true
