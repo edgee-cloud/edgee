@@ -91,6 +91,12 @@ Commands:
   serve       Run the Edgee server [aliases: server]
 ```
 
+### `edgee self-update`
+
+This command lets you update the CLI to latest, if a new version is available.
+
+Note: this only works if you've installed the CLI via the installation script above.
+
 ### `edgee component[s]`
 
 This command includes a few sub-commands that let you create, build, test, and push components.
@@ -137,6 +143,8 @@ should be a great starting point. By default, the output of this command will be
 
 This command lets you validate the local .wasm file to make sure it's compliant with the WIT interface.
 
+Note: this command runs automatically on push.
+
 #### `edgee components test`
 
 This command lets you run the local .wasm file with a sample event and provided settings.
@@ -146,6 +154,19 @@ This helps ensure your component behaves as expected from the proxy's perspectiv
 $ edgee components test \
     --event-type page \
     --settings "setting1=value1,setting2=value2"
+```
+
+You can also run the actual HTTP request automatically:
+
+```bash
+$ edgee components test [options] --make-http-request
+
+```
+
+Or generate the corresponding cURL command:
+
+```bash
+$ edgee components test [options] --curl
 ```
 
 #### `edgee components push`
