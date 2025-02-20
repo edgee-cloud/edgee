@@ -168,7 +168,7 @@ pub fn parse_html(html: &str, host: &str) -> Document {
 
                         // if inline is true, then we need to inline the SDK
                         if let (true, Some(sdk_url)) = (inline, &builder.sdk_src) {
-                            if let Ok(inlined_sdk) = edgee_sdk::get_sdk_from_url(sdk_url, host) {
+                            if let Ok(inlined_sdk) = edgee_sdk::get_sdk(sdk_url, host) {
                                 set_document_field!(builder, inlined_sdk, inlined_sdk);
                             }
                         }

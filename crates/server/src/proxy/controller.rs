@@ -18,10 +18,9 @@ type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
 pub async fn edgee_client_event(ctx: IncomingContext) -> anyhow::Result<Response> {
     let res = http::Response::builder()
-        .status(StatusCode::NO_CONTENT)
+        .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::CACHE_CONTROL, "private, no-store")
-        .header("X-Robots-Tag", "noindex, nofollow")
         .body(empty())?;
 
     let (mut response, _incoming) = res.into_parts();
@@ -37,7 +36,6 @@ pub async fn edgee_client_event(ctx: IncomingContext) -> anyhow::Result<Response
     }
 
     if request.is_debug_mode() {
-        response.status = StatusCode::OK;
         return Ok(build_response(
             response,
             Bytes::from(data_collection_events),
@@ -55,7 +53,6 @@ pub async fn edgee_client_event_from_third_party_sdk(
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::CACHE_CONTROL, "private, no-store")
-        .header("X-Robots-Tag", "noindex, nofollow")
         .body(empty())?;
     let (mut response, _incoming) = res.into_parts();
 
@@ -149,10 +146,9 @@ pub async fn edgee_client_event_from_third_party_sdk(
 
 pub fn empty_json_response() -> anyhow::Result<Response> {
     Ok(http::Response::builder()
-        .status(StatusCode::NO_CONTENT)
+        .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::CACHE_CONTROL, "private, no-store")
-        .header("X-Robots-Tag", "noindex, nofollow")
         .body(empty())?)
 }
 
@@ -163,7 +159,7 @@ pub fn options(allow_methods: &str) -> anyhow::Result<Response> {
         .header(header::ACCESS_CONTROL_ALLOW_METHODS, allow_methods)
         .header(
             header::ACCESS_CONTROL_ALLOW_HEADERS,
-            "Content-Type, Edgee-Debug",
+            "Content-Type, Edgee-Debug, Authorization",
         )
         .header(header::ACCESS_CONTROL_MAX_AGE, "3600")
         .body(empty())
@@ -197,11 +193,11 @@ pub fn build_redirection(associated_redirection: &RedirectionContext) -> anyhow:
 }
 
 pub fn sdk(ctx: IncomingContext) -> anyhow::Result<Response> {
-    if let Ok(mut inlined_sdk) = edgee_sdk::get_sdk_from_url(
+    if let Ok(mut inlined_sdk) = edgee_sdk::get_sdk(
         ctx.request.get_path().as_str(),
         ctx.request.get_host().as_str(),
     ) {
-        inlined_sdk = inlined_sdk.replace("/_edgee/side", "c");
+        inlined_sdk = inlined_sdk.replace("{{side}}", "c");
         Ok(http::Response::builder()
             .status(StatusCode::OK)
             .header(
