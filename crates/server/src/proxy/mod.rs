@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 
 use bytes::Bytes;
+use context::incoming::RequestHandle;
 use http::response::Parts;
 use http::{header, HeaderName, HeaderValue, Method};
 use http_body_util::combinators::BoxBody;
@@ -73,50 +74,56 @@ pub async fn handle_request(
         return controller::sdk(ctx);
     }
 
-    // event path, method POST and content-type application/json
-    if request.get_path() == DATA_COLLECTION_ENDPOINT
-        || edgee_path::validate(request.get_host().as_str(), request.get_path())
-    {
-        if request.get_method() == Method::POST && request.get_content_type() == "application/json"
-        {
-            info!(
-                "204 - {} {}{} - {}ms",
-                request.get_method(),
-                request.get_host(),
-                request.get_path(),
-                timer_start.elapsed().as_millis()
-            );
+    // event by path
+    if request.get_path() == DATA_COLLECTION_ENDPOINT {
+        info!(
+            "200 - {} {}{} - {}ms",
+            request.get_method(),
+            request.get_host(),
+            request.get_path(),
+            timer_start.elapsed().as_millis()
+        );
+        if is_request_post_json(request) {
             return controller::edgee_client_event(ctx).await;
         }
         return controller::empty_json_response();
     }
 
-    // event path for third party integration (Edgee installed like a third party, and use localstorage)
+    // event like third party integration (Edgee installed like a third party, and use localstorage)
     if request.get_path() == DATA_COLLECTION_ENDPOINT_FROM_THIRD_PARTY_SDK {
+        info!(
+            "200 - {} {}{} - {}ms",
+            request.get_method(),
+            request.get_host(),
+            request.get_path(),
+            timer_start.elapsed().as_millis()
+        );
         if request.get_method() == Method::OPTIONS {
-            info!(
-                "200 - {} {}{} - {}ms",
-                request.get_method(),
-                request.get_host(),
-                request.get_path(),
-                timer_start.elapsed().as_millis()
-            );
             return controller::options("POST, OPTIONS");
         }
-        if request.get_method() == Method::POST && request.get_content_type() == "application/json"
-        {
-            info!(
-                "200 - {} {}{} - {}ms",
-                request.get_method(),
-                request.get_host(),
-                request.get_path(),
-                timer_start.elapsed().as_millis()
-            );
+        if is_request_post_json(request) {
             return controller::edgee_client_event_from_third_party_sdk(ctx).await;
         }
         return controller::empty_json_response();
     }
 
+    // event by Authorization header
+    if is_request_post_json(request) {
+        if let Some(authorization) = request.get_header(header::AUTHORIZATION) {
+            if edgee_sdk::token::validate(request.get_host().as_str(), &authorization) {
+                info!(
+                    "200 - {} {}{} - {}ms",
+                    request.get_method(),
+                    request.get_host(),
+                    request.get_path(),
+                    timer_start.elapsed().as_millis()
+                );
+                return controller::edgee_client_event(ctx).await;
+            }
+        }
+    }
+
+    // redirection
     if let Some(redirection_ctx) = RedirectionContext::from_request(request) {
         info!(
             "302 - {} {}{} - {}ms",
@@ -202,8 +209,7 @@ pub async fn handle_request(
                     }
 
                     if !document.inlined_sdk.is_empty() {
-                        document.inlined_sdk =
-                            document.inlined_sdk.replace("/_edgee/side", side_value);
+                        document.inlined_sdk = document.inlined_sdk.replace("{{side}}", side_value);
                         let new_tag = format!(
                             r#"{}{}<script>{}</script>"#,
                             debug_script,
@@ -240,6 +246,10 @@ pub async fn handle_request(
             Ok(controller::build_response(response, Bytes::from(body_str)))
         }
     }
+}
+
+fn is_request_post_json(request: &RequestHandle) -> bool {
+    request.get_method() == Method::POST && request.get_content_type() == "application/json"
 }
 
 /// Sets the duration headers for the response.
