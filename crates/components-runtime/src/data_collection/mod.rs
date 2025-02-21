@@ -21,7 +21,7 @@ use tokio::task::JoinHandle;
 use tracing::{error, span, Instrument, Level};
 
 use crate::{
-    data_collection::exports::edgee::protocols::data_collection as Component,
+    data_collection::exports::edgee::components::data_collection as Component,
     data_collection::payload::{Consent, Event, EventType},
 };
 
@@ -155,7 +155,7 @@ pub async fn send_events(
                     continue;
                 }
             };
-            let component = instance.edgee_protocols_data_collection();
+            let component = instance.edgee_components_data_collection();
 
             let component_event: Component::Event = event.clone().into();
             let component_settings: Vec<(String, String)> = cfg

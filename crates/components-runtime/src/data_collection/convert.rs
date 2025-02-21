@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use tracing::warn;
 
-use crate::data_collection::exports::edgee::protocols::data_collection;
+use crate::data_collection::exports::edgee::components::data_collection;
 use crate::data_collection::payload;
 impl From<payload::Event> for data_collection::Event {
     fn from(value: payload::Event) -> Self {
