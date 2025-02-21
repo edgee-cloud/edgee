@@ -1,9 +1,9 @@
 package edgee:native;
 
 world data-collection {
-  export edgee:protocols/data-collection;
+  export edgee:components/data-collection;
 }
 
 world consent-mapping {
-  export edgee:protocols/consent-mapping;
+  export edgee:components/consent-mapping;
 }
