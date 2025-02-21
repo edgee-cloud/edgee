@@ -1,5 +1,5 @@
 use crate::data_collection::{
-    exports::edgee::protocols::data_collection::{self as Component, EdgeeRequest},
+    exports::edgee::components::data_collection::{self as Component, EdgeeRequest},
     payload::{Consent, Context, Data, Event, EventType},
 };
 use chrono::{DateTime, Utc};

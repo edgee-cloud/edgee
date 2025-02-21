@@ -1,4 +1,4 @@
-package edgee:protocols;
+package edgee:components;
 
 interface consent-mapping {
     type dict = list<tuple<string,string>>;
