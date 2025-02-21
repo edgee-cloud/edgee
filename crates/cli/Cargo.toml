@@ -12,6 +12,7 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
+clap_complete.workspace = true
 colored.workspace = true
 colored_json.workspace = true
 http.workspace = true
