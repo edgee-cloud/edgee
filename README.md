@@ -193,7 +193,9 @@ This command allows you to generate a script for your shell adding auto-completi
 you can use it by adding the following to your shell init file:
 
 ```
-# ~/.bashrc | ~/.zshrc | ~/.config/fish/completions/edgee.fish
+# ~/.bashrc | ~/.zshrc
+eval $(edgee generate-shell-completion)
+# ~/.config/fish/completions/edgee.fish
 edgee generate-shell-completion | source
 ```
 
