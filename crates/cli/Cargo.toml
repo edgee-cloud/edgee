@@ -7,6 +7,7 @@ license.workspace = true
 keywords.workspace = true
 repository.workspace = true
 homepage.workspace = true
+readme.workspace = true
 edition.workspace = true
 
 [dependencies]
@@ -38,3 +39,7 @@ edgee-components-runtime.workspace = true
 [features]
 bundled = ["openssl/vendored"]
 no-self-update = []
+
+[package.metadata.binstall]
+pkg-fmt = "bin"
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }.{ target }{ archive-suffix }"

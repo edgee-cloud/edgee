@@ -1,13 +1,14 @@
 [package]
 name = "edgee-server"
 description = "The full-stack edge platform for your edge oriented applications (server part)"
-edition.workspace = true
 version.workspace = true
 authors.workspace = true
 license.workspace = true
 keywords.workspace = true
 repository.workspace = true
 homepage.workspace = true
+readme.workspace = true
+edition.workspace = true
 
 [dependencies]
 addr.workspace = true
