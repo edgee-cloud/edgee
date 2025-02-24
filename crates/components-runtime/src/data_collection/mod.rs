@@ -17,6 +17,7 @@ use crate::config::ComponentsConfiguration;
 use context::EventContext;
 use debug::{debug_and_trace_response, trace_disabled_event, trace_request, DebugParams};
 use http::{header, HeaderMap, HeaderName, HeaderValue};
+use tokio::task::JoinHandle;
 use tracing::{error, span, Instrument, Level};
 
 use crate::{
@@ -32,9 +33,9 @@ pub async fn send_json_events(
     component_config: &ComponentsConfiguration,
     trace_component: &Option<String>,
     debug: bool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Vec<JoinHandle<()>>> {
     if events_json.is_empty() {
-        return Ok(());
+        return Ok(vec![]);
     }
 
     let mut events: Vec<Event> = serde_json::from_str(events_json)?;
@@ -58,14 +59,16 @@ pub async fn send_events(
     debug: bool,
     project_id: &str,
     proxy_host: &str,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Vec<JoinHandle<()>>> {
     if events.is_empty() {
-        return Ok(());
+        return Ok(vec![]);
     }
 
     let ctx = &EventContext::new(events, project_id, proxy_host);
 
     let mut store = component_ctx.empty_store();
+
+    let mut futures = vec![];
 
     // iterate on each event
     for event in events.iter_mut() {
@@ -222,7 +225,7 @@ pub async fn send_events(
             let cfg_id = cfg.id.to_string();
             let ctx_clone = ctx.clone();
 
-            tokio::spawn(
+            let future = tokio::spawn(
                 async move {
                     let timer = std::time::Instant::now();
                     let request_clone = request.clone();
@@ -297,9 +300,11 @@ pub async fn send_events(
                 }
                 .in_current_span(),
             );
+            futures.push(future);
         }
     }
-    Ok(())
+
+    Ok(futures)
 }
 
 fn handle_consent_and_anonymization(

@@ -1215,6 +1215,7 @@ dependencies = [
  "anyhow",
  "cargo-llvm-cov",
  "chrono",
+ "futures",
  "http",
  "json_pretty",
  "pretty_assertions",
