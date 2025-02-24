@@ -141,11 +141,7 @@ impl ComponentsContext {
             return Err(anyhow::anyhow!("component not found: {}", id));
         }
 
-        instance_pre
-            .unwrap()
-            .instantiate_async(store)
-            .await
-            .map_err(Into::into)
+        instance_pre.unwrap().instantiate_async(store).await
     }
 
     pub async fn get_consent_mapping_instance(
@@ -159,11 +155,7 @@ impl ComponentsContext {
             return Err(anyhow::anyhow!("component not found: {}", id));
         }
 
-        instance_pre
-            .unwrap()
-            .instantiate_async(store)
-            .await
-            .map_err(Into::into)
+        instance_pre.unwrap().instantiate_async(store).await
     }
 }
 
