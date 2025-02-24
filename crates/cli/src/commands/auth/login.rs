@@ -18,6 +18,13 @@ pub async fn run(_opts: Options) -> Result<()> {
         return Ok(());
     }
 
+    let confirm_auto_open_browser = Confirm::new("Your default browser will be opening to Edgee's API token creation page. Do you want to continue?")
+        .with_default(true);
+
+    if confirm_auto_open_browser.prompt()? {
+        open::that("https://www.edgee.cloud/~/me/settings/tokens")?;
+    }
+
     let api_token = Password::new("Enter Edgee API token (press Ctrl+R to toggle input display):")
         .with_help_message("You can create one at https://www.edgee.cloud/~/me/settings/tokens")
         .with_display_mode(PasswordDisplayMode::Masked)
