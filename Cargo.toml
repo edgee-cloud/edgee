@@ -3,12 +3,13 @@ members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
-version = "0.8.3"
+version = "0.8.4"
 authors = ["Edgee <opensource@edgee.cloud>"]
 license = "Apache-2.0"
 keywords = ["edgee"]
 repository = "https://github.com/edgee-cloud/edgee"
 homepage = "https://www.edgee.cloud"
+readme = true
 edition = "2021"
 
 [workspace.dependencies]
@@ -78,8 +79,7 @@ zip = "2.2.2"
 cargo-llvm-cov = "0.6.15"
 pretty_assertions = "1.4.1"
 
-edgee-sdk = "1.3.2"
-edgee-path = "0.1.1"
+edgee-sdk = "1.5.0"
 
 edgee-api-client = { version = "0.8.0", path = "crates/api-client" }
 edgee-server = { version = "0.8.0", path = "crates/server" }

@@ -1,13 +1,14 @@
 [package]
 name = "edgee-server"
 description = "The full-stack edge platform for your edge oriented applications (server part)"
-edition.workspace = true
 version.workspace = true
 authors.workspace = true
 license.workspace = true
 keywords.workspace = true
 repository.workspace = true
 homepage.workspace = true
+readme.workspace = true
+edition.workspace = true
 
 [dependencies]
 addr.workspace = true
@@ -47,7 +48,6 @@ tracing.workspace = true
 url.workspace = true
 uuid = { workspace = true, features = ["v4", "serde"] }
 
-edgee-path.workspace = true
 edgee-sdk.workspace = true
 edgee-components-runtime.workspace = true
 
