@@ -17,8 +17,6 @@ colored.workspace = true
 colored_json.workspace = true
 http.workspace = true
 inquire = { workspace = true, features = ["editor"] }
-miette = { workspace = true, features = ["fancy"] }
-openssl.workspace = true
 self_update.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_yml.workspace = true
@@ -37,7 +35,6 @@ edgee-server.workspace = true
 edgee-components-runtime.workspace = true
 
 [features]
-bundled = ["openssl/vendored"]
 no-self-update = []
 
 [package.metadata.binstall]
