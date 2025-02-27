@@ -1,4 +1,7 @@
+use std::io::Read;
+
 use edgee_api_client::types as api_types;
+use reqwest::get;
 
 use crate::components::manifest::Manifest;
 
@@ -105,6 +108,14 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             )
             .prompt()?;
 
+            println!("Uploading Icon... {:?}", manifest.component.icon_path);
+
+            let avatar_url = if let Some(path) = &manifest.component.icon_path {
+                Some(client.upload_file(std::path::Path::new(path)).await?)
+            } else {
+                None
+            };
+
             let component = client
                 .create_component()
                 .body(
@@ -129,6 +140,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                                 .as_ref()
                                 .map(|url| url.to_string()),
                         )
+                        .avatar_url(avatar_url)
                         .public(public == "public"),
                 )
                 .send()
@@ -175,6 +187,36 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         .expect("Could not upload component");
 
     if do_update {
+        let mut final_icon_url = None;
+
+        if let Some(manifest_icon_path) = &manifest.component.icon_path {
+            let manifest_avatar_hash = {
+                let mut manifest_avatar_file = std::fs::File::open(manifest_icon_path)?;
+                hash_reader(&mut manifest_avatar_file)?
+            };
+            if let Some(existing_avatar_url) = &component.avatar_url {
+                let response = get(existing_avatar_url).await?;
+                let existing_avatar_data = response.bytes().await?;
+                let existing_avatar_hash = hash_reader(&existing_avatar_data[..])?;
+                if existing_avatar_hash != manifest_avatar_hash {
+                    tracing::info!("Detected icon change, uploading new icon...");
+                    let new_avatar_url = client
+                        .upload_file(std::path::Path::new(manifest_icon_path))
+                        .await?;
+                    final_icon_url = Some(new_avatar_url);
+                } else {
+                    tracing::info!("Icon has not changed, skipping upload...");
+                }
+            } else {
+                let icon_url = if let Some(path) = &manifest.component.icon_path {
+                    Some(client.upload_file(std::path::Path::new(path)).await?)
+                } else {
+                    None
+                };
+                final_icon_url = icon_url;
+            }
+        }
+
         client
             .update_component_by_slug()
             .org_slug(&organization.slug)
@@ -190,6 +232,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                             .as_ref()
                             .map(|url| url.to_string()),
                     )
+                    .avatar_url(final_icon_url)
                     .repo_link(
                         manifest
                             .component
@@ -253,4 +296,12 @@ fn convert_manifest_config_fields(manifest: &Manifest) -> Vec<api_types::Configu
             description: field.description.clone(),
         })
         .collect()
+}
+
+fn hash_reader<R: Read>(mut reader: R) -> anyhow::Result<String> {
+    use sha2::{Digest, Sha256};
+
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut reader, &mut hasher)?;
+    Ok(format!("{:x}", hasher.finalize()))
 }

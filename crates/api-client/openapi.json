@@ -467,10 +467,7 @@
                   "role": {
                     "type": "string",
                     "description": "The role of the users.",
-                    "enum": [
-                      "admin",
-                      "member"
-                    ]
+                    "enum": ["admin", "member"]
                   }
                 }
               }
@@ -1728,6 +1725,129 @@
         }
       }
     },
+    "/v1/components/{id}": {
+      "get": {
+        "operationId": "getComponentByUuid",
+        "summary": "Get a Component by Uuid",
+        "description": "Retrieve a Component by Uuid.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The retrieved Component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Component"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateComponentByUuid",
+        "summary": "Update a Component by Uuid",
+        "description": "Updates an existing Component by Uuid.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComponentUpdateParams"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Component"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteComponentByUuid",
+        "summary": "Delete a Component by Uuid",
+        "description": "Delete an existing Component by Uuid.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted Invitation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/components/{orgSlug}/{componentSlug}": {
       "get": {
         "operationId": "getComponentBySlug",
@@ -1828,13 +1948,11 @@
             }
           }
         }
-      }
-    },
-    "/v1/components/{orgSlug}/{componentSlug}/versions": {
-      "post": {
-        "operationId": "createComponentVersion",
-        "summary": "Create a Component Version",
-        "description": "Create a Component Version.",
+      },
+      "delete": {
+        "operationId": "deleteComponentBySlug",
+        "summary": "Delete a Component by Slug",
+        "description": "Delete an existing Component by Slug.",
         "parameters": [
           {
             "name": "orgSlug",
@@ -1846,6 +1964,45 @@
           },
           {
             "name": "componentSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/components/{id}/versions": {
+      "post": {
+        "operationId": "createComponentVersionByUuid",
+        "summary": "Create a Component Version",
+        "description": "Create a Component Version.",
+        "parameters": [
+          {
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -2541,9 +2698,7 @@
             "$ref": "#/components/schemas/ApiToken"
           }
         ],
-        "required": [
-          "name"
-        ]
+        "required": ["name"]
       },
       "Organization": {
         "type": "object",
@@ -2576,10 +2731,7 @@
             "type": "string",
             "description": "The type of the organization.",
             "readOnly": true,
-            "enum": [
-              "perso",
-              "pro"
-            ]
+            "enum": ["perso", "pro"]
           },
           "current_billing_plan": {
             "type": "string",
@@ -2615,10 +2767,7 @@
             "$ref": "#/components/schemas/Organization"
           }
         ],
-        "required": [
-          "name",
-          "slug"
-        ]
+        "required": ["name", "slug"]
       },
       "OrganizationUpdateInput": {
         "type": "object",
@@ -2627,9 +2776,7 @@
             "$ref": "#/components/schemas/Organization"
           }
         ],
-        "required": [
-          "id"
-        ]
+        "required": ["id"]
       },
       "ProjectBase": {
         "type": "object",
@@ -2679,6 +2826,11 @@
             "description": "Time at which the project was last updated",
             "example": "2022-03-01T00:00:00Z",
             "readOnly": true
+          },
+          "external_project_url": {
+            "type": "string",
+            "description": "External link to a platform provider for the project",
+            "example": "https://my-project.com"
           }
         }
       },
@@ -2735,12 +2887,7 @@
           "log_severity": {
             "type": "string",
             "description": "The log severity of the project.",
-            "enum": [
-              "DEBUG",
-              "INFO",
-              "WARNING",
-              "ERROR"
-            ],
+            "enum": ["DEBUG", "INFO", "WARNING", "ERROR"],
             "default": "INFO",
             "nullable": true
           },
@@ -2861,10 +3008,7 @@
             "$ref": "#/components/schemas/ProjectBase"
           }
         ],
-        "required": [
-          "organization_id",
-          "slug"
-        ]
+        "required": ["organization_id", "slug"]
       },
       "ProjectUpdateInput": {
         "type": "object",
@@ -2876,9 +3020,7 @@
             "$ref": "#/components/schemas/ProjectFull"
           }
         ],
-        "required": [
-          "id"
-        ]
+        "required": ["id"]
       },
       "Domain": {
         "type": "object",
@@ -2930,9 +3072,7 @@
             "description": "The domain name."
           }
         },
-        "required": [
-          "name"
-        ]
+        "required": ["name"]
       },
       "DomainUpdateInput": {
         "type": "object",
@@ -3009,10 +3149,7 @@
             }
           }
         },
-        "required": [
-          "description",
-          "backends"
-        ]
+        "required": ["description", "backends"]
       },
       "ProxySettingsUpdateInput": {
         "type": "object",
@@ -3198,6 +3335,11 @@
             "description": "Description of the component",
             "readOnly": true
           },
+          "latest_version": {
+            "type": "string",
+            "description": "Latest version of the component",
+            "readOnly": true
+          },
           "versions": {
             "type": "object",
             "description": "List of versions of the component",
@@ -3309,12 +3451,7 @@
             "description": "The description of the configuration field."
           }
         },
-        "required": [
-          "name",
-          "title",
-          "type",
-          "required"
-        ]
+        "required": ["name", "title", "type", "required"]
       },
       "ComponentCreateInput": {
         "type": "object",
@@ -3332,18 +3469,12 @@
           "category": {
             "type": "string",
             "description": "Category of the component.",
-            "enum": [
-              "data_collection"
-            ]
+            "enum": ["data_collection"]
           },
           "subcategory": {
             "type": "string",
             "description": "Subcategory of the component.",
-            "enum": [
-              "analytics",
-              "warehouse",
-              "attribution"
-            ]
+            "enum": ["analytics", "warehouse", "attribution"]
           },
           "documentation_link": {
             "type": "string",
@@ -3359,19 +3490,18 @@
             "type": "string",
             "description": "Description of the component."
           },
+          "avatar_url": {
+            "type": "string",
+            "description": "Avatar URL of the component."
+          },
           "public": {
             "type": "boolean",
             "description": "Whether the created component is public or not."
           }
         },
-        "required": [
-          "organization_id",
-          "name",
-          "category",
-          "subcategory"
-        ]
+        "required": ["organization_id", "name", "category", "subcategory"]
       },
-      "ComponentUpdateParams" : {
+      "ComponentUpdateParams": {
         "type": "object",
         "properties": {
           "documentation_link": {
@@ -3395,6 +3525,10 @@
           "public": {
             "type": "boolean",
             "description": "Whether the component is public or not."
+          },
+          "avatar_url": {
+            "type": "string",
+            "description": "Avatar URL of the component."
           }
         }
       },
@@ -3431,11 +3565,7 @@
             "description": "Changelog of the component version"
           }
         },
-        "required": [
-          "version",
-          "wit_world_version",
-          "wasm_url"
-        ]
+        "required": ["version", "wit_world_version", "wasm_url"]
       },
       "ComponentVersionUpdateInput": {
         "type": "object",
@@ -3449,21 +3579,15 @@
       "ComponentListParams": {
         "type": "object",
         "properties": {
-         "category": {
+          "category": {
             "type": "string",
             "description": "Filter components by category.",
-            "enum": [
-              "data_collection"
-            ]
+            "enum": ["data_collection"]
           },
           "subcategory": {
             "type": "string",
             "description": "Filter components by sub category.",
-            "enum": [
-              "analytics",
-              "warehouse",
-              "attribution"
-            ]
+            "enum": ["analytics", "warehouse", "attribution"]
           }
         }
       },
@@ -3490,10 +3614,7 @@
           "role": {
             "type": "string",
             "description": "The future role of the user in the organization.",
-            "enum": [
-              "admin",
-              "member"
-            ]
+            "enum": ["admin", "member"]
           },
           "email": {
             "type": "string",
@@ -3515,11 +3636,7 @@
             "$ref": "#/components/schemas/Invitation"
           }
         ],
-        "required": [
-          "organization_id",
-          "email",
-          "role"
-        ]
+        "required": ["organization_id", "email", "role"]
       },
       "UserBase": {
         "type": "object",
@@ -3571,14 +3688,21 @@
             "readOnly": true
           }
         },
-        "required": ["object", "id", "email", "name", "slug", "role", "created_at", "updated_at"]
+        "required": [
+          "object",
+          "id",
+          "email",
+          "name",
+          "slug",
+          "role",
+          "created_at",
+          "updated_at"
+        ]
       },
       "User": {
         "type": "object",
         "description": "A User is a unique identifier that you can use to manage and organize your work.",
-        "allOf": [
-          { "$ref": "#/components/schemas/UserBase" }
-        ],
+        "allOf": [{ "$ref": "#/components/schemas/UserBase" }],
         "properties": {
           "role": {
             "type": "string",
@@ -3598,9 +3722,7 @@
         ]
       },
       "UserWithRoles": {
-        "allOf": [
-          { "$ref": "#/components/schemas/UserBase" }
-        ],
+        "allOf": [{ "$ref": "#/components/schemas/UserBase" }],
         "properties": {
           "roles": {
             "type": "object",
@@ -3624,10 +3746,7 @@
           "role": {
             "type": "string",
             "description": "The role of the user in the organization.",
-            "enum": [
-              "admin",
-              "member"
-            ]
+            "enum": ["admin", "member"]
           }
         }
       },
@@ -3638,9 +3757,7 @@
             "$ref": "#/components/schemas/OrganizationUser"
           }
         ],
-        "required": [
-          "role"
-        ]
+        "required": ["role"]
       },
       "IncomingDataCollectionEvent": {
         "type": "object",
@@ -3666,21 +3783,13 @@
           "type": {
             "type": "string",
             "description": "Type of the event",
-            "enum": [
-              "page",
-              "track",
-              "user"
-            ],
+            "enum": ["page", "track", "user"],
             "readOnly": true
           },
           "from": {
             "type": "string",
             "description": "Origin of the event",
-            "enum": [
-              "edge",
-              "client",
-              "third"
-            ],
+            "enum": ["edge", "client", "third"],
             "readOnly": true
           },
           "data": {
@@ -3746,10 +3855,7 @@
           "order_direction": {
             "type": "string",
             "description": "The order direction of the returned list. Objects are returned sorted by creation date. By default, the order is descending, so the most recent object appears first. Possible values are ASC and DESC. Default is DESC.",
-            "enum": [
-              "ASC",
-              "DESC"
-            ],
+            "enum": ["ASC", "DESC"],
             "default": "DESC"
           }
         }
@@ -3802,9 +3908,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "upload_url"
-        ]
+        "required": ["upload_url"]
       },
       "ErrorResponse": {
         "type": "object",
@@ -3853,14 +3957,10 @@
                 }
               }
             },
-            "required": [
-              "message"
-            ]
+            "required": ["message"]
           }
         },
-        "required": [
-          "error"
-        ]
+        "required": ["error"]
       },
       "ProjectCounters": {
         "type": "object",
