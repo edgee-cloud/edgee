@@ -48,12 +48,14 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         component_name, component_language.name
     );
 
-    Manifest {
+    let project_dir = std::env::current_dir()?;
+
+    let manifest = Manifest {
         manifest_version: manifest::MANIFEST_VERSION,
         component: Component {
             name: component_name,
             version: "0.1.0".to_string(),
-            wit_world_version: "0.4.0".to_string(),
+            wit_world_version: "0.5.0".to_string(),
             category: *component_category.value,
             subcategory: *component_subcategory.value,
             description: Some("Description of\nthe component".to_string()),
@@ -77,8 +79,11 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
                 output_path: std::path::PathBuf::from(""),
             },
         },
-    }
-    .save(std::path::Path::new("./"))?;
+    };
+    manifest.save(&project_dir)?;
+
+    println!("Downloading Edgee WIT files...");
+    crate::components::wit::update(&manifest, &project_dir).await?;
 
     Ok(())
 }
