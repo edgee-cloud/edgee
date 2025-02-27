@@ -27,13 +27,31 @@ use crate::{
 
 use crate::context::ComponentsContext;
 
+pub struct EventResponse {
+    pub project: String,
+    pub event_type: String,
+    pub host: String,
+    pub from: String,
+    pub ip: String,
+    pub proxy_type: String,
+    pub proxy_desc: String,
+    pub as_name: String,
+    pub path: String,
+    pub consent: String,
+    pub component_id: String,
+    pub component: String,
+    pub status: i32,
+    pub duration: u128,
+    pub message: String,
+}
+
 pub async fn send_json_events(
     component_ctx: &ComponentsContext,
     events_json: &str,
     component_config: &ComponentsConfiguration,
     trace_component: &Option<String>,
     debug: bool,
-) -> anyhow::Result<Vec<JoinHandle<()>>> {
+) -> anyhow::Result<Vec<JoinHandle<EventResponse>>> {
     if events_json.is_empty() {
         return Ok(vec![]);
     }
@@ -59,7 +77,7 @@ pub async fn send_events(
     debug: bool,
     project_id: &str,
     proxy_host: &str,
-) -> anyhow::Result<Vec<JoinHandle<()>>> {
+) -> anyhow::Result<Vec<JoinHandle<EventResponse>>> {
     if events.is_empty() {
         return Ok(vec![]);
     }
@@ -264,6 +282,7 @@ pub async fn send_events(
                         anonymization,
                     );
 
+                    let mut message = "".to_string();
                     match res {
                         Ok(res) => {
                             debug_params.response_status =
@@ -281,7 +300,7 @@ pub async fn send_events(
                             let _r = debug_and_trace_response(
                                 debug,
                                 trace,
-                                debug_params,
+                                debug_params.clone(),
                                 "".to_string(),
                             )
                             .await;
@@ -291,11 +310,40 @@ pub async fn send_events(
                             let _r = debug_and_trace_response(
                                 debug,
                                 trace,
-                                debug_params,
+                                debug_params.clone(),
                                 err.to_string(),
                             )
                             .await;
+                            message = err.to_string();
                         }
+                    }
+
+                    EventResponse {
+                        project: debug_params.project_id,
+                        event_type: match debug_params.event.event_type.clone() {
+                            EventType::Page => "page",
+                            EventType::Track => "track",
+                            EventType::User => "user",
+                        }
+                        .to_string(),
+                        host: debug_params.proxy_host,
+                        from: debug_params.from,
+                        ip: debug_params.client_ip,
+                        proxy_type: debug_params.proxy_type,
+                        proxy_desc: debug_params.proxy_desc,
+                        as_name: debug_params.as_name,
+                        status: debug_params.response_status,
+                        path: debug_params.event.context.page.path.clone(),
+                        consent: match debug_params.event.consent.clone().unwrap() {
+                            Consent::Granted => "granted",
+                            Consent::Denied => "denied",
+                            Consent::Pending => "pending",
+                        }
+                        .to_string(),
+                        component_id: debug_params.component_id,
+                        component: debug_params.component_slug,
+                        message,
+                        duration: timer.elapsed().as_millis(),
                     }
                 }
                 .in_current_span(),
