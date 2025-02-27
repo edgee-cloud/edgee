@@ -108,9 +108,9 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             )
             .prompt()?;
 
-            println!("Uploading avatar... {:?}", manifest.component.avatar_path);
+            println!("Uploading Icon... {:?}", manifest.component.icon_path);
 
-            let avatar_url = if let Some(path) = &manifest.component.avatar_path {
+            let avatar_url = if let Some(path) = &manifest.component.icon_path {
                 Some(client.upload_file(std::path::Path::new(path)).await?)
             } else {
                 None
@@ -187,11 +187,11 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         .expect("Could not upload component");
 
     if do_update {
-        let mut final_avatar_url = None;
+        let mut final_icon_url = None;
 
-        if let Some(manifest_avatar_path) = &manifest.component.avatar_path {
+        if let Some(manifest_icon_path) = &manifest.component.icon_path {
             let manifest_avatar_hash = {
-                let mut manifest_avatar_file = std::fs::File::open(manifest_avatar_path)?;
+                let mut manifest_avatar_file = std::fs::File::open(manifest_icon_path)?;
                 hash_reader(&mut manifest_avatar_file)?
             };
             if let Some(existing_avatar_url) = &component.avatar_url {
@@ -199,21 +199,21 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 let existing_avatar_data = response.bytes().await?;
                 let existing_avatar_hash = hash_reader(&existing_avatar_data[..])?;
                 if existing_avatar_hash != manifest_avatar_hash {
-                    tracing::info!("Detected avatar change, uploading new avatar...");
+                    tracing::info!("Detected icon change, uploading new icon...");
                     let new_avatar_url = client
-                        .upload_file(std::path::Path::new(manifest_avatar_path))
+                        .upload_file(std::path::Path::new(manifest_icon_path))
                         .await?;
-                    final_avatar_url = Some(new_avatar_url);
+                    final_icon_url = Some(new_avatar_url);
                 } else {
-                    tracing::info!("Avatar has not changed, skipping upload...");
+                    tracing::info!("Icon has not changed, skipping upload...");
                 }
             } else {
-                let avatar_url = if let Some(path) = &manifest.component.avatar_path {
+                let icon_url = if let Some(path) = &manifest.component.icon_path {
                     Some(client.upload_file(std::path::Path::new(path)).await?)
                 } else {
                     None
                 };
-                final_avatar_url = avatar_url;
+                final_icon_url = icon_url;
             }
         }
 
@@ -232,7 +232,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                             .as_ref()
                             .map(|url| url.to_string()),
                     )
-                    .avatar_url(final_avatar_url)
+                    .avatar_url(final_icon_url)
                     .repo_link(
                         manifest
                             .component

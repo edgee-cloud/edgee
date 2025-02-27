@@ -28,7 +28,7 @@ pub struct Component {
     #[serde(with = "SubCategory")]
     pub subcategory: api_types::ComponentCreateInputSubcategory,
     pub description: Option<String>,
-    pub avatar_path: Option<String>,
+    pub icon_path: Option<String>,
 
     #[serde(default)]
     pub documentation: Option<url::Url>,
@@ -108,9 +108,9 @@ impl Manifest {
             );
         }
 
-        if let Some(ref avatar_path) = manifest.component.avatar_path {
+        if let Some(ref icon_path) = manifest.component.icon_path {
             let valid_extensions = ["png", "jpg", "jpeg"];
-            let extension = Path::new(avatar_path)
+            let extension = Path::new(icon_path)
                 .extension()
                 .and_then(|ext| ext.to_str())
                 .unwrap_or_default()
@@ -118,7 +118,7 @@ impl Manifest {
 
             if !valid_extensions.contains(&extension.as_str()) {
                 anyhow::bail!(
-                    "Invalid avatar path extension '{}', must be one of: {:?}",
+                    "Invalid icon path extension '{}', must be one of: {:?}",
                     extension,
                     valid_extensions
                 );
