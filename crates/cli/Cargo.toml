@@ -12,13 +12,17 @@ edition.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+async-compression = { workspace = true, features = ["futures-io", "gzip"] }
+async-tar.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 colored.workspace = true
 colored_json.workspace = true
+futures.workspace = true
 http.workspace = true
 inquire = { workspace = true, features = ["editor"] }
 miette = { workspace = true, features = ["fancy"] }
 openssl.workspace = true
+reqwest = { workspace = true, features = ["blocking"] }
 self_update.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_yml.workspace = true
@@ -26,10 +30,10 @@ serde_json.workspace = true
 slug.workspace = true
 tracing.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio-util = { workspace = true, features = ["io"] }
 toml.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
 url = { workspace = true, features = ["serde"] }
-reqwest = { workspace = true, features = ["blocking"] }
 zip.workspace = true
 
 edgee-api-client.workspace = true

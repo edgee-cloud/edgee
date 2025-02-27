@@ -21,7 +21,10 @@ setup_commands! {
     Push(push),
 
     /// Run the component in the current folder with sample events
-    Test(test)
+    Test(test),
+
+    /// Manage Edgee WIT world dependency
+    Wit(wit),
 }
 
 pub type Options = Command;
