@@ -3474,7 +3474,7 @@
           "subcategory": {
             "type": "string",
             "description": "Subcategory of the component.",
-            "enum": ["analytics", "warehouse", "attribution"]
+            "enum": ["analytics", "warehouse", "attribution", "conversion api"]
           },
           "documentation_link": {
             "type": "string",
@@ -3587,7 +3587,7 @@
           "subcategory": {
             "type": "string",
             "description": "Filter components by sub category.",
-            "enum": ["analytics", "warehouse", "attribution"]
+            "enum": ["analytics", "warehouse", "attribution", "conversion api"]
           }
         }
       },

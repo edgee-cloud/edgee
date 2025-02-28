@@ -61,6 +61,7 @@ pub enum SubCategory {
     Analytics,
     Warehouse,
     Attribution,
+    ConversionApi,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
