@@ -39,6 +39,7 @@ fn default_compute_config() -> ComputeConfiguration {
         max_compressed_body_size: default_max_compressed_body_size(),
         proxy_only: false,
         enforce_no_store_policy: false,
+        inject_sdk: false,
     }
 }
 
@@ -194,6 +195,8 @@ pub struct ComputeConfiguration {
     pub proxy_only: bool,
     #[serde(default)]
     pub enforce_no_store_policy: bool,
+    #[serde(default)]
+    pub inject_sdk: bool,
 }
 
 fn default_cookie_name() -> String {
