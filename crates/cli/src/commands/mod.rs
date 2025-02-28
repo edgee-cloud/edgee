@@ -13,4 +13,5 @@ setup_commands! {
     [cfg(not(feature = "no-self-update"))]
     /// Update the Edgee executable
     SelfUpdate(update),
+    GenerateShellCompletion(completion),
 }
