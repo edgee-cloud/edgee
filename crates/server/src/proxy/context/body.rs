@@ -49,6 +49,7 @@ impl ProxyBody {
         matches!(self, Self::Uncompressed(_))
     }
 
+    #[allow(unused)]
     pub fn is_compressed(&self) -> bool {
         matches!(self, Self::Compressed(_))
     }

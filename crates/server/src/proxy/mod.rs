@@ -10,7 +10,7 @@ use http_body_util::combinators::BoxBody;
 use hyper::body::Incoming;
 use lol_html::html_content::ContentType;
 use lol_html::{element, rewrite_str, RewriteStrSettings};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use crate::config;
 use context::{
@@ -418,18 +418,6 @@ fn do_only_proxy(
     // if the response doesn't have a body
     if response_body.is_empty() {
         return Some("proxy-only(no-body)");
-    }
-
-    if response_body.is_compressed()
-        && response_body.len() > config::get().compute.max_compressed_body_size
-    {
-        warn!(
-            "compressed body too large: {} > {}",
-            response_body.len(),
-            config::get().compute.max_compressed_body_size
-        );
-
-        return Some("proxy-only(compressed-body-too-large)");
     }
 
     None

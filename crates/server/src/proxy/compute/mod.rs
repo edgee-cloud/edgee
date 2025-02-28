@@ -5,7 +5,6 @@ use data_collection::{process_from_html, process_from_json};
 use http::header::{CACHE_CONTROL, ETAG, EXPIRES, LAST_MODIFIED};
 use http::response::Parts;
 use http::{HeaderName, HeaderValue};
-use tracing::warn;
 
 use crate::config;
 use crate::proxy::context::incoming::RequestHandle;
@@ -24,16 +23,6 @@ pub async fn html_handler(
     request: &RequestHandle,
     response: &mut Parts,
 ) -> Result<Document, &'static str> {
-    // if the decompressed body is too large, abort the computation
-    if body.len() > config::get().compute.max_decompressed_body_size {
-        warn!(
-            "decompressed body too large: {} > {}",
-            body.len(),
-            config::get().compute.max_decompressed_body_size
-        );
-        Err("compute-aborted(decompressed-body-too-large)")?;
-    }
-
     // check if `id="__EDGEE_SDK__"` is present in the body
     if !body.contains(r#"id="__EDGEE_SDK__""#) {
         Err("compute-aborted(no-sdk)")?;
@@ -215,23 +204,6 @@ mod tests {
             }
             Err(reason) => {
                 panic!("Error: {}", reason);
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn html_handler_with_too_large_body() {
-        init_test_config();
-        let body_str = "X".repeat(6000001); // above max_decompressed_body_size
-        let request = RequestHandle::default();
-        let mut response = empty_parts();
-
-        match html_handler(&body_str, &request, &mut response).await {
-            Ok(_document) => {
-                panic!("Should have failed");
-            }
-            Err(reason) => {
-                assert_eq!(reason, "compute-aborted(decompressed-body-too-large)");
             }
         }
     }
