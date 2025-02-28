@@ -4,8 +4,34 @@ use anyhow::{Context, Result};
 use async_compression::futures::bufread::GzipDecoder;
 use async_tar::Archive;
 use futures::{io::BufReader, StreamExt, TryStreamExt};
+use serde::{Deserialize, Serialize};
 
 use super::manifest::Manifest;
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Lock {
+    version: String,
+}
+
+impl Lock {
+    const FILENAME: &str = "lock.json";
+
+    fn load(path: &Path) -> Result<Self> {
+        use std::fs::File;
+
+        let file = File::open(path)?;
+        serde_json::from_reader(file).map_err(Into::into)
+    }
+
+    fn save(&self, path: &Path) -> Result<()> {
+        use std::fs::File;
+
+        let file = File::create(path)?;
+        serde_json::to_writer(file, self)?;
+
+        Ok(())
+    }
+}
 
 pub async fn update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
     let wit_tarball_url = format!(
@@ -31,11 +57,11 @@ pub async fn update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
         .filter_map(|entry| std::future::ready(entry.ok()))
         .filter(|entry| std::future::ready(entry.path_bytes().ends_with(b".wit")));
 
-    let wit_path = root_dir.join("wit");
+    let wit_path = root_dir.join(".edgee/wit");
     if wit_path.exists() {
-        tracing::info!("The existing wit/ directory will be overwritten");
-        tokio::fs::remove_dir_all(wit_path).await?;
+        tokio::fs::remove_dir_all(&wit_path).await?;
     }
+
     while let Some(mut entry) = entries.next().await {
         let Ok(entry_path) = entry.path() else {
             continue;
@@ -49,10 +75,37 @@ pub async fn update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
         if !entry_path.starts_with("wit") {
             continue;
         }
+        let entry_path = entry_path.strip_prefix("wit")?;
 
-        let path = root_dir.join(entry_path);
+        let path = wit_path.join(entry_path);
         tokio::fs::create_dir_all(path.parent().unwrap()).await?;
         entry.unpack(path).await?;
+    }
+
+    let lockfile = wit_path.join(Lock::FILENAME);
+    let lock = Lock {
+        version: manifest.component.wit_world_version.clone(),
+    };
+    lock.save(&lockfile)?;
+
+    tracing::info!("Edgee WIT files has been updated");
+
+    Ok(())
+}
+
+pub async fn should_update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
+    let wit_path = root_dir.join(".edgee/wit");
+    let lockfile = wit_path.join(Lock::FILENAME);
+
+    if !lockfile.exists() {
+        tracing::info!("Edgee WIT files are missing, downloading them...");
+        return update(manifest, root_dir).await;
+    }
+
+    let lock = Lock::load(&lockfile)?;
+    if lock.version != manifest.component.wit_world_version {
+        tracing::info!("Edgee WIT files are out of date, updating them...");
+        return update(manifest, root_dir).await;
     }
 
     Ok(())

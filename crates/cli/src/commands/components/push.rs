@@ -23,6 +23,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     let Some(manifest_path) = manifest::find_manifest_path() else {
         anyhow::bail!("Edgee Manifest not found. Please run `edgee component new` and start from a template or `edgee component init` to create a new empty manifest in this folder.");
     };
+    let root_dir = manifest_path.parent().expect("project root dir");
     let manifest = Manifest::load(&manifest_path)?;
 
     // check if the output file exists
@@ -38,7 +39,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             return Ok(());
         }
 
-        super::build::do_build(&manifest).await?;
+        super::build::do_build(&manifest, root_dir).await?;
     }
 
     // check if the output file is a valid Data Collection component
