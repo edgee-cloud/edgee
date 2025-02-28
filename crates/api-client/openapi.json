@@ -2909,12 +2909,6 @@
             "default": false,
             "nullable": true
           },
-          "max_decompressed_body_size": {
-            "type": "integer",
-            "description": "The maximum size, in bytes, of the decompressed body of a request that edgee will compute at the edge.",
-            "default": 6000000,
-            "nullable": true
-          },
           "cookie_name": {
             "type": "string",
             "description": "The name of the cookie that edgee will use to store the session ID.",
@@ -2929,6 +2923,12 @@
           "proxy_only": {
             "type": "boolean",
             "description": "Whether the Edgee will only proxy requests to the origin without any computing.",
+            "default": false,
+            "nullable": true
+          },
+          "inject_sdk": {
+            "type": "boolean",
+            "description": "Whether Edgee should inject the SDK into the html content.",
             "default": false,
             "nullable": true
           },

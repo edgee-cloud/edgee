@@ -8,7 +8,9 @@ use http::response::Parts;
 use http::{header, HeaderName, HeaderValue, Method};
 use http_body_util::combinators::BoxBody;
 use hyper::body::Incoming;
-use tracing::{error, info, warn};
+use lol_html::html_content::ContentType;
+use lol_html::{element, rewrite_str, RewriteStrSettings};
+use tracing::{error, info};
 
 use crate::config;
 use context::{
@@ -186,6 +188,9 @@ pub async fn handle_request(
 
             let mut body_str = String::from_utf8_lossy(&response_body).into_owned();
 
+            // inject the sdk
+            inject_sdk(&mut body_str, request.get_host());
+
             // interpret what's in the body
             match compute::html_handler(&body_str, request, &mut response).await {
                 Ok(mut document) => {
@@ -245,6 +250,37 @@ pub async fn handle_request(
 
             Ok(controller::build_response(response, Bytes::from(body_str)))
         }
+    }
+}
+
+fn inject_sdk(body: &mut String, hostname: &str) {
+    if !config::get().compute.inject_sdk {
+        return;
+    }
+    let html_res = rewrite_str(
+        body,
+        RewriteStrSettings {
+            element_content_handlers: vec![
+                // first remove the existing sdk script if it exists
+                element!("script#__EDGEE_SDK__", |el| {
+                    el.remove();
+                    Ok(())
+                }),
+                // add sdk to the head
+                element!("head", |el| {
+                    el.append(
+                        &format!(r#"<script id="__EDGEE_SDK__" async src="https://{}/_edgee/sdk.js"></script>"#, hostname),
+                        ContentType::Html,
+                    );
+                    Ok(())
+                }),
+            ],
+            ..RewriteStrSettings::new()
+        },
+    );
+
+    if let Ok(html) = html_res {
+        *body = html;
     }
 }
 
@@ -382,18 +418,6 @@ fn do_only_proxy(
     // if the response doesn't have a body
     if response_body.is_empty() {
         return Some("proxy-only(no-body)");
-    }
-
-    if response_body.is_compressed()
-        && response_body.len() > config::get().compute.max_compressed_body_size
-    {
-        warn!(
-            "compressed body too large: {} > {}",
-            response_body.len(),
-            config::get().compute.max_compressed_body_size
-        );
-
-        return Some("proxy-only(compressed-body-too-large)");
     }
 
     None
