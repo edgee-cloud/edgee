@@ -189,14 +189,20 @@ Learn more about [running the Edgee proxy locally](./README-proxy.md).
 
 ## `edgee generate-shell-completion`
 
-This command allows you to generate a script for your shell adding auto-completion for the `edgee` command,
-you can use it by adding the following to your shell init file:
+This command allows you to generate a script for your shell adding auto-completion for the `edgee` command.
 
+```shell
+$ edgee generate-shell-completion [SHELL]
+# supported value: bash, elvish, fish, powershell, zsh
 ```
+
+You can use it by adding the following to your shell init file:
+
+```shell
 # ~/.bashrc | ~/.zshrc
-eval $(edgee generate-shell-completion)
+$ eval $(edgee generate-shell-completion)
 # ~/.config/fish/completions/edgee.fish
-edgee generate-shell-completion | source
+$ edgee generate-shell-completion | source
 ```
 
 ## Contributing
