@@ -187,7 +187,7 @@ You can view and edit it at: https://edgee.cloud/~/registry/{organization}/{comp
 
 Learn more about [running the Edgee proxy locally](./README-proxy.md).
 
-## `edgee generate-shell-completion`
+### `edgee generate-shell-completion`
 
 This command allows you to generate a script for your shell adding auto-completion for the `edgee` command.
 
@@ -196,14 +196,59 @@ $ edgee generate-shell-completion [SHELL]
 # supported value: bash, elvish, fish, powershell, zsh
 ```
 
-You can use it by adding the following to your shell init file:
+If no argument it passed, the CLI will try to guess it based on the environment.
 
-```shell
-# ~/.bashrc | ~/.zshrc
-$ eval $(edgee generate-shell-completion)
-# ~/.config/fish/completions/edgee.fish
-$ edgee generate-shell-completion | source
-```
+To install the completions, source them in your shell init file.
+
+<details>
+  <summary>bash</summary>
+
+  ```shell
+  # ~/.bashrc
+  $ eval $(edgee generate-shell-completion bash)
+  ```
+</details>
+
+<details>
+  <summary>zsh</summary>
+
+  ```shell
+  # store the auto-completion in ~/.zsh/_edgee
+  $ edgee generate-shell-completion zsh > ~/.zsh/_edgee
+
+  # ~/.zshrc
+  fpath=(~/.zsh $fpath)
+  autoload -Uz compinit
+  compinit -u
+  # note: you might need to delete ~/.zcompdump/ first
+  ```
+</details>
+
+<details>
+  <summary>fish</summary>
+
+  ```shell
+  # ~/.config/fish/completions/edgee.fish
+  $ edgee generate-shell-completion fish | source
+  ```
+</details>
+
+<details>
+  <summary>elvish</summary>
+
+  ```shell
+  $ edgee generate-shell-completion elvish >> ~/.config/elvish/rc.elv
+  ```
+</details>
+
+<details>
+  <summary>powershell</summary>
+
+  ```shell
+  > edgee generate-shell-completion powershell >> $profile
+  > .$profile
+  ```
+</details>
 
 ## Contributing
 If you're interested in contributing to Edgee, read our [contribution guidelines](./CONTRIBUTING.md)
