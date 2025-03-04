@@ -3514,6 +3514,10 @@
             "description": "Link to the repository of the component.",
             "format": "url"
           },
+          "name": {
+            "type": "string",
+            "description": "Name of the component."
+          },
           "description": {
             "type": "string",
             "description": "Description of the component."
