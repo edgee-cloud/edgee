@@ -223,6 +223,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .component_slug(&component_slug)
             .body(
                 api_types::ComponentUpdateParams::builder()
+                    .name(manifest.component.name.clone())
                     .description(manifest.component.description.clone())
                     .public(component.is_public)
                     .documentation_link(
