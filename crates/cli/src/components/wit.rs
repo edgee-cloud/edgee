@@ -5,7 +5,9 @@ use async_compression::futures::bufread::GzipDecoder;
 use async_tar::Archive;
 use futures::{io::BufReader, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
+use tokio::io::AsyncWriteExt;
 
+use super::boilerplate::CATEGORY_OPTIONS;
 use super::manifest::Manifest;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -81,6 +83,16 @@ pub async fn update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
         tokio::fs::create_dir_all(path.parent().unwrap()).await?;
         entry.unpack(path).await?;
     }
+
+    // Create WIT world file
+    let category_config = CATEGORY_OPTIONS
+        .iter()
+        .find(|&config| config.value == manifest.component.category)
+        .expect("should have a valid category");
+    let wit_world_path = wit_path.join("world.wit");
+    let mut wit_world_file = tokio::fs::File::create(&wit_world_path).await?;
+    wit_world_file.write_all(category_config.wit_world).await?;
+    drop(wit_world_file);
 
     let lockfile = wit_path.join(Lock::FILENAME);
     let lock = Lock {
