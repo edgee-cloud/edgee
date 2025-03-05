@@ -17,7 +17,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
 
         match updater.update()? {
             Status::Updated(version) => tracing::info!("Updated to {}", version.green()),
-            Status::UpToDate(version) => tracing::info!("already up-to-date ({})", version.green()),
+            Status::UpToDate(version) => tracing::info!("Already up to date ({})", version.green()),
         }
 
         Ok(())
