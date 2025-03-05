@@ -1,3 +1,5 @@
+use colored::Colorize;
+
 #[derive(Debug, clap::Parser)]
 pub struct Options {
     #[arg(long = "filename")]
@@ -63,7 +65,7 @@ pub async fn check_component(
         }
     }
 
-    println!("Component {} is valid", component_path);
+    tracing::info!("Component {} is valid", component_path.green());
     Ok(())
 }
 

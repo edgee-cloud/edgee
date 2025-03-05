@@ -1,3 +1,5 @@
+use colored::Colorize;
+
 setup_command! {}
 
 pub async fn run(_opts: Options) -> anyhow::Result<()> {
@@ -14,8 +16,8 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             .build()?;
 
         match updater.update()? {
-            Status::Updated(version) => println!("Updated to {version}"),
-            Status::UpToDate(version) => println!("already up-to-date ({version})"),
+            Status::Updated(version) => tracing::info!("Updated to {}", version.green()),
+            Status::UpToDate(version) => tracing::info!("Already up to date ({})", version.green()),
         }
 
         Ok(())
