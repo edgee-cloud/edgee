@@ -78,6 +78,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
                 command: component_language.default_build_command.to_string(),
                 output_path: std::path::PathBuf::from(""),
             },
+            icon_path: None,
         },
     };
     manifest.save(&project_dir)?;

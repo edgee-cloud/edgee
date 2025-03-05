@@ -25,6 +25,7 @@ pub struct Component {
     #[serde(with = "SubCategory")]
     pub subcategory: api_types::ComponentCreateInputSubcategory,
     pub description: Option<String>,
+    pub icon_path: Option<String>,
 
     #[serde(default)]
     pub documentation: Option<url::Url>,
@@ -57,6 +58,7 @@ pub enum SubCategory {
     Analytics,
     Warehouse,
     Attribution,
+    ConversionApi,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -105,6 +107,23 @@ impl Manifest {
                 manifest.manifest_version,
                 Self::VERSION
             );
+        }
+
+        if let Some(ref icon_path) = manifest.component.icon_path {
+            let valid_extensions = ["png", "jpg", "jpeg"];
+            let extension = Path::new(icon_path)
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .unwrap_or_default()
+                .to_lowercase();
+
+            if !valid_extensions.contains(&extension.as_str()) {
+                anyhow::bail!(
+                    "Invalid icon path extension '{}', must be one of: {:?}",
+                    extension,
+                    valid_extensions
+                );
+            }
         }
 
         Ok(manifest)

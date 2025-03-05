@@ -99,4 +99,8 @@ pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
         name: "Warehouse",
         value: &edgee_api_client::types::ComponentCreateInputSubcategory::Warehouse,
     },
+    SubCategoryConfig {
+        name: "Conversion API",
+        value: &edgee_api_client::types::ComponentCreateInputSubcategory::ConversionApi,
+    },
 ];

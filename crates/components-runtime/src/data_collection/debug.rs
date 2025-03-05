@@ -73,6 +73,7 @@ impl DebugPayload {
     }
 }
 
+#[derive(Clone)]
 pub struct DebugParams {
     pub from: String,
     pub project_id: String,
