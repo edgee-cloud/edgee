@@ -5,6 +5,7 @@ use std::path::Path;
 use zip::read::ZipArchive;
 
 use crate::components::boilerplate::LANGUAGE_OPTIONS;
+use crate::components::manifest::Manifest;
 
 #[derive(Debug, clap::Parser)]
 pub struct Options {
@@ -90,6 +91,12 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             outfile.write_all(&buffer)?;
         }
     }
+
+    println!("Updating Edgee WIT files...");
+    let manifest_path = component_path.join(Manifest::FILENAME);
+    let manifest = Manifest::load(&manifest_path)?;
+    crate::components::wit::update(&manifest, component_path).await?;
+
     println!(
         "New project {} setup, check README to install the correct dependencies",
         component_name

@@ -51,7 +51,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
     let project_dir = std::env::current_dir()?;
 
     let manifest = Manifest {
-        manifest_version: manifest::MANIFEST_VERSION,
+        manifest_version: manifest::Manifest::VERSION,
         component: Component {
             name: component_name,
             version: "0.1.0".to_string(),
