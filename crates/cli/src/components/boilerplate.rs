@@ -1,3 +1,7 @@
+use std::fmt;
+
+use edgee_api_client::types as api_types;
+
 #[derive(Clone)]
 pub struct LanguageConfig {
     pub name: &'static str,
@@ -6,8 +10,8 @@ pub struct LanguageConfig {
     pub alias: &'static [&'static str],
 }
 
-impl std::fmt::Display for LanguageConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for LanguageConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name)
     }
 }
@@ -15,11 +19,12 @@ impl std::fmt::Display for LanguageConfig {
 #[derive(Clone)]
 pub struct CategoryConfig {
     pub name: &'static str,
-    pub value: &'static edgee_api_client::types::ComponentCreateInputCategory,
+    pub value: api_types::ComponentCreateInputCategory,
+    pub wit_world: &'static [u8],
 }
 
-impl std::fmt::Display for CategoryConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for CategoryConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name)
     }
 }
@@ -27,11 +32,11 @@ impl std::fmt::Display for CategoryConfig {
 #[derive(Clone)]
 pub struct SubCategoryConfig {
     pub name: &'static str,
-    pub value: &'static edgee_api_client::types::ComponentCreateInputSubcategory,
+    pub value: api_types::ComponentCreateInputSubcategory,
 }
 
-impl std::fmt::Display for SubCategoryConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for SubCategoryConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name)
     }
 }
@@ -83,24 +88,25 @@ pub static LANGUAGE_OPTIONS: &[LanguageConfig] = &[
 
 pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[CategoryConfig {
     name: "Data Collection",
-    value: &edgee_api_client::types::ComponentCreateInputCategory::DataCollection,
+    value: api_types::ComponentCreateInputCategory::DataCollection,
+    wit_world: include_bytes!("wit-world/data-collection.wit"),
 }];
 
 pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
     SubCategoryConfig {
         name: "Analytics",
-        value: &edgee_api_client::types::ComponentCreateInputSubcategory::Analytics,
+        value: api_types::ComponentCreateInputSubcategory::Analytics,
     },
     SubCategoryConfig {
         name: "Attribution",
-        value: &edgee_api_client::types::ComponentCreateInputSubcategory::Attribution,
+        value: api_types::ComponentCreateInputSubcategory::Attribution,
     },
     SubCategoryConfig {
         name: "Warehouse",
-        value: &edgee_api_client::types::ComponentCreateInputSubcategory::Warehouse,
+        value: api_types::ComponentCreateInputSubcategory::Warehouse,
     },
     SubCategoryConfig {
         name: "Conversion API",
-        value: &edgee_api_client::types::ComponentCreateInputSubcategory::ConversionApi,
+        value: api_types::ComponentCreateInputSubcategory::ConversionApi,
     },
 ];

@@ -8,9 +8,6 @@ use serde::{Deserialize, Serialize};
 
 use edgee_api_client::types as api_types;
 
-pub const MANIFEST_VERSION: u8 = 1;
-pub const MANIFEST_FILENAME: &str = "edgee-component.toml";
-
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Manifest {
@@ -92,6 +89,9 @@ pub struct Build {
 }
 
 impl Manifest {
+    pub const VERSION: u8 = 1;
+    pub const FILENAME: &str = "edgee-component.toml";
+
     pub fn load(path: &Path) -> Result<Self> {
         use std::fs;
 
@@ -101,11 +101,11 @@ impl Manifest {
         let manifest: Self = toml::from_str(&content)
             .with_context(|| format!("Could not decode the manifest file at {}", path.display()))?;
 
-        if manifest.manifest_version != MANIFEST_VERSION {
+        if manifest.manifest_version != Self::VERSION {
             anyhow::bail!(
                 "Invalid manifest version {}, the supported one is {}",
                 manifest.manifest_version,
-                MANIFEST_VERSION
+                Self::VERSION
             );
         }
 
@@ -134,7 +134,7 @@ impl Manifest {
 
         let content = toml::to_string(self)?;
 
-        fs::write(path.join(MANIFEST_FILENAME), content)
+        fs::write(path.join(Self::FILENAME), content)
             .with_context(|| format!("Could not write manifest file at {}", path.display()))?;
         Ok(())
     }
@@ -144,7 +144,7 @@ pub fn find_manifest_path() -> Option<PathBuf> {
     let mut cwd = std::env::current_dir().ok();
 
     while let Some(cur) = cwd {
-        let path = cur.join(MANIFEST_FILENAME);
+        let path = cur.join(Manifest::FILENAME);
         if path.exists() {
             return Some(path);
         }
