@@ -61,6 +61,10 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         }
     }
 
+    if manifest.component.name.clone().len() < 3 {
+        anyhow::bail!("Component name must be at least 3 characters");
+    }
+
     let client = edgee_api_client::new().credentials(&creds).connect();
 
     let organization = match opts.organization {
