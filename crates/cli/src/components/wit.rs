@@ -64,6 +64,9 @@ pub async fn update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
         tokio::fs::remove_dir_all(&wit_path).await?;
     }
 
+    // We apparently need to mimic the folders structure used by wit-deps
+    // TODO: Maybe directly use the wit-deps crate for handling dependencies?
+    let deps_path = wit_path.join("deps/edgee");
     while let Some(mut entry) = entries.next().await {
         let Ok(entry_path) = entry.path() else {
             continue;
@@ -79,7 +82,7 @@ pub async fn update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
         }
         let entry_path = entry_path.strip_prefix("wit")?;
 
-        let path = wit_path.join(entry_path);
+        let path = deps_path.join(entry_path);
         tokio::fs::create_dir_all(path.parent().unwrap()).await?;
         entry.unpack(path).await?;
     }
