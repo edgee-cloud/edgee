@@ -4,16 +4,29 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    connect_builder::{IsUnset, SetApiToken, State},
+    connect_builder::{IsUnset, SetApiToken, SetBaseurl, State},
     ConnectBuilder,
 };
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub struct Credentials {
-    pub api_token: Option<String>,
+#[derive(Debug, Deserialize, Default, Serialize, Clone)]
+pub struct Config {
+    #[serde(default)]
+    api_token: Option<String>,
+    #[serde(default)]
+    url: Option<String>,
+
+    #[serde(flatten)]
+    profiles: std::collections::HashMap<String, Credentials>,
 }
 
-impl Credentials {
+#[derive(Debug, Deserialize, Default, Serialize, Clone)]
+pub struct Credentials {
+    pub api_token: String,
+    #[serde(default)]
+    pub url: Option<String>,
+}
+
+impl Config {
     pub fn path() -> Result<PathBuf> {
         let config_dir = dirs::config_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not get user config directory"))?
@@ -66,23 +79,52 @@ impl Credentials {
             .context("Could not write credentials data")
     }
 
+    pub fn get(&self, profile: &Option<String>) -> Option<Credentials> {
+        match profile {
+            Some(profile) => self.profiles.get(profile).cloned(),
+            None => match (self.api_token.clone(), self.url.clone()) {
+                (Some(api_token), Some(url)) => Some(Credentials {
+                    api_token,
+                    url: Some(url),
+                }),
+                (Some(api_token), _) => Some(Credentials {
+                    api_token,
+                    url: Some("https://api.edgee.app".to_string()),
+                }),
+                _ => None,
+            },
+        }
+    }
+
+    pub fn set(&mut self, profile: Option<String>, creds: Credentials) {
+        match profile {
+            Some(profile) => {
+                self.profiles.insert(profile, creds);
+            }
+            None => {
+                self.api_token = Some(creds.api_token);
+                self.url = creds.url;
+            }
+        }
+    }
+}
+
+impl Credentials {
     pub fn check_api_token(&self) -> Result<()> {
-        let Some(_api_token) = self.api_token.as_deref() else {
-            anyhow::bail!("Not logged in");
-        };
-
         // TODO: Check API token is valid using the API
-
         Ok(())
     }
 }
 
-impl<'a, S: State> ConnectBuilder<'a, S> {
-    pub fn credentials(self, creds: &Credentials) -> ConnectBuilder<'a, SetApiToken<S>>
+impl<S: State> ConnectBuilder<S> {
+    pub fn credentials(self, creds: &Credentials) -> ConnectBuilder<SetApiToken<SetBaseurl<S>>>
     where
         S::ApiToken: IsUnset,
+        S::Baseurl: IsUnset,
     {
-        let api_token = creds.api_token.as_deref().unwrap();
-        self.api_token(api_token)
+        let api_token = creds.api_token.clone();
+        let url = creds.url.clone();
+        self.baseurl(url.unwrap_or("https://api.edgee.app".to_string()))
+            .api_token(api_token)
     }
 }

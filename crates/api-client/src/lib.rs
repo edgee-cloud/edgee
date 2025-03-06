@@ -18,13 +18,13 @@ progenitor::generate_api! {
     finish_fn = connect,
     on(String, into),
 )]
-pub fn connect(#[builder(default = PROD_BASEURL)] baseurl: &str, api_token: String) -> Client {
+pub fn connect(#[builder(default = PROD_BASEURL)] baseurl: String, api_token: String) -> Client {
     use reqwest::header::{self, HeaderMap};
 
     let mut default_headers = HeaderMap::new();
 
     // if EDGEE_API_URL env var is set, redefine baseurl
-    let baseurl = std::env::var("EDGEE_API_URL").unwrap_or(baseurl.to_string());
+    let baseurl = baseurl.to_string();
 
     // if EDGEE_API_TOKEN env var is set, redefine api_token
     let api_token = std::env::var("EDGEE_API_TOKEN").unwrap_or(api_token.to_string());

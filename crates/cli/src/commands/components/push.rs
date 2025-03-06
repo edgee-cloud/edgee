@@ -12,16 +12,33 @@ pub struct Options {
     ///
     /// Defaults to the user "self" org
     pub organization: Option<String>,
+
+    #[arg(short, long, id = "PROFILE")]
+    profile: Option<String>,
 }
 
 pub async fn run(opts: Options) -> anyhow::Result<()> {
     use inquire::{Confirm, Editor, Select};
 
-    use edgee_api_client::{auth::Credentials, ErrorExt, ResultExt};
+    use edgee_api_client::{auth::Config, ErrorExt, ResultExt};
 
     use crate::components::manifest;
 
-    let creds = Credentials::load()?;
+    let config = Config::load()?;
+
+    let creds = match config.get(&opts.profile) {
+        Some(creds) => creds,
+        None => {
+            match opts.profile {
+                None => {
+                    anyhow::bail!("No API token configured");
+                }
+                Some(profile) => {
+                    anyhow::bail!("No API token configured for profile '{}'", profile);
+                }
+            };
+        }
+    };
     creds.check_api_token()?;
 
     let Some(manifest_path) = manifest::find_manifest_path() else {
