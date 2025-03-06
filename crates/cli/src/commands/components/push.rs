@@ -1,4 +1,5 @@
 use std::io::Read;
+use colored::Colorize;
 
 use edgee_api_client::types as api_types;
 use reqwest::get;
@@ -60,6 +61,10 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         }
     }
 
+    if manifest.component.name.clone().len() < 3 {
+        anyhow::bail!("Component name must be at least 3 characters");
+    }
+
     let client = edgee_api_client::new().credentials(&creds).connect();
 
     let organization = match opts.organization {
@@ -68,7 +73,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .id(organization)
             .send()
             .await
-            .api_with_context(|| format!("Could not get organization `{organization}`"))?
+            .api_with_context(|| format!("Could not get organization {}", organization.green()))?
             .into_inner(),
         None => client
             .get_my_organization()
@@ -91,26 +96,30 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             if err.error.type_
                 == edgee_api_client::types::ErrorResponseErrorType::NotFoundError =>
         {
-            tracing::info!("Component does not exist, creating...");
-            let confirm = Confirm::new(&format!(
-                "Component `{}/{}` does not exists, do you want to create it?",
-                organization.slug, &component_slug,
-            ))
-            .with_default(true)
-            .prompt()?;
+            tracing::info!(
+                "Component {} does not exist yet!",
+                format!(
+                    "{}/{}",
+                    organization.slug,
+                    &component_slug,
+                ).green(),
+            );
+            let confirm = Confirm::new("Confirm new component creation?")
+                .with_default(true)
+                .prompt()?;
+
             if !confirm {
                 return Ok(());
             }
 
-            let public = Select::new(
+            let public_or_private = Select::new(
                 "Would you like to make this component public or private?",
                 vec!["private", "public"],
             )
             .prompt()?;
 
-            println!("Uploading Icon... {:?}", manifest.component.icon_path);
-
             let avatar_url = if let Some(path) = &manifest.component.icon_path {
+                tracing::info!("Uploading Icon... {:?}", manifest.component.icon_path);
                 Some(client.upload_file(std::path::Path::new(path)).await?)
             } else {
                 None
@@ -141,38 +150,56 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                                 .map(|url| url.to_string()),
                         )
                         .avatar_url(avatar_url)
-                        .public(public == "public"),
+                        .public(public_or_private == "public"),
                 )
                 .send()
                 .await
                 .api_context("Could not create component")?;
             tracing::info!(
-                "Component `{}/{}` has been created successfully!",
-                organization.slug,
-                component_slug,
+                "Component {} created successfully!",
+                format!(
+                    "{}/{}",
+                    organization.slug,
+                    component_slug,
+                ).green(),
             );
 
             (false, component.into_inner())
         }
-        Ok(res) => (true, res.into_inner()),
+        Ok(res) => {
+            tracing::info!(
+                "Component {} found!",
+                format!(
+                    "{}/{}",
+                    organization.slug, &component_slug,
+                ).green(),
+            );
+            (true, res.into_inner())
+        },
         Err(err) => anyhow::bail!("Error contacting API: {}", err.into_message()),
     };
 
     // Check if version already exists
     if component.versions.contains_key(&manifest.component.version) {
         anyhow::bail!(
-            "The version {} for {}/{} already exists in the registry. Did you forget to update the manifest?",
-            manifest.component.version,
-            organization.slug, component_slug,
+            "{} already exists in the registry.\nDid you forget to update the manifest?",
+            format!(
+                "{}/{}@{}",
+                organization.slug, component_slug, manifest.component.version,
+            ).green(),
         );
     }
 
-    let changelog =
-        Editor::new("Please describe the changes from the previous version").prompt_skippable()?;
+    let changelog = Editor::new("Describe the new version changelog (optional)")
+        .with_help_message("Type (e) to open the default editor. Use the EDITOR env variable to change it.")
+        .prompt_skippable()?;
 
     let confirm = Confirm::new(&format!(
-        "Please confirm to push the component `{}/{}`:",
-        organization.slug, component_slug,
+        "Ready to push {}. Confirm?",
+        format!(
+            "{}/{}@{}",
+            organization.slug, component_slug, manifest.component.version.clone()
+        ).green(),
     ))
     .with_default(true)
     .prompt()?;
@@ -246,13 +273,16 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .await
             .api_context("Could not update component infos")?;
         tracing::info!(
-            "Component `{}/{}` has been updated successfully!",
-            organization.slug,
-            component_slug,
+            "Component {} updated successfully!",
+            format!("{}/{}",
+                organization.slug,
+                component_slug,
+            ).green(),
         );
     }
 
-    tracing::info!("Creating component version...");
+    tracing::info!("Creating new version...");
+
     client
         .create_component_version_by_slug()
         .org_slug(&organization.slug)
@@ -270,15 +300,21 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         .api_context("Could not create version")?;
 
     tracing::info!(
-        "{}/{} {} pushed successfully",
-        organization.slug,
-        component_slug,
-        manifest.component.version,
+        "{} pushed successfully!",
+        format!(
+            "{}/{}@{}",
+            organization.slug,
+            component_slug,
+            manifest.component.version,
+        ).green(),
     );
     tracing::info!(
-        "Check it out here: https://www.edgee.cloud/~/registry/{}/{}",
-        organization.slug,
-        component_slug,
+        "URL: {}",
+        format!(
+            "https://www.edgee.cloud/~/registry/{}/{}",
+            organization.slug,
+            component_slug,
+        ).green(),
     );
 
     Ok(())

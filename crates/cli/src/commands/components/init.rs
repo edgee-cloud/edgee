@@ -1,4 +1,5 @@
 use url::Url;
+use colored::Colorize;
 
 use crate::components::{
     boilerplate::{CATEGORY_OPTIONS, LANGUAGE_OPTIONS, SUBCATEGORY_OPTIONS},
@@ -14,7 +15,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         anyhow::bail!("Manifest already exists");
     }
 
-    let component_name = Text::new("Enter the name of the component:")
+    let component_name = Text::new("Enter the component name:")
         .with_validator(inquire::required!("Component name cannot be empty"))
         .with_validator(inquire::min_length!(
             3,
@@ -23,29 +24,30 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         .prompt()?;
 
     let component_language = Select::new(
-        "Select the language of the component:",
+        "Select a programming language:",
         LANGUAGE_OPTIONS.to_vec(),
     )
     .prompt()?;
     let component_category = if CATEGORY_OPTIONS.len() == 1 {
-        CATEGORY_OPTIONS[0].clone() // Accès direct car on sait qu'il y a un seul élément
+        CATEGORY_OPTIONS[0].clone() // there is only 1 element
     } else {
         Select::new(
-            "Select the category of the component:",
+            "Select the main category:",
             CATEGORY_OPTIONS.to_vec(), // Pas besoin de `.to_vec()`, on passe une slice
         )
         .prompt()?
     };
 
     let component_subcategory = Select::new(
-        "Select the subcategory of the component:",
+        "Select a subcategory:",
         SUBCATEGORY_OPTIONS.to_vec(),
     )
     .prompt()?;
 
-    println!(
+    tracing::info!(
         "Initiating component {} in {}",
-        component_name, component_language.name
+        component_name.green(),
+        component_language.name.green(),
     );
 
     Manifest {
@@ -64,7 +66,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
                 fields.insert(
                     "example".to_string(),
                     Setting {
-                        description: Some("Here is a\nstring".to_string()),
+                        description: Some("Here is a string".to_string()),
                         required: true,
                         title: "ExampleConfigField".to_string(),
                         type_: edgee_api_client::types::ConfigurationFieldType::String,
