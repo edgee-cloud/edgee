@@ -2,21 +2,29 @@ use anyhow::Result;
 
 use edgee_api_client::ResultExt;
 
-setup_command! {}
+setup_command! {
+    #[arg(short, long, id = "PROFILE")]
+    profile: Option<String>,
 
-pub async fn run(_opts: Options) -> Result<()> {
+    #[arg(short, long, id = "URL")]
+    url: Option<String>,
+}
+
+pub async fn run(opts: Options) -> Result<()> {
     use inquire::{Confirm, Password, PasswordDisplayMode};
 
-    use edgee_api_client::auth::Credentials;
+    use edgee_api_client::auth::{Config, Credentials};
 
-    let mut creds = Credentials::load()?;
+    let mut config = Config::load()?;
+    let creds = config.get(&opts.profile);
 
     let confirm_overwrite =
         Confirm::new("An API token is already configured, do you want to overwrite it?")
             .with_default(false);
-    if creds.api_token.is_some() && !confirm_overwrite.prompt()? {
+    if creds.is_some() && !confirm_overwrite.prompt()? {
         return Ok(());
     }
+    let url = opts.url.unwrap_or("https://api.edgee.app".to_string());
 
     let confirm_auto_open_browser = Confirm::new("Your default browser will be opening to Edgee's API token creation page. Do you want to continue?")
         .with_default(true);
@@ -32,10 +40,14 @@ pub async fn run(_opts: Options) -> Result<()> {
         .without_confirmation()
         .with_validator(inquire::required!("API token cannot be empty"))
         .prompt()?;
-    creds.api_token.replace(api_token);
+
+    let creds = Credentials {
+        api_token,
+        url: url,
+    };
 
     let client = edgee_api_client::new().credentials(&creds).connect();
-
+    println!("{}", client.baseurl());
     let user = client
         .get_me()
         .send()
@@ -44,5 +56,6 @@ pub async fn run(_opts: Options) -> Result<()> {
         .into_inner();
     println!("Logged as {} ({})", user.name, user.email);
 
-    creds.save()
+    config.set(opts.profile, creds);
+    config.save()
 }

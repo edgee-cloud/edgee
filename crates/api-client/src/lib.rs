@@ -18,7 +18,7 @@ progenitor::generate_api! {
     finish_fn = connect,
     on(String, into),
 )]
-pub fn connect(#[builder(default = PROD_BASEURL)] baseurl: &str, api_token: String) -> Client {
+pub fn connect(#[builder(default = PROD_BASEURL)] baseurl: String, api_token: String) -> Client {
     use reqwest::header::{self, HeaderMap};
 
     let mut default_headers = HeaderMap::new();
