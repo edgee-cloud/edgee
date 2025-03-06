@@ -17,6 +17,10 @@ pub struct Options {
     #[arg(long="settings", value_parser = parse_settings)]
     pub settings: Option<HashMap<String, String>>,
 
+    /// File containing the settings
+    #[arg(long = "settings-file")]
+    pub settings_file: Option<String>,
+
     /// The event type you want to test
     #[arg(long = "event-type", value_parser = ["page", "track", "user"])]
     pub event_type: Option<String>,
@@ -123,9 +127,30 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
     let mut settings_map = HashMap::new();
 
     // insert user provided settings
-    if let Some(parsed_settings) = opts.settings {
-        for (key, value) in parsed_settings {
-            settings_map.insert(key, value);
+    match (opts.settings, opts.settings_file) {
+        (Some(_), Some(_)) => {
+            return Err(anyhow::anyhow!(
+                "Please provide either settings or settings-file, not both"
+            ));
+        }
+        (None, None) => {}
+        (Some(settings), None) => {
+            for (key, value) in settings {
+                settings_map.insert(key, value);
+            }
+        }
+        (None, Some(settings_file)) => {
+            #[derive(serde::Deserialize)]
+            struct Settings {
+                settings: HashMap<String, String>,
+            }
+
+            let settings_file = std::fs::read_to_string(settings_file)?;
+            let config: Settings = toml::from_str(&settings_file).expect("Failed to parse TOML");
+
+            for (key, value) in config.settings {
+                settings_map.insert(key, value);
+            }
         }
     }
 
@@ -181,19 +206,28 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
         println!("---------------------------------------------------");
         let request = match event.event_type {
             EventType::Page => {
-                tracing::info!("Running test with `page` event\n");
+                tracing::info!(
+                    "Running test with {} event\n",
+                    "page".green(),
+                );
                 component
                     .call_page(&mut store, &event.clone().into(), &settings)
                     .await
             }
             EventType::Track => {
-                tracing::info!("Running test with `track` event\n");
+                tracing::info!(
+                    "Running test with {} event\n",
+                    "track".green(),
+                );
                 component
                     .call_track(&mut store, &event.clone().into(), &settings)
                     .await
             }
             EventType::User => {
-                tracing::info!("Running test with `user` event\n");
+                tracing::info!(
+                    "Running test with {} event\n",
+                    "user".green(),
+                );
                 component
                     .call_user(&mut store, &event.clone().into(), &settings)
                     .await

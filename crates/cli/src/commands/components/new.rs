@@ -1,3 +1,4 @@
+use colored::Colorize;
 use inquire::{Select, Text};
 use reqwest::Client;
 use std::fs::{create_dir_all, File};
@@ -19,7 +20,7 @@ pub struct Options {
 
 fn prompt_for_language() -> LanguageConfig {
     Select::new(
-        "Select the language of the component:",
+        "Select a programming language:",
         LANGUAGE_OPTIONS.to_vec(),
     )
     .prompt()
@@ -29,7 +30,7 @@ fn prompt_for_language() -> LanguageConfig {
 pub async fn run(_opts: Options) -> anyhow::Result<()> {
     let component_name = match _opts.name {
         Some(name) => name,
-        None => Text::new("Enter the name of the component:")
+        None => Text::new("Enter the component name:")
             .with_validator(inquire::required!("Component name cannot be empty"))
             .with_validator(inquire::min_length!(
                 3,
@@ -66,12 +67,12 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         component_language.repo_url, "/archive/refs/heads/main.zip"
     );
 
-    println!("Downloading sample code for {}...", component_language.name);
+    tracing::info!("Downloading sample code for {}...", component_language.name);
     let response = Client::new().get(url).send().await?.bytes().await?;
     let reader = Cursor::new(response);
     let mut archive = ZipArchive::new(reader)?;
 
-    println!("Extracting code...");
+    tracing::info!("Extracting code...");
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
         let path = file.name();
@@ -101,9 +102,9 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
     let manifest = Manifest::load(&manifest_path)?;
     crate::components::wit::update(&manifest, component_path).await?;
 
-    println!(
-        "New project {} setup, check README to install the correct dependencies",
-        component_name
+    tracing::info!(
+        "New project {} is ready! Check README for dependencies.",
+        component_name.green()
     );
     Ok(())
 }
