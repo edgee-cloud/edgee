@@ -20,29 +20,45 @@ use http::{header, HeaderMap, HeaderName, HeaderValue};
 use tokio::task::JoinHandle;
 use tracing::{error, span, Instrument, Level};
 
+use crate::context::ComponentsContext;
 use crate::{
     data_collection::exports::edgee::components::data_collection as Component,
     data_collection::payload::{Consent, Event, EventType},
 };
+use std::collections::HashMap;
 
-use crate::context::ComponentsContext;
-
-pub struct EventResponse {
-    pub project: String,
-    pub event_type: String,
-    pub host: String,
-    pub from: String,
-    pub ip: String,
-    pub proxy_type: String,
-    pub proxy_desc: String,
-    pub as_name: String,
-    pub path: String,
-    pub consent: String,
+#[derive(Clone)]
+pub struct ComponentMetadata {
     pub component_id: String,
     pub component: String,
+    pub anonymization: bool,
+}
+
+#[derive(Clone)]
+pub struct Response {
     pub status: i32,
-    pub duration: u128,
+    pub body: String,
+    pub content_type: String,
     pub message: String,
+    pub duration: u128,
+}
+
+#[derive(Clone)]
+pub struct Request {
+    pub method: String,
+    pub url: String,
+    pub body: String,
+    pub headers: HashMap<String, String>,
+}
+
+#[derive(Clone)]
+pub struct EventResponse {
+    pub context: EventContext,
+    pub event: Event,
+    pub component_metadata: ComponentMetadata,
+
+    pub response: Response,
+    pub request: Request,
 }
 
 pub async fn send_json_events(
@@ -243,6 +259,11 @@ pub async fn send_events(
             let cfg_id = cfg.id.to_string();
             let ctx_clone = ctx.clone();
 
+            let headers_map = headers.iter().fold(HashMap::new(), |mut acc, (k, v)| {
+                acc.insert(k.to_string(), v.to_str().unwrap().to_string());
+                acc
+            });
+
             let future = tokio::spawn(
                 async move {
                     let timer = std::time::Instant::now();
@@ -319,31 +340,31 @@ pub async fn send_events(
                     }
 
                     EventResponse {
-                        project: debug_params.project_id,
-                        event_type: match debug_params.event.event_type.clone() {
-                            EventType::Page => "page",
-                            EventType::Track => "track",
-                            EventType::User => "user",
-                        }
-                        .to_string(),
-                        host: debug_params.proxy_host,
-                        from: debug_params.from,
-                        ip: debug_params.client_ip,
-                        proxy_type: debug_params.proxy_type,
-                        proxy_desc: debug_params.proxy_desc,
-                        as_name: debug_params.as_name,
-                        status: debug_params.response_status,
-                        path: debug_params.event.context.page.path.clone(),
-                        consent: match debug_params.event.consent.clone().unwrap() {
-                            Consent::Granted => "granted",
-                            Consent::Denied => "denied",
-                            Consent::Pending => "pending",
-                        }
-                        .to_string(),
-                        component_id: debug_params.component_id,
-                        component: debug_params.component_slug,
-                        message,
-                        duration: timer.elapsed().as_millis(),
+                        context: ctx_clone,
+                        event,
+                        component_metadata: ComponentMetadata {
+                            component_id: cfg_project_component_id,
+                            component: cfg_id,
+                            anonymization,
+                        },
+                        response: Response {
+                            status: debug_params.response_status,
+                            body: debug_params.response_body.unwrap_or_default(),
+                            content_type: debug_params.response_content_type,
+                            message,
+                            duration: timer.elapsed().as_millis(),
+                        },
+                        request: Request {
+                            method: match debug_params.request.method {
+                                Component::HttpMethod::Get => "GET".to_string(),
+                                Component::HttpMethod::Put => "PUT".to_string(),
+                                Component::HttpMethod::Post => "POST".to_string(),
+                                Component::HttpMethod::Delete => "DELETE".to_string(),
+                            },
+                            url: debug_params.request.url.to_string(),
+                            body: debug_params.request.body,
+                            headers: headers_map,
+                        },
                     }
                 }
                 .in_current_span(),
