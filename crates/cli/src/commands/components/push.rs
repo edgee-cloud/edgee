@@ -16,6 +16,12 @@ pub struct Options {
     #[arg(short, long, id = "PROFILE", env = "EDGEE_API_PROFILE")]
     profile: Option<String>,
 
+    #[arg(long, conflicts_with = "private")]
+    pub public: bool,
+
+    #[arg(long, conflicts_with = "public")]
+    pub private: bool,
+
     #[arg(long)]
     pub changelog: Option<String>,
 }
@@ -132,11 +138,18 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 return Ok(());
             }
 
-            let public_or_private = Select::new(
-                "Would you like to make this component public or private?",
-                vec!["private", "public"],
-            )
-            .prompt()?;
+            let public = match (opts.public, opts.private) {
+                (true, false) => true,
+                (false, true) => false,
+                _ => {
+                    Select::new(
+                        "Would you like to make this component public or private?",
+                        vec!["private", "public"],
+                    )
+                    .prompt()?
+                        == "public"
+                }
+            };
 
             let avatar_url = if let Some(path) = &manifest.component.icon_path {
                 tracing::info!("Uploading Icon... {:?}", manifest.component.icon_path);
@@ -170,7 +183,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                                 .map(|url| url.to_string()),
                         )
                         .avatar_url(avatar_url)
-                        .public(public_or_private == "public"),
+                        .public(public),
                 )
                 .send()
                 .await
@@ -266,6 +279,40 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             }
         }
 
+        let public = match (opts.public, opts.private) {
+            (true, false) | (false, true) => {
+                let public = opts.public;
+                let remote_public = component.is_public.unwrap_or(false);
+                if opts.public == remote_public {
+                    tracing::info!(
+                        "Component is already {}",
+                        if public { "public" } else { "private" }
+                    );
+                } else {
+                    tracing::info!(
+                        "Updating component visibility to {}...",
+                        if public { "public" } else { "private" }
+                    );
+
+                    if !public {
+                        tracing::info!("Only unused components can be made private. If this component is already in use, it will remain public.");
+                    } else {
+                        let confirm = Confirm::new(
+                            "Your component will become publicly visible in the registry. Are you sure?",
+                        )
+                        .with_default(true)
+                        .prompt()?;
+
+                        if !confirm {
+                            return Ok(());
+                        }
+                    }
+                }
+                public
+            }
+            _ => component.is_public.unwrap_or(false),
+        };
+
         client
             .update_component_by_slug()
             .org_slug(&organization.slug)
@@ -274,7 +321,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 api_types::ComponentUpdateParams::builder()
                     .name(manifest.component.name.clone())
                     .description(manifest.component.description.clone())
-                    .public(component.is_public)
+                    .public(public)
                     .documentation_link(
                         manifest
                             .component
