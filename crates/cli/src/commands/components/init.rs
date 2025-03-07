@@ -1,5 +1,5 @@
-use url::Url;
 use colored::Colorize;
+use url::Url;
 
 use crate::components::{
     boilerplate::{CATEGORY_OPTIONS, LANGUAGE_OPTIONS, SUBCATEGORY_OPTIONS},
@@ -23,11 +23,8 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         ))
         .prompt()?;
 
-    let component_language = Select::new(
-        "Select a programming language:",
-        LANGUAGE_OPTIONS.to_vec(),
-    )
-    .prompt()?;
+    let component_language =
+        Select::new("Select a programming language:", LANGUAGE_OPTIONS.to_vec()).prompt()?;
     let component_category = if CATEGORY_OPTIONS.len() == 1 {
         CATEGORY_OPTIONS[0].clone() // there is only 1 element
     } else {
@@ -38,11 +35,8 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         .prompt()?
     };
 
-    let component_subcategory = Select::new(
-        "Select a subcategory:",
-        SUBCATEGORY_OPTIONS.to_vec(),
-    )
-    .prompt()?;
+    let component_subcategory =
+        Select::new("Select a subcategory:", SUBCATEGORY_OPTIONS.to_vec()).prompt()?;
 
     tracing::info!(
         "Initiating component {} in {}",
@@ -53,7 +47,8 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
     Manifest {
         manifest_version: manifest::MANIFEST_VERSION,
         component: Component {
-            name: component_name,
+            name: component_name.clone(),
+            slug: Some(slug::slugify(&component_name)),
             version: "0.1.0".to_string(),
             wit_world_version: "0.4.0".to_string(),
             category: *component_category.value,
