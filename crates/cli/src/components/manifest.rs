@@ -26,6 +26,8 @@ pub struct Component {
     pub subcategory: api_types::ComponentCreateInputSubcategory,
     pub description: Option<String>,
     pub icon_path: Option<String>,
+    #[serde(default)]
+    pub language: Option<String>,
 
     #[serde(default)]
     pub documentation: Option<url::Url>,
