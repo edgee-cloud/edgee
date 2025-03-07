@@ -103,7 +103,7 @@ pub async fn update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
     };
     lock.save(&lockfile)?;
 
-    tracing::info!("Edgee WIT files has been updated");
+    tracing::info!("WIT files updated!");
 
     Ok(())
 }
@@ -113,13 +113,20 @@ pub async fn should_update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
     let lockfile = wit_path.join(Lock::FILENAME);
 
     if !lockfile.exists() {
-        tracing::info!("Edgee WIT files are missing, downloading them...");
+        tracing::info!(
+            "Downloading WIT files (v{})",
+            manifest.component.wit_world_version
+        );
         return update(manifest, root_dir).await;
     }
 
     let lock = Lock::load(&lockfile)?;
     if lock.version != manifest.component.wit_world_version {
-        tracing::info!("Edgee WIT files are out of date, updating them...");
+        tracing::info!(
+            "Updating WIT files (from v{} to v{})",
+            lock.version,
+            manifest.component.wit_world_version
+        );
         return update(manifest, root_dir).await;
     }
 

@@ -97,9 +97,9 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         }
     }
 
-    println!("Updating Edgee WIT files...");
     let manifest_path = component_path.join(Manifest::FILENAME);
     let manifest = Manifest::load(&manifest_path)?;
+    tracing::info!("Downloading WIT files v{}...", manifest.component.wit_world_version);
     crate::components::wit::update(&manifest, component_path).await?;
 
     tracing::info!(
