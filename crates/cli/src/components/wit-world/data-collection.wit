@@ -1,5 +1,0 @@
-package edgee:native;
-
-world data-collection {
-  export edgee:components/data-collection;
-}

@@ -1,11 +1,10 @@
 use std::path::Path;
 
-use anyhow::{Context, Result};
-use async_compression::futures::bufread::GzipDecoder;
-use async_tar::Archive;
-use futures::{io::BufReader, StreamExt, TryStreamExt};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
+
+use crate::components::boilerplate::LANGUAGE_OPTIONS;
 
 use super::boilerplate::CATEGORY_OPTIONS;
 use super::manifest::Manifest;
@@ -36,67 +35,62 @@ impl Lock {
 }
 
 pub async fn update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
-    let wit_tarball_url = format!(
-        "https://github.com/edgee-cloud/edgee-wit/archive/refs/tags/v{}.tar.gz",
-        manifest.component.wit_world_version,
-    );
-
-    let res = reqwest::get(wit_tarball_url)
-        .await
-        .context("Could not fetch Edgee WIT files")?
-        .error_for_status()
-        .context("Fetching Edgee WIT files resulted in error")?;
-
-    let tarball = res
-        .bytes_stream()
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
-        .into_async_read();
-    let tarball = GzipDecoder::new(BufReader::new(tarball));
-
-    let archive = Archive::new(tarball);
-    let mut entries = archive
-        .entries()?
-        .filter_map(|entry| std::future::ready(entry.ok()))
-        .filter(|entry| std::future::ready(entry.path_bytes().ends_with(b".wit")));
-
     let wit_path = root_dir.join(".edgee/wit");
     if wit_path.exists() {
         tokio::fs::remove_dir_all(&wit_path).await?;
     }
 
-    // We apparently need to mimic the folders structure used by wit-deps
-    // TODO: Maybe directly use the wit-deps crate for handling dependencies?
-    let deps_path = wit_path.join("deps/edgee");
-    while let Some(mut entry) = entries.next().await {
-        let Ok(entry_path) = entry.path() else {
-            continue;
-        };
-        let entry_path = {
-            let mut components = entry_path.as_ref().components();
-            // Remove `edgee-wit-X.Y.Z/` prefix from GitHub tarball
-            components.next();
-            components.as_path()
-        };
-        if !entry_path.starts_with("wit") {
-            continue;
-        }
-        let entry_path = entry_path.strip_prefix("wit")?;
+    let language_config = manifest.component.language.as_deref().map(|name| {
+        LANGUAGE_OPTIONS
+            .iter()
+            .find(|&config| config.name == name)
+            .expect("Unknown component language")
+    });
 
-        let path = deps_path.join(entry_path);
-        tokio::fs::create_dir_all(path.parent().unwrap()).await?;
-        entry.unpack(path).await?;
-    }
-
-    // Create WIT world file
     let category_config = CATEGORY_OPTIONS
         .iter()
         .find(|&config| config.value == manifest.component.category)
         .expect("should have a valid category");
+
+    // Update deps
+    let deps_manifest = format!(
+        "\
+edgee = \"https://github.com/edgee-cloud/edgee-wit/archive/refs/tags/v{wit_world_version}.tar.gz\"
+{extra}
+",
+        wit_world_version = manifest.component.wit_world_version,
+        extra = language_config
+            .map(|config| config.deps_extra)
+            .unwrap_or_default(),
+    );
+
+    let deps_path = wit_path.join("deps");
+    let lock = wit_deps::update(Some(&wit_path), &deps_manifest, &deps_path).await?;
+    tokio::fs::write(wit_path.join("deps.lock"), lock).await?;
+
+    // Create WIT world file
+    let wit_world = format!(
+        "\
+package edgee:native;
+
+world {world} {{
+  {extra}
+
+  export edgee:components/{world};
+}}
+",
+        world = category_config.wit_world,
+        extra = language_config
+            .map(|config| config.wit_world_extra)
+            .unwrap_or_default(),
+    );
+
     let wit_world_path = wit_path.join("world.wit");
     let mut wit_world_file = tokio::fs::File::create(&wit_world_path).await?;
-    wit_world_file.write_all(category_config.wit_world).await?;
+    wit_world_file.write_all(wit_world.as_bytes()).await?;
     drop(wit_world_file);
 
+    // Write lock file
     let lockfile = wit_path.join(Lock::FILENAME);
     let lock = Lock {
         version: manifest.component.wit_world_version.clone(),
