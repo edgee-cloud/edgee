@@ -83,7 +83,10 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .into_inner(),
     };
 
-    let component_slug = slug::slugify(&manifest.component.name);
+    let component_slug = match manifest.component.slug {
+        Some(ref slug) => slug.clone(),
+        None => slug::slugify(&manifest.component.name),
+    };
 
     let (do_update, component) = match client
         .get_component_by_slug()

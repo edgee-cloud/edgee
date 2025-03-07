@@ -53,7 +53,8 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
     Manifest {
         manifest_version: manifest::MANIFEST_VERSION,
         component: Component {
-            name: component_name,
+            name: component_name.clone(),
+            slug: Some(slug::slugify(&component_name)),
             version: "0.1.0".to_string(),
             wit_world_version: "0.4.0".to_string(),
             category: *component_category.value,
