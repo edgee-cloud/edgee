@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::sync::OnceLock;
 
 use edgee_components_runtime::config::ComponentsConfiguration;
+use edgee_sdk::Autocapture;
 use serde::Deserialize;
 use tracing::level_filters::LevelFilter;
 use tracing::warn;
@@ -38,6 +39,7 @@ fn default_compute_config() -> ComputeConfiguration {
         proxy_only: false,
         enforce_no_store_policy: false,
         inject_sdk: false,
+        autocapture: Autocapture::default(),
     }
 }
 
@@ -191,6 +193,8 @@ pub struct ComputeConfiguration {
     pub enforce_no_store_policy: bool,
     #[serde(default)]
     pub inject_sdk: bool,
+    #[serde(default)]
+    pub autocapture: Autocapture,
 }
 
 fn default_cookie_name() -> String {

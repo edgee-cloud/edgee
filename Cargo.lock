@@ -1304,11 +1304,12 @@ dependencies = [
 
 [[package]]
 name = "edgee-sdk"
-version = "1.5.0"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d0f50b99eaa06c2edbf07e7e996d1c3a9e31172438e51f265f65c0855189f0a"
+checksum = "50dc81c5f8f0a034ab82ad1fb032bf8995a5868b1e68a16c90ac0028382114e3"
 dependencies = [
  "md5",
+ "serde",
 ]
 
 [[package]]
