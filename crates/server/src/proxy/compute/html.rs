@@ -432,6 +432,7 @@ mod tests {
 
     #[test]
     fn parse_html_without_data_layer() {
+        crate::config::init_test_config();
         let document = parse_html(&sample_html_without_data_layer(), "test.com");
         assert_eq!(document.title, "ABC");
         // add check
@@ -446,6 +447,7 @@ mod tests {
 
     #[test]
     fn parse_html_with_sdk_in_body() {
+        crate::config::init_test_config();
         let document = parse_html(&sample_html_full_sdk_in_body(), "test.com");
         assert_eq!(document.title, "ABC");
         // add check
@@ -474,6 +476,7 @@ mod tests {
 
     #[test]
     fn parse_html_doesnt_break_if_invalid_sdk_version() {
+        crate::config::init_test_config();
         let html = "<script type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/edgee.v99.js.js\"></script>"; // invalid
         let document = parse_html(html, "test.com");
         assert_eq!(document.title, "");
