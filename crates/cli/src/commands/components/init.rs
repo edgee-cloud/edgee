@@ -1,5 +1,5 @@
-use url::Url;
 use colored::Colorize;
+use url::Url;
 
 use crate::components::{
     boilerplate::{CATEGORY_OPTIONS, LANGUAGE_OPTIONS, SUBCATEGORY_OPTIONS},
@@ -23,11 +23,8 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         ))
         .prompt()?;
 
-    let component_language = Select::new(
-        "Select a programming language:",
-        LANGUAGE_OPTIONS.to_vec(),
-    )
-    .prompt()?;
+    let component_language =
+        Select::new("Select a programming language:", LANGUAGE_OPTIONS.to_vec()).prompt()?;
     let component_category = if CATEGORY_OPTIONS.len() == 1 {
         CATEGORY_OPTIONS[0].clone() // there is only 1 element
     } else {
@@ -38,11 +35,8 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         .prompt()?
     };
 
-    let component_subcategory = Select::new(
-        "Select a subcategory:",
-        SUBCATEGORY_OPTIONS.to_vec(),
-    )
-    .prompt()?;
+    let component_subcategory =
+        Select::new("Select a subcategory:", SUBCATEGORY_OPTIONS.to_vec()).prompt()?;
 
     tracing::info!(
         "Initiating component {} in {}",
