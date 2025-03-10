@@ -1,7 +1,7 @@
 use edgee_api_client::ResultExt;
 
 setup_command! {
-    #[arg(short, long, id = "PROFILE")]
+    #[arg(short, long, id = "PROFILE", env = "EDGEE_API_PROFILE")]
     profile: Option<String>,
 }
 

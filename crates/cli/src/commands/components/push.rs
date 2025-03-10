@@ -13,7 +13,7 @@ pub struct Options {
     /// Defaults to the user "self" org
     pub organization: Option<String>,
 
-    #[arg(short, long, id = "PROFILE")]
+    #[arg(short, long, id = "PROFILE", env = "EDGEE_API_PROFILE")]
     profile: Option<String>,
 }
 
