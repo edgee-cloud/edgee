@@ -15,6 +15,9 @@ pub struct Options {
 
     #[arg(short, long, id = "PROFILE", env = "EDGEE_API_PROFILE")]
     profile: Option<String>,
+
+    #[arg(long)]
+    pub changelog: Option<String>,
 }
 
 pub async fn run(opts: Options) -> anyhow::Result<()> {
@@ -201,11 +204,14 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         );
     }
 
-    let changelog = Editor::new("Describe the new version changelog (optional)")
-        .with_help_message(
-            "Type (e) to open the default editor. Use the EDITOR env variable to change it.",
-        )
-        .prompt_skippable()?;
+    let changelog = match opts.changelog {
+        Some(changelog) => Some(changelog),
+        None => Editor::new("Describe the new version changelog (optional)")
+            .with_help_message(
+                "Type (e) to open the default editor. Use the EDITOR env variable to change it.",
+            )
+            .prompt_skippable()?,
+    };
 
     let confirm = Confirm::new(&format!(
         "Ready to push {}. Confirm?",
