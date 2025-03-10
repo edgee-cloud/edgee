@@ -286,7 +286,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         .body(
             api_types::ComponentVersionCreateInput::builder()
                 .version(&manifest.component.version)
-                .wit_world_version(&manifest.component.wit_version)
+                .wit_version(&manifest.component.wit_version)
                 .wasm_url(asset_url)
                 .dynamic_fields(convert_manifest_config_fields(&manifest))
                 .changelog(changelog),
