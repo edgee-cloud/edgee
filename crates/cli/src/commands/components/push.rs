@@ -84,7 +84,10 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .into_inner(),
     };
 
-    let component_slug = slug::slugify(&manifest.component.name);
+    let component_slug = match manifest.component.slug {
+        Some(ref slug) => slug.clone(),
+        None => slug::slugify(&manifest.component.name),
+    };
 
     let (do_update, component) = match client
         .get_component_by_slug()
@@ -99,7 +102,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         {
             tracing::info!(
                 "Component {} does not exist yet!",
-                format!("{}/{}", organization.slug, &component_slug,).green(),
+                format!("{}/{}", organization.slug, &component_slug).green(),
             );
             let confirm = Confirm::new("Confirm new component creation?")
                 .with_default(true)
@@ -154,7 +157,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 .api_context("Could not create component")?;
             tracing::info!(
                 "Component {} created successfully!",
-                format!("{}/{}", organization.slug, component_slug,).green(),
+                format!("{}/{}", organization.slug, component_slug).green(),
             );
 
             (false, component.into_inner())
@@ -162,7 +165,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         Ok(res) => {
             tracing::info!(
                 "Component {} found!",
-                format!("{}/{}", organization.slug, &component_slug,).green(),
+                format!("{}/{}", organization.slug, &component_slug).green(),
             );
             (true, res.into_inner())
         }
@@ -270,7 +273,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .api_context("Could not update component infos")?;
         tracing::info!(
             "Component {} updated successfully!",
-            format!("{}/{}", organization.slug, component_slug,).green(),
+            format!("{}/{}", organization.slug, component_slug).green(),
         );
     }
 

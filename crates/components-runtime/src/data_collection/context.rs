@@ -4,18 +4,18 @@ use crate::data_collection::payload::Event;
 
 #[derive(Clone)]
 pub struct EventContext {
-    from: String,
-    ip: String,
-    ip_anonymized: String,
-    consent: String,
-    uuid: String,
-    timestamp: DateTime<Utc>,
-    edgee_id: String,
-    proxy_type: String,
-    proxy_desc: String,
-    as_name: String,
-    project_id: String,
-    proxy_host: String,
+    pub from: String,
+    pub ip: String,
+    pub ip_anonymized: String,
+    pub consent: String,
+    pub uuid: String,
+    pub timestamp: DateTime<Utc>,
+    pub edgee_id: String,
+    pub proxy_type: String,
+    pub proxy_desc: String,
+    pub as_name: String,
+    pub project_id: String,
+    pub proxy_host: String,
 }
 
 #[allow(dead_code)]

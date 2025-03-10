@@ -1452,7 +1452,7 @@ checksum = "cc5d6d6a8504f8caedd7de14576464383900cd3840b7033a7a3dce5ac00121ca"
 
 [[package]]
 name = "edgee"
-version = "0.8.7"
+version = "0.8.8"
 dependencies = [
  "anyhow",
  "clap",
@@ -1487,7 +1487,7 @@ dependencies = [
 
 [[package]]
 name = "edgee-api-client"
-version = "0.8.7"
+version = "0.8.8"
 dependencies = [
  "anyhow",
  "bon",
@@ -1506,7 +1506,7 @@ dependencies = [
 
 [[package]]
 name = "edgee-components-runtime"
-version = "0.8.7"
+version = "0.8.8"
 dependencies = [
  "anyhow",
  "cargo-llvm-cov",
@@ -1527,16 +1527,17 @@ dependencies = [
 
 [[package]]
 name = "edgee-sdk"
-version = "1.5.0"
+version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d0f50b99eaa06c2edbf07e7e996d1c3a9e31172438e51f265f65c0855189f0a"
+checksum = "bb1e629f7a0be0a5516f706d1a43e8f7d0d115fb10ebca2bff5558aaf03f334e"
 dependencies = [
  "md5",
+ "serde",
 ]
 
 [[package]]
 name = "edgee-server"
-version = "0.8.7"
+version = "0.8.8"
 dependencies = [
  "addr",
  "aes",

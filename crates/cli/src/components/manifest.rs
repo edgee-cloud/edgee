@@ -19,6 +19,7 @@ pub struct Manifest {
 #[serde(rename_all = "kebab-case")]
 pub struct Component {
     pub name: String,
+    pub slug: Option<String>,
     pub version: String,
     #[serde(with = "Category")]
     pub category: api_types::ComponentCreateInputCategory,

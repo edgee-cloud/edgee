@@ -1,3 +1,5 @@
+use crate::config;
+
 #[derive(Debug, Default)]
 pub struct Document {
     pub data_collection_events: String,
@@ -168,7 +170,11 @@ pub fn parse_html(html: &str, host: &str) -> Document {
 
                         // if inline is true, then we need to inline the SDK
                         if let (true, Some(sdk_url)) = (inline, &builder.sdk_src) {
-                            if let Ok(inlined_sdk) = edgee_sdk::get_sdk(sdk_url, host) {
+                            if let Ok(inlined_sdk) = edgee_sdk::get_sdk(
+                                sdk_url,
+                                host,
+                                config::get().compute.autocapture.clone(),
+                            ) {
                                 set_document_field!(builder, inlined_sdk, inlined_sdk);
                             }
                         }
@@ -426,6 +432,7 @@ mod tests {
 
     #[test]
     fn parse_html_without_data_layer() {
+        crate::config::init_test_config();
         let document = parse_html(&sample_html_without_data_layer(), "test.com");
         assert_eq!(document.title, "ABC");
         // add check
@@ -440,6 +447,7 @@ mod tests {
 
     #[test]
     fn parse_html_with_sdk_in_body() {
+        crate::config::init_test_config();
         let document = parse_html(&sample_html_full_sdk_in_body(), "test.com");
         assert_eq!(document.title, "ABC");
         // add check
@@ -468,6 +476,7 @@ mod tests {
 
     #[test]
     fn parse_html_doesnt_break_if_invalid_sdk_version() {
+        crate::config::init_test_config();
         let html = "<script type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/edgee.v99.js.js\"></script>"; // invalid
         let document = parse_html(html, "test.com");
         assert_eq!(document.title, "");

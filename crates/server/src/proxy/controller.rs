@@ -196,6 +196,7 @@ pub fn sdk(ctx: IncomingContext) -> anyhow::Result<Response> {
     if let Ok(mut inlined_sdk) = edgee_sdk::get_sdk(
         ctx.request.get_path().as_str(),
         ctx.request.get_host().as_str(),
+        config::get().compute.autocapture.clone(),
     ) {
         inlined_sdk = inlined_sdk.replace("{{side}}", "c");
         Ok(http::Response::builder()
