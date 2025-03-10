@@ -43,7 +43,13 @@ pub async fn update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
     let language_config = manifest.component.language.as_deref().map(|name| {
         LANGUAGE_OPTIONS
             .iter()
-            .find(|&config| config.name == name)
+            .find(|&config| {
+                unicase::eq_ascii(&name, &config.name)
+                    || config
+                        .alias
+                        .iter()
+                        .any(|alias| unicase::eq_ascii(&name, alias))
+            })
             .expect("Unknown component language")
     });
 
