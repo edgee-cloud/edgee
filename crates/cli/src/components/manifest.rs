@@ -34,7 +34,7 @@ pub struct Component {
     #[serde(default)]
     pub repository: Option<url::Url>,
 
-    pub wit_world_version: String,
+    pub wit_version: String,
 
     pub build: Build,
 

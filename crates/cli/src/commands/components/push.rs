@@ -1,5 +1,5 @@
-use std::io::Read;
 use colored::Colorize;
+use std::io::Read;
 
 use edgee_api_client::types as api_types;
 use reqwest::get;
@@ -99,11 +99,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         {
             tracing::info!(
                 "Component {} does not exist yet!",
-                format!(
-                    "{}/{}",
-                    organization.slug,
-                    &component_slug,
-                ).green(),
+                format!("{}/{}", organization.slug, &component_slug,).green(),
             );
             let confirm = Confirm::new("Confirm new component creation?")
                 .with_default(true)
@@ -158,11 +154,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 .api_context("Could not create component")?;
             tracing::info!(
                 "Component {} created successfully!",
-                format!(
-                    "{}/{}",
-                    organization.slug,
-                    component_slug,
-                ).green(),
+                format!("{}/{}", organization.slug, component_slug,).green(),
             );
 
             (false, component.into_inner())
@@ -170,13 +162,10 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         Ok(res) => {
             tracing::info!(
                 "Component {} found!",
-                format!(
-                    "{}/{}",
-                    organization.slug, &component_slug,
-                ).green(),
+                format!("{}/{}", organization.slug, &component_slug,).green(),
             );
             (true, res.into_inner())
-        },
+        }
         Err(err) => anyhow::bail!("Error contacting API: {}", err.into_message()),
     };
 
@@ -187,20 +176,26 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             format!(
                 "{}/{}@{}",
                 organization.slug, component_slug, manifest.component.version,
-            ).green(),
+            )
+            .green(),
         );
     }
 
     let changelog = Editor::new("Describe the new version changelog (optional)")
-        .with_help_message("Type (e) to open the default editor. Use the EDITOR env variable to change it.")
+        .with_help_message(
+            "Type (e) to open the default editor. Use the EDITOR env variable to change it.",
+        )
         .prompt_skippable()?;
 
     let confirm = Confirm::new(&format!(
         "Ready to push {}. Confirm?",
         format!(
             "{}/{}@{}",
-            organization.slug, component_slug, manifest.component.version.clone()
-        ).green(),
+            organization.slug,
+            component_slug,
+            manifest.component.version.clone()
+        )
+        .green(),
     ))
     .with_default(true)
     .prompt()?;
@@ -275,10 +270,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .api_context("Could not update component infos")?;
         tracing::info!(
             "Component {} updated successfully!",
-            format!("{}/{}",
-                organization.slug,
-                component_slug,
-            ).green(),
+            format!("{}/{}", organization.slug, component_slug,).green(),
         );
     }
 
@@ -291,7 +283,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         .body(
             api_types::ComponentVersionCreateInput::builder()
                 .version(&manifest.component.version)
-                .wit_world_version(&manifest.component.wit_world_version)
+                .wit_world_version(&manifest.component.wit_version)
                 .wasm_url(asset_url)
                 .dynamic_fields(convert_manifest_config_fields(&manifest))
                 .changelog(changelog),
@@ -304,18 +296,17 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         "{} pushed successfully!",
         format!(
             "{}/{}@{}",
-            organization.slug,
-            component_slug,
-            manifest.component.version,
-        ).green(),
+            organization.slug, component_slug, manifest.component.version,
+        )
+        .green(),
     );
     tracing::info!(
         "URL: {}",
         format!(
             "https://www.edgee.cloud/~/registry/{}/{}",
-            organization.slug,
-            component_slug,
-        ).green(),
+            organization.slug, component_slug,
+        )
+        .green(),
     );
 
     Ok(())

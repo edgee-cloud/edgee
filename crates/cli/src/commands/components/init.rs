@@ -51,7 +51,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         component: Component {
             name: component_name,
             version: "0.1.0".to_string(),
-            wit_world_version: "0.5.0".to_string(),
+            wit_version: "0.5.0".to_string(),
             category: component_category.value,
             subcategory: component_subcategory.value,
             description: Some("Description of\nthe component".to_string()),
@@ -82,7 +82,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
 
     tracing::info!(
         "Downloading WIT files v{}...",
-        manifest.component.wit_world_version
+        manifest.component.wit_version
     );
     crate::components::wit::update(&manifest, &project_dir).await?;
 

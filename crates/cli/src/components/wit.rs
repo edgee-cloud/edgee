@@ -69,7 +69,7 @@ pub async fn update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
 edgee = \"https://github.com/edgee-cloud/edgee-wit/archive/refs/tags/v{wit_world_version}.tar.gz\"
 {extra}
 ",
-        wit_world_version = manifest.component.wit_world_version,
+        wit_world_version = manifest.component.wit_version,
         extra = language_config
             .map(|config| config.deps_extra)
             .unwrap_or_default(),
@@ -103,7 +103,7 @@ world {world} {{
     // Write lock file
     let lockfile = wit_path.join(Lock::FILENAME);
     let lock = Lock {
-        version: manifest.component.wit_world_version.clone(),
+        version: manifest.component.wit_version.clone(),
     };
     lock.save(&lockfile)?;
 
@@ -119,17 +119,17 @@ pub async fn should_update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
     if !lockfile.exists() {
         tracing::info!(
             "Downloading WIT files (v{})",
-            manifest.component.wit_world_version
+            manifest.component.wit_version
         );
         return update(manifest, root_dir).await;
     }
 
     let lock = Lock::load(&lockfile)?;
-    if lock.version != manifest.component.wit_world_version {
+    if lock.version != manifest.component.wit_version {
         tracing::info!(
             "Updating WIT files (from v{} to v{})",
             lock.version,
-            manifest.component.wit_world_version
+            manifest.component.wit_version
         );
         return update(manifest, root_dir).await;
     }

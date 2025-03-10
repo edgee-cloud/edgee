@@ -19,12 +19,9 @@ pub struct Options {
 }
 
 fn prompt_for_language() -> LanguageConfig {
-    Select::new(
-        "Select a programming language:",
-        LANGUAGE_OPTIONS.to_vec(),
-    )
-    .prompt()
-    .expect("Failed to prompt for language")
+    Select::new("Select a programming language:", LANGUAGE_OPTIONS.to_vec())
+        .prompt()
+        .expect("Failed to prompt for language")
 }
 
 pub async fn run(_opts: Options) -> anyhow::Result<()> {
@@ -99,7 +96,10 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
 
     let manifest_path = component_path.join(Manifest::FILENAME);
     let manifest = Manifest::load(&manifest_path)?;
-    tracing::info!("Downloading WIT files v{}...", manifest.component.wit_world_version);
+    tracing::info!(
+        "Downloading WIT files v{}...",
+        manifest.component.wit_version
+    );
     crate::components::wit::update(&manifest, component_path).await?;
 
     tracing::info!(
