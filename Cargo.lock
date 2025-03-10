@@ -1462,7 +1462,6 @@ dependencies = [
  "edgee-api-client",
  "edgee-components-runtime",
  "edgee-server",
- "futures",
  "http 1.2.0",
  "inquire",
  "miette",

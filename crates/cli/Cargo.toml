@@ -16,7 +16,6 @@ clap = { workspace = true, features = ["derive", "env"] }
 clap_complete.workspace = true
 colored.workspace = true
 colored_json.workspace = true
-futures.workspace = true
 http.workspace = true
 inquire = { workspace = true, features = ["editor"] }
 miette = { workspace = true, features = ["fancy"] }
