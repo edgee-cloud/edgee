@@ -1452,7 +1452,7 @@ checksum = "cc5d6d6a8504f8caedd7de14576464383900cd3840b7033a7a3dce5ac00121ca"
 
 [[package]]
 name = "edgee"
-version = "0.8.8"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1486,7 +1486,7 @@ dependencies = [
 
 [[package]]
 name = "edgee-api-client"
-version = "0.8.8"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "bon",
@@ -1505,7 +1505,7 @@ dependencies = [
 
 [[package]]
 name = "edgee-components-runtime"
-version = "0.8.8"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "cargo-llvm-cov",
@@ -1536,7 +1536,7 @@ dependencies = [
 
 [[package]]
 name = "edgee-server"
-version = "0.8.8"
+version = "0.9.0"
 dependencies = [
  "addr",
  "aes",
