@@ -27,6 +27,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     let Some(manifest_path) = manifest::find_manifest_path() else {
         anyhow::bail!("Edgee Manifest not found. Please run `edgee component new` and start from a template or `edgee component init` to create a new empty manifest in this folder.");
     };
+    let root_dir = manifest_path.parent().expect("project root dir");
     let manifest = Manifest::load(&manifest_path)?;
 
     // check if the output file exists
@@ -42,7 +43,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             return Ok(());
         }
 
-        super::build::do_build(&manifest).await?;
+        super::build::do_build(&manifest, root_dir).await?;
     }
 
     // check if the output file is a valid Data Collection component
@@ -177,7 +178,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             "{} already exists in the registry.\nDid you forget to update the manifest?",
             format!(
                 "{}/{}@{}",
-                organization.slug, component_slug, manifest.component.version
+                organization.slug, component_slug, manifest.component.version,
             )
             .green(),
         );
@@ -272,7 +273,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             .api_context("Could not update component infos")?;
         tracing::info!(
             "Component {} updated successfully!",
-            format!("{}/{}", organization.slug, component_slug,).green()
+            format!("{}/{}", organization.slug, component_slug).green(),
         );
     }
 
@@ -285,7 +286,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         .body(
             api_types::ComponentVersionCreateInput::builder()
                 .version(&manifest.component.version)
-                .wit_world_version(&manifest.component.wit_world_version)
+                .wit_version(&manifest.component.wit_version)
                 .wasm_url(asset_url)
                 .dynamic_fields(convert_manifest_config_fields(&manifest))
                 .changelog(changelog),
@@ -298,7 +299,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         "{} pushed successfully!",
         format!(
             "{}/{}@{}",
-            organization.slug, component_slug, manifest.component.version
+            organization.slug, component_slug, manifest.component.version,
         )
         .green(),
     );
@@ -306,7 +307,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         "URL: {}",
         format!(
             "https://www.edgee.cloud/~/registry/{}/{}",
-            organization.slug, component_slug
+            organization.slug, component_slug,
         )
         .green(),
     );

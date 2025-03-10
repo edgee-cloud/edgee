@@ -44,15 +44,17 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         component_language.name.green(),
     );
 
-    Manifest {
-        manifest_version: manifest::MANIFEST_VERSION,
+    let project_dir = std::env::current_dir()?;
+
+    let manifest = Manifest {
+        manifest_version: manifest::Manifest::VERSION,
         component: Component {
             name: component_name.clone(),
             slug: Some(slug::slugify(&component_name)),
             version: "0.1.0".to_string(),
-            wit_world_version: "0.4.0".to_string(),
-            category: *component_category.value,
-            subcategory: *component_subcategory.value,
+            wit_version: "0.5.0".to_string(),
+            category: component_category.value,
+            subcategory: component_subcategory.value,
             description: Some("Description of\nthe component".to_string()),
             documentation: Some(Url::parse("https://www.edgee.cloud/docs/introduction")?),
             repository: Some(Url::parse("https://www.github.com/edgee-cloud/edgee")?),
@@ -74,9 +76,16 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
                 output_path: std::path::PathBuf::from(""),
             },
             icon_path: None,
+            language: Some(component_language.name.to_string()),
         },
-    }
-    .save(std::path::Path::new("./"))?;
+    };
+    manifest.save(&project_dir)?;
+
+    tracing::info!(
+        "Downloading WIT files v{}...",
+        manifest.component.wit_version
+    );
+    crate::components::wit::update(&manifest, &project_dir).await?;
 
     Ok(())
 }

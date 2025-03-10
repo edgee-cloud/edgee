@@ -21,6 +21,7 @@ inquire = { workspace = true, features = ["editor"] }
 miette = { workspace = true, features = ["fancy"] }
 open.workspace = true
 openssl.workspace = true
+reqwest = { workspace = true, features = ["blocking"] }
 self_update.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_yml.workspace = true
@@ -31,8 +32,9 @@ tracing.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 toml.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
+unicase.workspace = true
 url = { workspace = true, features = ["serde"] }
-reqwest = { workspace = true, features = ["blocking"] }
+wit-deps.workspace = true
 zip.workspace = true
 
 edgee-api-client.workspace = true

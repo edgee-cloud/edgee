@@ -21,7 +21,7 @@ setup_commands! {
     Push(push),
 
     /// Run the component in the current folder with sample events
-    Test(test)
+    Test(test),
 }
 
 pub type Options = Command;

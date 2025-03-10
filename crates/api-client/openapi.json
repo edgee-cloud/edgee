@@ -3549,9 +3549,9 @@
             "type": "string",
             "description": "Version of the component"
           },
-          "wit_world_version": {
+          "wit_version": {
             "type": "string",
-            "description": "Wit world version of the component"
+            "description": "WIT version of the component"
           },
           "wasm_url": {
             "type": "string",
@@ -3569,7 +3569,7 @@
             "description": "Changelog of the component version"
           }
         },
-        "required": ["version", "wit_world_version", "wasm_url"]
+        "required": ["version", "wit_version", "wasm_url"]
       },
       "ComponentVersionUpdateInput": {
         "type": "object",
