@@ -15,7 +15,7 @@ struct Lock {
 }
 
 impl Lock {
-    const FILENAME: &str = "lock.json";
+    const FILENAME: &str = "edgee-lock.json";
 
     fn load(path: &Path) -> Result<Self> {
         use std::fs::File;
@@ -39,6 +39,7 @@ pub async fn update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
     if wit_path.exists() {
         tokio::fs::remove_dir_all(&wit_path).await?;
     }
+    tokio::fs::create_dir_all(&wit_path).await?;
 
     let language_config = manifest.component.language.as_deref().map(|name| {
         LANGUAGE_OPTIONS
@@ -59,6 +60,10 @@ pub async fn update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
         .expect("should have a valid category");
 
     // Update deps
+    let deps_path = wit_path.join("deps");
+    let deps_manifest_path = wit_path.join("deps.toml");
+    let deps_lock_path = wit_path.join("deps.lock");
+
     let deps_manifest = format!(
         "\
 edgee = \"https://github.com/edgee-cloud/edgee-wit/archive/refs/tags/v{wit_world_version}.tar.gz\"
@@ -69,10 +74,9 @@ edgee = \"https://github.com/edgee-cloud/edgee-wit/archive/refs/tags/v{wit_world
             .map(|config| config.deps_extra)
             .unwrap_or_default(),
     );
+    tokio::fs::write(&deps_manifest_path, deps_manifest).await?;
 
-    let deps_path = wit_path.join("deps");
-    let lock = wit_deps::update(Some(&wit_path), &deps_manifest, &deps_path).await?;
-    tokio::fs::write(wit_path.join("deps.lock"), lock).await?;
+    wit_deps::update_path(&deps_manifest_path, &deps_lock_path, &deps_path).await?;
 
     // Create WIT world file
     let wit_world = format!(
