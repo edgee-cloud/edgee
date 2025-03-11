@@ -152,25 +152,35 @@ pub async fn run(opts: Options) -> Result<()> {
         Err(err) => anyhow::bail!("Error contacting API: {}", err.into_message()),
     };
 
-    // Check if version already exists
-    if component.versions.contains_key(&manifest.component.version) {
-        anyhow::bail!(
-            "{} already exists in the registry.\nDid you forget to update the manifest?",
+    // Check if we need to push a new version as well
+    let create_version = if !component.versions.contains_key(&manifest.component.version) {
+        let changelog = match opts.changelog {
+            Some(ref changelog) => Some(changelog.clone()),
+            None => Editor::new("Describe the new version changelog (optional)")
+                .with_help_message(
+                    "Type (e) to open the default editor. Use the EDITOR env variable to change it.",
+                )
+                .prompt_skippable()?,
+        };
+
+        Some(
+            push_version()
+                .client(&client)
+                .manifest(&manifest)
+                .organization(&organization)
+                .component_slug(&component_slug)
+                .maybe_changelog(changelog),
+        )
+    } else {
+        tracing::info!(
+            "{} already exists in the registry, edgee will only update the component.",
             format!(
                 "{}/{}@{}",
                 organization.slug, component_slug, manifest.component.version,
             )
             .green(),
         );
-    }
-
-    let changelog = match opts.changelog {
-        Some(ref changelog) => Some(changelog.clone()),
-        None => Editor::new("Describe the new version changelog (optional)")
-            .with_help_message(
-                "Type (e) to open the default editor. Use the EDITOR env variable to change it.",
-            )
-            .prompt_skippable()?,
+        None
     };
 
     let confirm = Confirm::new(&format!(
@@ -200,14 +210,9 @@ pub async fn run(opts: Options) -> Result<()> {
         )
         .await?;
     }
-    push_version(
-        &client,
-        &manifest,
-        &organization,
-        &component_slug,
-        changelog,
-    )
-    .await?;
+    if let Some(push_version) = create_version {
+        push_version.call().await?;
+    }
 
     tracing::info!(
         "{} pushed successfully!",
@@ -403,6 +408,7 @@ async fn update_component(
     Ok(())
 }
 
+#[bon::builder]
 async fn push_version(
     client: &Client,
     manifest: &Manifest,
