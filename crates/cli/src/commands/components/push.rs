@@ -1,8 +1,11 @@
-use colored::Colorize;
 use std::io::Read;
 
-use edgee_api_client::types as api_types;
-use reqwest::get;
+use anyhow::Result;
+use colored::Colorize;
+use edgee_api_client::{auth::Config, ErrorExt, ResultExt};
+use inquire::{Confirm, Editor, Select};
+
+use edgee_api_client::{types as api_types, Client};
 
 use crate::components::manifest::Manifest;
 
@@ -26,11 +29,7 @@ pub struct Options {
     pub changelog: Option<String>,
 }
 
-pub async fn run(opts: Options) -> anyhow::Result<()> {
-    use inquire::{Confirm, Editor, Select};
-
-    use edgee_api_client::{auth::Config, ErrorExt, ResultExt};
-
+pub async fn run(opts: Options) -> Result<()> {
     use crate::components::manifest;
 
     let config = Config::load()?;
@@ -138,62 +137,10 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                 return Ok(());
             }
 
-            let public = match (opts.public, opts.private) {
-                (true, false) => true,
-                (false, true) => false,
-                _ => {
-                    Select::new(
-                        "Would you like to make this component public or private?",
-                        vec!["private", "public"],
-                    )
-                    .prompt()?
-                        == "public"
-                }
-            };
+            let component =
+                create_component(&client, &opts, &manifest, &organization, &component_slug).await?;
 
-            let avatar_url = if let Some(path) = &manifest.component.icon_path {
-                tracing::info!("Uploading Icon... {:?}", manifest.component.icon_path);
-                Some(client.upload_file(std::path::Path::new(path)).await?)
-            } else {
-                None
-            };
-
-            let component = client
-                .create_component()
-                .body(
-                    api_types::ComponentCreateInput::builder()
-                        .organization_id(organization.id.clone())
-                        .name(&manifest.component.name)
-                        .slug(component_slug.clone())
-                        .description(manifest.component.description.clone())
-                        .category(manifest.component.category)
-                        .subcategory(manifest.component.subcategory)
-                        .documentation_link(
-                            manifest
-                                .component
-                                .documentation
-                                .as_ref()
-                                .map(|url| url.to_string()),
-                        )
-                        .repo_link(
-                            manifest
-                                .component
-                                .repository
-                                .as_ref()
-                                .map(|url| url.to_string()),
-                        )
-                        .avatar_url(avatar_url)
-                        .public(public),
-                )
-                .send()
-                .await
-                .api_context("Could not create component")?;
-            tracing::info!(
-                "Component {} created successfully!",
-                format!("{}/{}", organization.slug, component_slug).green(),
-            );
-
-            (false, component.into_inner())
+            (false, component)
         }
         Ok(res) => {
             tracing::info!(
@@ -218,7 +165,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     }
 
     let changelog = match opts.changelog {
-        Some(changelog) => Some(changelog),
+        Some(ref changelog) => Some(changelog.clone()),
         None => Editor::new("Describe the new version changelog (optional)")
             .with_help_message(
                 "Type (e) to open the default editor. Use the EDITOR env variable to change it.",
@@ -242,128 +189,25 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    tracing::info!("Uploading WASM file...");
-    let asset_url = client
-        .upload_file(&manifest.component.build.output_path)
-        .await
-        .expect("Could not upload component");
-
     if do_update {
-        let mut final_icon_url = None;
-
-        if let Some(manifest_icon_path) = &manifest.component.icon_path {
-            let manifest_avatar_hash = {
-                let mut manifest_avatar_file = std::fs::File::open(manifest_icon_path)?;
-                hash_reader(&mut manifest_avatar_file)?
-            };
-            if let Some(existing_avatar_url) = &component.avatar_url {
-                let response = get(existing_avatar_url).await?;
-                let existing_avatar_data = response.bytes().await?;
-                let existing_avatar_hash = hash_reader(&existing_avatar_data[..])?;
-                if existing_avatar_hash != manifest_avatar_hash {
-                    tracing::info!("Detected icon change, uploading new icon...");
-                    let new_avatar_url = client
-                        .upload_file(std::path::Path::new(manifest_icon_path))
-                        .await?;
-                    final_icon_url = Some(new_avatar_url);
-                } else {
-                    tracing::info!("Icon has not changed, skipping upload...");
-                }
-            } else {
-                let icon_url = if let Some(path) = &manifest.component.icon_path {
-                    Some(client.upload_file(std::path::Path::new(path)).await?)
-                } else {
-                    None
-                };
-                final_icon_url = icon_url;
-            }
-        }
-
-        let public = match (opts.public, opts.private) {
-            (true, false) | (false, true) => {
-                let public = opts.public;
-                let remote_public = component.is_public.unwrap_or(false);
-                if opts.public == remote_public {
-                    tracing::info!(
-                        "Component is already {}",
-                        if public { "public" } else { "private" }
-                    );
-                } else {
-                    tracing::info!(
-                        "Updating component visibility to {}...",
-                        if public { "public" } else { "private" }
-                    );
-
-                    if !public {
-                        tracing::info!("Only unused components can be made private. If this component is already in use, it will remain public.");
-                    } else {
-                        let confirm = Confirm::new(
-                            "Your component will become publicly visible in the registry. Are you sure?",
-                        )
-                        .with_default(true)
-                        .prompt()?;
-
-                        if !confirm {
-                            return Ok(());
-                        }
-                    }
-                }
-                public
-            }
-            _ => component.is_public.unwrap_or(false),
-        };
-
-        client
-            .update_component_by_slug()
-            .org_slug(&organization.slug)
-            .component_slug(&component_slug)
-            .body(
-                api_types::ComponentUpdateParams::builder()
-                    .name(manifest.component.name.clone())
-                    .description(manifest.component.description.clone())
-                    .public(public)
-                    .documentation_link(
-                        manifest
-                            .component
-                            .documentation
-                            .as_ref()
-                            .map(|url| url.to_string()),
-                    )
-                    .avatar_url(final_icon_url)
-                    .repo_link(
-                        manifest
-                            .component
-                            .repository
-                            .as_ref()
-                            .map(|url| url.to_string()),
-                    ),
-            )
-            .send()
-            .await
-            .api_context("Could not update component infos")?;
-        tracing::info!(
-            "Component {} updated successfully!",
-            format!("{}/{}", organization.slug, component_slug).green(),
-        );
-    }
-
-    tracing::info!("Creating new version...");
-
-    client
-        .create_component_version_by_slug()
-        .org_slug(&organization.slug)
-        .component_slug(&component_slug)
-        .body(
-            api_types::ComponentVersionCreateInput::builder()
-                .version(&manifest.component.version)
-                .wit_version(&manifest.component.wit_version)
-                .wasm_url(asset_url)
-                .dynamic_fields(convert_manifest_config_fields(&manifest))
-                .changelog(changelog),
+        update_component(
+            &client,
+            &opts,
+            &manifest,
+            &component,
+            &component_slug,
+            &organization,
         )
-        .send()
-        .await
-        .api_context("Could not create version")?;
+        .await?;
+    }
+    push_version(
+        &client,
+        &manifest,
+        &organization,
+        &component_slug,
+        changelog,
+    )
+    .await?;
 
     tracing::info!(
         "{} pushed successfully!",
@@ -381,6 +225,216 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
         )
         .green(),
     );
+
+    Ok(())
+}
+
+async fn create_component(
+    client: &Client,
+    opts: &Options,
+    manifest: &Manifest,
+    organization: &api_types::Organization,
+    component_slug: &str,
+) -> Result<api_types::Component> {
+    let public = match (opts.public, opts.private) {
+        (true, false) => true,
+        (false, true) => false,
+        _ => {
+            Select::new(
+                "Would you like to make this component public or private?",
+                vec!["private", "public"],
+            )
+            .prompt()?
+                == "public"
+        }
+    };
+
+    let avatar_url = if let Some(path) = &manifest.component.icon_path {
+        tracing::info!("Uploading Icon... {:?}", manifest.component.icon_path);
+        Some(client.upload_file(std::path::Path::new(path)).await?)
+    } else {
+        None
+    };
+
+    let component = client
+        .create_component()
+        .body(
+            api_types::ComponentCreateInput::builder()
+                .organization_id(organization.id.clone())
+                .name(&manifest.component.name)
+                .slug(Some(component_slug.to_string()))
+                .description(manifest.component.description.clone())
+                .category(manifest.component.category)
+                .subcategory(manifest.component.subcategory)
+                .documentation_link(
+                    manifest
+                        .component
+                        .documentation
+                        .as_ref()
+                        .map(|url| url.to_string()),
+                )
+                .repo_link(
+                    manifest
+                        .component
+                        .repository
+                        .as_ref()
+                        .map(|url| url.to_string()),
+                )
+                .avatar_url(avatar_url)
+                .public(public),
+        )
+        .send()
+        .await
+        .api_context("Could not create component")?;
+    tracing::info!(
+        "Component {} created successfully!",
+        format!("{}/{}", organization.slug, component_slug).green(),
+    );
+
+    Ok(component.into_inner())
+}
+
+async fn update_component(
+    client: &Client,
+    opts: &Options,
+    manifest: &Manifest,
+    component: &api_types::Component,
+    component_slug: &str,
+    organization: &api_types::Organization,
+) -> Result<()> {
+    use inquire::Confirm;
+
+    use edgee_api_client::ResultExt;
+
+    let final_icon_url = if let Some(manifest_icon_path) = &manifest.component.icon_path {
+        let manifest_avatar_hash = {
+            let mut manifest_avatar_file = std::fs::File::open(manifest_icon_path)?;
+            hash_reader(&mut manifest_avatar_file)?
+        };
+
+        if let Some(existing_avatar_url) = &component.avatar_url {
+            let response = reqwest::get(existing_avatar_url).await?;
+            let existing_avatar_data = response.bytes().await?;
+            let existing_avatar_hash = hash_reader(&existing_avatar_data[..])?;
+
+            if existing_avatar_hash != manifest_avatar_hash {
+                tracing::info!("Detected icon change, uploading new icon...");
+                let new_avatar_url = client
+                    .upload_file(std::path::Path::new(manifest_icon_path))
+                    .await?;
+                Some(new_avatar_url)
+            } else {
+                tracing::info!("Icon has not changed, skipping upload...");
+                None
+            }
+        } else if let Some(path) = &manifest.component.icon_path {
+            Some(client.upload_file(std::path::Path::new(path)).await?)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let public = match (opts.public, opts.private) {
+        (true, false) | (false, true) => {
+            let public = opts.public;
+            let visibility = if public { "public" } else { "private" };
+            let remote_public = component.is_public.unwrap_or(false);
+
+            if opts.public == remote_public {
+                tracing::info!("Component is already {visibility}");
+            } else {
+                tracing::info!("Updating component visibility to {visibility}...");
+
+                if !public {
+                    tracing::info!("Only unused components can be made private. If this component is already in use, it will remain public.");
+                } else {
+                    let confirm = Confirm::new(
+                            "Your component will become publicly visible in the registry. Are you sure?",
+                        )
+                        .with_default(true)
+                        .prompt()?;
+
+                    if !confirm {
+                        return Ok(());
+                    }
+                }
+            }
+
+            public
+        }
+        _ => component.is_public.unwrap_or(false),
+    };
+
+    client
+        .update_component_by_slug()
+        .org_slug(&organization.slug)
+        .component_slug(component_slug)
+        .body(
+            api_types::ComponentUpdateParams::builder()
+                .name(manifest.component.name.clone())
+                .description(manifest.component.description.clone())
+                .public(public)
+                .documentation_link(
+                    manifest
+                        .component
+                        .documentation
+                        .as_ref()
+                        .map(|url| url.to_string()),
+                )
+                .avatar_url(final_icon_url)
+                .repo_link(
+                    manifest
+                        .component
+                        .repository
+                        .as_ref()
+                        .map(|url| url.to_string()),
+                ),
+        )
+        .send()
+        .await
+        .api_context("Could not update component infos")?;
+    tracing::info!(
+        "Component {} updated successfully!",
+        format!("{}/{}", organization.slug, component_slug).green(),
+    );
+
+    Ok(())
+}
+
+async fn push_version(
+    client: &Client,
+    manifest: &Manifest,
+    organization: &api_types::Organization,
+    component_slug: &str,
+    changelog: Option<String>,
+) -> Result<()> {
+    use edgee_api_client::ResultExt;
+
+    tracing::info!("Uploading WASM file...");
+    let asset_url = client
+        .upload_file(&manifest.component.build.output_path)
+        .await
+        .expect("Could not upload component");
+
+    tracing::info!("Creating new version...");
+
+    client
+        .create_component_version_by_slug()
+        .org_slug(&organization.slug)
+        .component_slug(component_slug)
+        .body(
+            api_types::ComponentVersionCreateInput::builder()
+                .version(&manifest.component.version)
+                .wit_version(&manifest.component.wit_version)
+                .wasm_url(asset_url)
+                .dynamic_fields(convert_manifest_config_fields(manifest))
+                .changelog(changelog),
+        )
+        .send()
+        .await
+        .api_context("Could not create version")?;
 
     Ok(())
 }
