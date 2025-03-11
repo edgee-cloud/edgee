@@ -29,9 +29,11 @@ pub struct Options {
     #[arg(long = "display-input", default_value = "false")]
     pub display_input: bool,
 
+    /// Will print to stdout the cURL command for your EdgeeRequest
     #[arg(long = "curl", default_value = "false")]
     pub curl: bool,
 
+    /// Will automatically make an HTTP request for your EdgeeRequest
     #[arg(long = "make-http-request", default_value = "false")]
     pub make_http_request: bool,
 }
@@ -206,28 +208,19 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
         println!("---------------------------------------------------");
         let request = match event.event_type {
             EventType::Page => {
-                tracing::info!(
-                    "Running test with {} event\n",
-                    "page".green(),
-                );
+                tracing::info!("Running test with {} event\n", "page".green(),);
                 component
                     .call_page(&mut store, &event.clone().into(), &settings)
                     .await
             }
             EventType::Track => {
-                tracing::info!(
-                    "Running test with {} event\n",
-                    "track".green(),
-                );
+                tracing::info!("Running test with {} event\n", "track".green(),);
                 component
                     .call_track(&mut store, &event.clone().into(), &settings)
                     .await
             }
             EventType::User => {
-                tracing::info!(
-                    "Running test with {} event\n",
-                    "user".green(),
-                );
+                tracing::info!("Running test with {} event\n", "user".green(),);
                 component
                     .call_user(&mut store, &event.clone().into(), &settings)
                     .await

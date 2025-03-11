@@ -173,7 +173,7 @@ pub async fn run(opts: Options) -> Result<()> {
         )
     } else {
         tracing::info!(
-            "{} already exists in the registry, edgee will only update the component.",
+            "{} already exists in the registry. Only updating component metadata.",
             format!(
                 "{}/{}@{}",
                 organization.slug, component_slug, manifest.component.version,
