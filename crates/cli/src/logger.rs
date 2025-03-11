@@ -67,13 +67,15 @@ pub fn init_cli() {
     use tracing_subscriber::prelude::*;
     use tracing_subscriber::{fmt, EnvFilter};
 
+    const DEFAULT_DIRECTIVE: &str = "info,wit_deps=warning";
+
     let fmt_layer = fmt::layer().with_target(false).without_time();
 
     let filter_layer = {
         let directives = env::var("EDGEE_LOG")
             .ok()
             .or_else(|| env::var("RUST_LOG").ok())
-            .unwrap_or_default();
+            .unwrap_or_else(|| DEFAULT_DIRECTIVE.to_string());
 
         EnvFilter::builder()
             .with_default_directive(Level::INFO.into())
