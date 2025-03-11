@@ -25,9 +25,7 @@ pub fn connect(#[builder(default = PROD_BASEURL)] baseurl: String, api_token: St
 
     // if EDGEE_API_URL env var is set, redefine baseurl
     let baseurl = baseurl.to_string();
-
-    // if EDGEE_API_TOKEN env var is set, redefine api_token
-    let api_token = std::env::var("EDGEE_API_TOKEN").unwrap_or(api_token.to_string());
+    let api_token = api_token.to_string();
 
     let auth_value = format!("Bearer {api_token}");
     default_headers.insert(header::AUTHORIZATION, auth_value.try_into().unwrap());

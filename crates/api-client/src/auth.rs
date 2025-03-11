@@ -39,6 +39,18 @@ impl Config {
     }
 
     pub fn load() -> Result<Self> {
+        // if EDGEE_API_URL and EDGEE_API_TOKEN are set, use them
+        // skip using the credentials file
+        if let Ok(api_token) = std::env::var("EDGEE_API_TOKEN") {
+            return Ok(Self {
+                api_token: Some(api_token),
+                url: Some(
+                    std::env::var("EDGEE_API_URL").unwrap_or("https://api.edgee.app".to_string()),
+                ),
+                ..Default::default()
+            });
+        };
+
         let creds_path = Self::path()?;
         if !creds_path.exists() {
             return Ok(Self::default());
