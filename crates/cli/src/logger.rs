@@ -63,11 +63,11 @@ pub fn init(log_format: LogFormat, log_filter: Option<String>) {
 pub fn init_cli() {
     use std::env;
 
-    use tracing::Level;
+    use tracing_subscriber::filter::LevelFilter;
     use tracing_subscriber::prelude::*;
     use tracing_subscriber::{fmt, EnvFilter};
 
-    const DEFAULT_DIRECTIVE: &str = "info,wit_deps=warning";
+    const DEFAULT_DIRECTIVE: &str = "info,wit_deps=warn";
 
     let fmt_layer = fmt::layer().with_target(false).without_time();
 
@@ -78,7 +78,7 @@ pub fn init_cli() {
             .unwrap_or_else(|| DEFAULT_DIRECTIVE.to_string());
 
         EnvFilter::builder()
-            .with_default_directive(Level::INFO.into())
+            .with_default_directive(LevelFilter::INFO.into())
             .parse_lossy(directives)
     };
 
