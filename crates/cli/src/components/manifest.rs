@@ -1,9 +1,7 @@
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+use indexmap::IndexMap as Map;
 use serde::{Deserialize, Serialize};
 
 use edgee_api_client::types as api_types;
@@ -40,7 +38,7 @@ pub struct Component {
     pub build: Build,
 
     #[serde(default)]
-    pub settings: HashMap<String, Setting>,
+    pub settings: Map<String, Setting>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]

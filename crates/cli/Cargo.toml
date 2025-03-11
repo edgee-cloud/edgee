@@ -17,6 +17,7 @@ clap_complete.workspace = true
 colored.workspace = true
 colored_json.workspace = true
 http.workspace = true
+indexmap.workspace = true
 inquire = { workspace = true, features = ["editor"] }
 miette = { workspace = true, features = ["fancy"] }
 open.workspace = true
@@ -30,7 +31,7 @@ sha2.workspace = true
 slug.workspace = true
 tracing.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-toml.workspace = true
+toml = { workspace = true, features = ["preserve_order"] }
 tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
 unicase.workspace = true
 url = { workspace = true, features = ["serde"] }
