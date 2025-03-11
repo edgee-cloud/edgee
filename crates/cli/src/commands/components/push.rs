@@ -27,6 +27,10 @@ pub struct Options {
 
     #[arg(long)]
     pub changelog: Option<String>,
+
+    /// Run this command in non-interactive mode (no confirmation prompts)
+    #[arg(long = "yes")]
+    noconfirm: bool,
 }
 
 pub async fn run(opts: Options) -> Result<()> {
@@ -59,6 +63,10 @@ pub async fn run(opts: Options) -> Result<()> {
     // if not, ask if the user wants to build it
     let output_path = &manifest.component.build.output_path;
     if !output_path.exists() {
+        if opts.noconfirm {
+            anyhow::bail!("No WASM file was found.");
+        }
+
         let confirm = Confirm::new(
             "No WASM file was found. Would you like to run `edgee components build` first?",
         )
@@ -129,9 +137,10 @@ pub async fn run(opts: Options) -> Result<()> {
                 "Component {} does not exist yet!",
                 format!("{}/{}", organization.slug, &component_slug).green(),
             );
-            let confirm = Confirm::new("Confirm new component creation?")
-                .with_default(true)
-                .prompt()?;
+            let confirm = opts.noconfirm
+                || Confirm::new("Confirm new component creation?")
+                    .with_default(true)
+                    .prompt()?;
 
             if !confirm {
                 return Ok(());
@@ -156,6 +165,8 @@ pub async fn run(opts: Options) -> Result<()> {
     let create_version = if !component.versions.contains_key(&manifest.component.version) {
         let changelog = match opts.changelog {
             Some(ref changelog) => Some(changelog.clone()),
+            // Set no changelog if none provided in non-interactive mode
+            None if opts.noconfirm => None,
             None => Editor::new("Describe the new version changelog (optional)")
                 .with_help_message(
                     "Type (e) to open the default editor. Use the EDITOR env variable to change it.",
@@ -183,18 +194,19 @@ pub async fn run(opts: Options) -> Result<()> {
         None
     };
 
-    let confirm = Confirm::new(&format!(
-        "Ready to push {}. Confirm?",
-        format!(
-            "{}/{}@{}",
-            organization.slug,
-            component_slug,
-            manifest.component.version.clone()
-        )
-        .green(),
-    ))
-    .with_default(true)
-    .prompt()?;
+    let confirm = opts.noconfirm
+        || Confirm::new(&format!(
+            "Ready to push {}. Confirm?",
+            format!(
+                "{}/{}@{}",
+                organization.slug,
+                component_slug,
+                manifest.component.version.clone()
+            )
+            .green(),
+        ))
+        .with_default(true)
+        .prompt()?;
     if !confirm {
         return Ok(());
     }
@@ -244,6 +256,8 @@ async fn create_component(
     let public = match (opts.public, opts.private) {
         (true, false) => true,
         (false, true) => false,
+        // Set component as private by default if run in non-interactive mode
+        _ if opts.noconfirm => false,
         _ => {
             Select::new(
                 "Would you like to make this component public or private?",
@@ -347,7 +361,7 @@ async fn update_component(
             let visibility = if public { "public" } else { "private" };
             let remote_public = component.is_public.unwrap_or(false);
 
-            if opts.public == remote_public {
+            if public == remote_public {
                 tracing::info!("Component is already {visibility}");
             } else {
                 tracing::info!("Updating component visibility to {visibility}...");
@@ -355,7 +369,7 @@ async fn update_component(
                 if !public {
                     tracing::info!("Only unused components can be made private. If this component is already in use, it will remain public.");
                 } else {
-                    let confirm = Confirm::new(
+                    let confirm = opts.noconfirm || Confirm::new(
                             "Your component will become publicly visible in the registry. Are you sure?",
                         )
                         .with_default(true)
