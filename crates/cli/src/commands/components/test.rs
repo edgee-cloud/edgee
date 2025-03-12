@@ -11,31 +11,31 @@ use edgee_components_runtime::data_collection::exports::edgee::components::data_
 use edgee_components_runtime::data_collection::exports::edgee::components::data_collection::HttpMethod;
 use edgee_components_runtime::data_collection::payload::{Event, EventType};
 use http::{HeaderMap, HeaderName, HeaderValue};
-#[derive(Debug, clap::Parser)]
-pub struct Options {
+
+setup_command! {
     /// Comma-separated key=value pairs for settings
     #[arg(long="settings", value_parser = parse_settings)]
-    pub settings: Option<HashMap<String, String>>,
+    settings: Option<HashMap<String, String>>,
 
     /// File containing the settings
     #[arg(long = "settings-file")]
-    pub settings_file: Option<String>,
+    settings_file: Option<String>,
 
     /// The event type you want to test
     #[arg(long = "event-type", value_parser = ["page", "track", "user"])]
-    pub event_type: Option<String>,
+    event_type: Option<String>,
 
     /// Whether to log the full input event or not (false by default)
     #[arg(long = "display-input", default_value = "false")]
-    pub display_input: bool,
+    display_input: bool,
 
     /// Will print to stdout the cURL command for your EdgeeRequest
     #[arg(long = "curl", default_value = "false")]
-    pub curl: bool,
+    curl: bool,
 
     /// Will automatically make an HTTP request for your EdgeeRequest
     #[arg(long = "make-http-request", default_value = "false")]
-    pub make_http_request: bool,
+    make_http_request: bool,
 }
 
 trait IntoCurl {

@@ -9,13 +9,12 @@ use zip::read::ZipArchive;
 use crate::components::boilerplate::{LanguageConfig, LANGUAGE_OPTIONS};
 use crate::components::manifest::Manifest;
 
-#[derive(Debug, clap::Parser)]
-pub struct Options {
+setup_command! {
     #[clap(long, short)]
-    pub name: Option<String>,
+    name: Option<String>,
 
     #[clap(long, short)]
-    pub language: Option<String>,
+    language: Option<String>,
 }
 
 fn prompt_for_language() -> LanguageConfig {
