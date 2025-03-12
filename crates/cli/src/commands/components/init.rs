@@ -58,18 +58,13 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             description: Some("Description of\nthe component".to_string()),
             documentation: Some(Url::parse("https://www.edgee.cloud/docs/introduction")?),
             repository: Some(Url::parse("https://www.github.com/edgee-cloud/edgee")?),
-            settings: {
-                let mut fields = std::collections::HashMap::new();
-                fields.insert(
-                    "example".to_string(),
-                    Setting {
-                        description: Some("Here is a string".to_string()),
-                        required: true,
-                        title: "ExampleConfigField".to_string(),
-                        type_: edgee_api_client::types::ConfigurationFieldType::String,
-                    },
-                );
-                fields
+            settings: indexmap::indexmap! {
+                "example".to_string() => Setting {
+                    description: Some("Here is a string".to_string()),
+                    required: true,
+                    title: "ExampleConfigField".to_string(),
+                    type_: edgee_api_client::types::ConfigurationFieldType::String,
+                },
             },
             build: Build {
                 command: component_language.default_build_command.to_string(),
