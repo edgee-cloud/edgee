@@ -21,13 +21,6 @@
 
 </div>
 
-⚠️ Edgee Open Source Edition (v0.8.X) is in Development
-
-Please consider this repository unstable as we continue to enhance and refine the platform.
-We're actively working towards a stable v1.0.0 release, which will be available in the coming weeks.
-
-Feedback and contributions are welcome during this development phase: we appreciate your patience as we work hard to bring you robust tooling for a great development experience.
-
 ### Useful resources
 
 - Edgee's [Website](https://www.edgee.cloud), [Roadmap](https://www.edgee.cloud/roadmap), and [Documentation](https://www.edgee.cloud/docs/introduction)
