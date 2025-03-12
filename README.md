@@ -40,18 +40,48 @@ Feedback and contributions are welcome during this development phase: we appreci
 The Edgee CLI lets you create and build Wasm components locally with commands such as `edgee components new` and `edgee components build`.
 When your component is ready, the Edgee CLI lets you push it to the Edgee Component Registry as a public or private component under your organization’s account, with `edgee components push`. Under the hood, the CLI interacts with the Edgee API and its goal is to simplify the local development experience across all supported languages.
 
-Install the Edgee CLI as follows:
-​
-```shell
-$ curl https://install.edgee.cloud | sh
-```
+Install the Edgee CLI with your preferred method:
 
-Or via homebrew:
+<details open>
+  <summary>Install script</summary>
 
-```shell
-$ brew tap edgee-cloud/edgee
-$ brew install edgee
-```
+  ```shell
+  $ curl https://install.edgee.cloud | sh
+  ```
+
+</details>
+
+<details>
+  <summary>Homebrew</summary>
+
+  ```shell
+  $ brew tap edgee-cloud/edgee
+  $ brew install edgee
+  ```
+
+</details>
+
+<details>
+  <summary>Cargo binstall</summary>
+
+  ```shell
+  $ cargo binstall edgee
+  ```
+
+</details>
+
+<details>
+  <summary>From source</summary>
+
+  ```shell
+  $ git clone https://github.com/edgee-cloud/edgee.git
+  $ cd edgee
+  $ cargo build --release
+  $ ./target/release/edgee --version
+  ```
+
+</details>
+
 
 ## Edgee CLI commands
 
@@ -75,6 +105,7 @@ Logged in as:
   ID:    XYZ-XYZ-DYZ
   Name:  Your name
   Email: your@email.com
+  Url:   https://api.edgee.app
 ```
 
 ### `edgee help`
@@ -85,10 +116,17 @@ This command lets you get help about existing commands, sub-commands, and their 
 $ edgee help
 Usage: edgee <COMMAND>
 Commands:
-  login       Log in to the Edgee Console
-  whoami      Print currently login informations
-  components  Components management commands  [aliases: component]
-  serve       Run the Edgee server [aliases: server]
+  login                      Log in to the Edgee Console
+  whoami                     Print currently login informations
+  components                 Components management commands [aliases: component]
+  serve                      Run the Edgee server [aliases: server]
+  self-update                Update the Edgee executable
+  generate-shell-completion  Print auto-completion script for your shell init file
+  help                       Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
 ```
 
 ### `edgee self-update`
@@ -107,8 +145,8 @@ This command lets you create a component in a new directory (including sample co
 
 ```bash
 $ edgee components new
-? Enter the name of the component: my-component
-? Select the language of the component:
+? Enter the component name: my-component
+? Select a programming language:
   C
   CSharp
   Go
@@ -116,25 +154,29 @@ $ edgee components new
   Python
 > Rust
   TypeScript
-Downloading sample code for Rust...
-Extracting code...
-New project my-component setup, check README to install the correct dependencies.
+ INFO Downloading sample code for Rust...
+ INFO Extracting code...
+ INFO Downloading WIT files...
+ INFO New project my-component is ready! Check README for dependencies.
 ```
 
 You can also use command arguments to skip the prompts
 
 ```bash
 $ edgee components new --name foo --language javascript
-Downloading sample code for Javascript...
-Extracting code...
-New project foo setup, check README to install the correct dependencies.
+ INFO Downloading sample code for JavaScript...
+ INFO Extracting code...
+ INFO Downloading WIT files...
+ INFO New project foo is ready! Check README for dependencies.
 ```
 
 #### `edgee components build`
 
 This command lets you compile the component in the current folder into a WebAssembly binary file.
 
-You can customize the behavior of the build command in the manifest file by changing the target file name
+You can customize the behavior of the build command in the
+[manifest file](https://www.edgee.cloud/docs/services/registry/developer-guide#component-manifest-file)
+by changing the target file name
 and the default build script. If you've created a new component with `edgee component new` the default build script
 should be a great starting point. By default, the output of this command will be a new .wasm file in the current folder.
 
@@ -175,13 +217,20 @@ This command lets you push the local .wasm file to the Edgee Component Registry.
 
 ```shell
 $ edgee components push
-? Component org/name does not exists, do you want to create it? Y/n
+ INFO Component org/name does not exists yet!
+> Confirm new component creation? Y/n
 ? Would you like to make this component public or private?
 > private
   public
-Component created successfully!
-You can view and edit it at: https://edgee.cloud/~/registry/{organization}/{component}
+> Describe the new version changelog (optional) [(e) to open nano, (enter) to submit]
+> Ready to push org/name@version. Confirm? Y/n
+ INFO Uploading Wasm file...
+ INFO Creating new version...
+ INFO org/name@version pushed successfully!
+ INFO URL: https://www.edgee.cloud/~/registry/{organization}/{component}
 ```
+
+The push command also lets you publish or unpublish an existing component via `--public` or `--private`.
 
 ### `edgee serve`
 
@@ -207,6 +256,7 @@ To install the completions, source them in your shell init file.
   # ~/.bashrc
   $ eval $(edgee generate-shell-completion bash)
   ```
+
 </details>
 
 <details>
@@ -222,6 +272,7 @@ To install the completions, source them in your shell init file.
   compinit -u
   # note: you might need to delete ~/.zcompdump/ first
   ```
+
 </details>
 
 <details>
@@ -231,6 +282,7 @@ To install the completions, source them in your shell init file.
   # ~/.config/fish/completions/edgee.fish
   $ edgee generate-shell-completion fish | source
   ```
+
 </details>
 
 <details>
@@ -239,6 +291,7 @@ To install the completions, source them in your shell init file.
   ```shell
   $ edgee generate-shell-completion elvish >> ~/.config/elvish/rc.elv
   ```
+
 </details>
 
 <details>
@@ -248,6 +301,7 @@ To install the completions, source them in your shell init file.
   > edgee generate-shell-completion powershell >> $profile
   > .$profile
   ```
+
 </details>
 
 ## Contributing
