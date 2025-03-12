@@ -50,7 +50,7 @@ Install the Edgee CLI with your preferred method:
   ```
 
 </details>
-​
+
 <details>
   <summary>Homebrew</summary>
 
