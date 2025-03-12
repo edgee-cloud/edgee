@@ -1526,9 +1526,9 @@ dependencies = [
 
 [[package]]
 name = "edgee-sdk"
-version = "1.6.1"
+version = "1.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb1e629f7a0be0a5516f706d1a43e8f7d0d115fb10ebca2bff5558aaf03f334e"
+checksum = "98c3f6884c4350cfc91df057b18d65c89aaa32dbab08dfe8673424e8ca84958d"
 dependencies = [
  "md5",
  "serde",
