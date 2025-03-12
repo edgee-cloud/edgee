@@ -42,12 +42,13 @@ When your component is ready, the Edgee CLI lets you push it to the Edgee Compon
 
 Install the Edgee CLI with your preferred method:
 
-<details>
+<details open>
   <summary>Install script</summary>
 
   ```shell
   $ curl https://install.edgee.cloud | sh
   ```
+
 </details>
 ​
 <details>
@@ -57,6 +58,7 @@ Install the Edgee CLI with your preferred method:
   $ brew tap edgee-cloud/edgee
   $ brew install edgee
   ```
+
 </details>
 
 <details>
@@ -65,6 +67,7 @@ Install the Edgee CLI with your preferred method:
   ```shell
   $ cargo binstall edgee
   ```
+
 </details>
 
 <details>
@@ -76,6 +79,7 @@ Install the Edgee CLI with your preferred method:
   $ cargo build --release
   $ ./target/release/edgee --version
   ```
+
 </details>
 
 
@@ -252,6 +256,7 @@ To install the completions, source them in your shell init file.
   # ~/.bashrc
   $ eval $(edgee generate-shell-completion bash)
   ```
+
 </details>
 
 <details>
@@ -267,6 +272,7 @@ To install the completions, source them in your shell init file.
   compinit -u
   # note: you might need to delete ~/.zcompdump/ first
   ```
+
 </details>
 
 <details>
@@ -276,6 +282,7 @@ To install the completions, source them in your shell init file.
   # ~/.config/fish/completions/edgee.fish
   $ edgee generate-shell-completion fish | source
   ```
+
 </details>
 
 <details>
@@ -284,6 +291,7 @@ To install the completions, source them in your shell init file.
   ```shell
   $ edgee generate-shell-completion elvish >> ~/.config/elvish/rc.elv
   ```
+
 </details>
 
 <details>
@@ -293,6 +301,7 @@ To install the completions, source them in your shell init file.
   > edgee generate-shell-completion powershell >> $profile
   > .$profile
   ```
+
 </details>
 
 ## Contributing
