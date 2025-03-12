@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use indexmap::IndexMap as Map;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use edgee_api_client::types as api_types;
@@ -38,7 +38,7 @@ pub struct Component {
     pub build: Build,
 
     #[serde(default)]
-    pub settings: Map<String, Setting>,
+    pub settings: IndexMap<String, Setting>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
