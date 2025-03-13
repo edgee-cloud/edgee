@@ -1,19 +1,18 @@
-use std::collections::HashMap;
-use tracing::warn;
-
-use crate::data_collection::exports::edgee::components::data_collection;
+use crate::data_collection::exports::edgee::components0_5_0::data_collection as DataCollection0_5_0;
 use crate::data_collection::payload;
-impl From<payload::Event> for data_collection::Event {
+use crate::data_collection::version::convert::{convert_products, convert_properties};
+
+impl From<payload::Event> for DataCollection0_5_0::Event {
     fn from(value: payload::Event) -> Self {
         let data = match value.data {
-            payload::Data::Page(page) => data_collection::Data::Page(page.into()),
-            payload::Data::User(user) => data_collection::Data::User(user.into()),
-            payload::Data::Track(track) => data_collection::Data::Track(track.into()),
+            payload::Data::Page(page) => DataCollection0_5_0::Data::Page(page.into()),
+            payload::Data::User(user) => DataCollection0_5_0::Data::User(user.into()),
+            payload::Data::Track(track) => DataCollection0_5_0::Data::Track(track.into()),
         };
         let consent = match value.consent {
-            Some(payload::Consent::Pending) => Some(data_collection::Consent::Pending),
-            Some(payload::Consent::Granted) => Some(data_collection::Consent::Granted),
-            Some(payload::Consent::Denied) => Some(data_collection::Consent::Denied),
+            Some(payload::Consent::Pending) => Some(DataCollection0_5_0::Consent::Pending),
+            Some(payload::Consent::Granted) => Some(DataCollection0_5_0::Consent::Granted),
+            Some(payload::Consent::Denied) => Some(DataCollection0_5_0::Consent::Denied),
             None => None,
         };
         Self {
@@ -29,7 +28,7 @@ impl From<payload::Event> for data_collection::Event {
     }
 }
 
-impl From<payload::EventType> for data_collection::EventType {
+impl From<payload::EventType> for DataCollection0_5_0::EventType {
     fn from(value: payload::EventType) -> Self {
         match value {
             payload::EventType::Page => Self::Page,
@@ -39,7 +38,7 @@ impl From<payload::EventType> for data_collection::EventType {
     }
 }
 
-impl From<payload::Page> for data_collection::PageData {
+impl From<payload::Page> for DataCollection0_5_0::PageData {
     fn from(value: payload::Page) -> Self {
         Self {
             name: value.name,
@@ -55,7 +54,7 @@ impl From<payload::Page> for data_collection::PageData {
     }
 }
 
-impl From<payload::User> for data_collection::UserData {
+impl From<payload::User> for DataCollection0_5_0::UserData {
     fn from(value: payload::User) -> Self {
         Self {
             user_id: value.user_id,
@@ -66,7 +65,7 @@ impl From<payload::User> for data_collection::UserData {
     }
 }
 
-impl From<payload::Track> for data_collection::TrackData {
+impl From<payload::Track> for DataCollection0_5_0::TrackData {
     fn from(value: payload::Track) -> Self {
         Self {
             name: value.name,
@@ -76,7 +75,7 @@ impl From<payload::Track> for data_collection::TrackData {
     }
 }
 
-impl From<payload::Context> for data_collection::Context {
+impl From<payload::Context> for DataCollection0_5_0::Context {
     fn from(value: payload::Context) -> Self {
         Self {
             page: value.page.into(),
@@ -88,7 +87,7 @@ impl From<payload::Context> for data_collection::Context {
     }
 }
 
-impl From<payload::Campaign> for data_collection::Campaign {
+impl From<payload::Campaign> for DataCollection0_5_0::Campaign {
     fn from(value: payload::Campaign) -> Self {
         Self {
             name: value.name,
@@ -102,7 +101,7 @@ impl From<payload::Campaign> for data_collection::Campaign {
     }
 }
 
-impl From<payload::Client> for data_collection::Client {
+impl From<payload::Client> for DataCollection0_5_0::Client {
     fn from(value: payload::Client) -> Self {
         Self {
             ip: value.ip,
@@ -129,7 +128,7 @@ impl From<payload::Client> for data_collection::Client {
     }
 }
 
-impl From<payload::Session> for data_collection::Session {
+impl From<payload::Session> for DataCollection0_5_0::Session {
     fn from(value: payload::Session) -> Self {
         Self {
             session_id: value.session_id,
@@ -139,76 +138,5 @@ impl From<payload::Session> for data_collection::Session {
             first_seen: value.first_seen.timestamp(),
             last_seen: value.last_seen.timestamp(),
         }
-    }
-}
-
-fn convert_properties(properties: HashMap<String, serde_json::Value>) -> Vec<(String, String)> {
-    use serde_json::Value;
-
-    if properties.is_empty() {
-        return Vec::new();
-    };
-
-    properties
-        .into_iter()
-        .filter(|(_, value)| !(value.is_array() || value.is_object()))
-        .map(|(k, v)| {
-            let value = if let Value::String(s) = v {
-                s
-            } else {
-                v.to_string()
-            };
-
-            (k, value)
-        })
-        .collect()
-}
-
-fn convert_products(properties: HashMap<String, serde_json::Value>) -> Vec<Vec<(String, String)>> {
-    use serde_json::Value;
-
-    if properties.is_empty() {
-        return Vec::new();
-    };
-
-    // if the key is products, then we need to convert the value to a list of tuples
-    if let Some(products) = properties.get("products") {
-        // if products is not an array, return an empty vector
-        if !products.is_array() {
-            warn!("data.properties.products is not an array, skipping");
-            return Vec::new();
-        }
-
-        let mut results: Vec<Vec<(String, String)>> = Vec::new();
-        let items = products.as_array().unwrap();
-        items.iter().enumerate().for_each(|(index, product)| {
-            // if product is not an object, go to the next product
-            if !product.is_object() {
-                warn!(
-                    "data.properties.products[{}] is not an object, skipping",
-                    index
-                );
-                return;
-            }
-
-            let mut i: Vec<(String, String)> = Vec::new();
-            let dict = product.as_object().unwrap().clone();
-            dict.into_iter()
-                .filter(|(_, value)| !(value.is_array() || value.is_object()))
-                .map(|(k, v)| {
-                    let value = if let Value::String(s) = v {
-                        s
-                    } else {
-                        v.to_string()
-                    };
-                    (k, value)
-                })
-                .for_each(|tuple| i.push(tuple));
-
-            results.push(i);
-        });
-        results
-    } else {
-        Vec::new()
     }
 }
