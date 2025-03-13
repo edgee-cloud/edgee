@@ -28,5 +28,44 @@ pub type Options = Command;
 
 pub async fn run(command: Command) -> anyhow::Result<()> {
     crate::logger::init_cli();
-    command.run().await
+
+    let cmd = command.clone();
+
+    let res = command.run().await;
+    let _ = send_telemetry_event(&cmd, &res).await;
+    res
+}
+
+async fn send_telemetry_event(command: &Command, res: &anyhow::Result<()>) -> anyhow::Result<()> {
+    use std::collections::HashMap;
+
+    use crate::telemetry::Event;
+
+    let command_name = match command {
+        Command::Build(_) => "build",
+        Command::Check(_) => "check",
+        Command::Init(_) => "init",
+        Command::List(_) => "list",
+        Command::New(_) => "new",
+        Command::Pull(_) => "pull",
+        Command::Push(_) => "push",
+        Command::Test(_) => "test",
+    };
+
+    let mut properties = HashMap::new();
+    properties.insert("command".to_string(), format!("components {command_name}"));
+    properties.insert(
+        "result".to_string(),
+        if res.is_ok() {
+            "ok".to_string()
+        } else {
+            "error".to_string()
+        },
+    );
+
+    Event::builder()
+        .name("command")
+        .properties(properties)
+        .send()
+        .await
 }

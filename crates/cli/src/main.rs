@@ -4,6 +4,7 @@ mod commands;
 mod components;
 mod config;
 mod logger;
+mod telemetry;
 
 #[derive(Debug, Parser)]
 #[command(about, author, version)]
