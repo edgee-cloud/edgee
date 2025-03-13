@@ -269,7 +269,14 @@ async fn create_component(
     };
 
     let avatar_url = if let Some(path) = &manifest.component.icon_path {
-        tracing::info!("Uploading Icon... {:?}", manifest.component.icon_path);
+        tracing::info!(
+            "Uploading Icon... {}",
+            manifest
+                .component
+                .icon_path
+                .as_ref()
+                .unwrap_or(&String::new())
+        );
         Some(client.upload_file(std::path::Path::new(path)).await?)
     } else {
         None
