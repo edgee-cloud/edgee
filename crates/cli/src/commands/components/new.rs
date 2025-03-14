@@ -11,9 +11,11 @@ use crate::components::manifest::Manifest;
 
 #[derive(Debug, clap::Parser)]
 pub struct Options {
+    /// Will be used as the local folder name
     #[clap(long, short)]
     pub name: Option<String>,
 
+    /// One of the supported languages (c, c#, go, js, python, rust, typescript)
     #[clap(long, short)]
     pub language: Option<String>,
 }
