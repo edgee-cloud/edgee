@@ -16,19 +16,23 @@ pub struct Options {
     /// Defaults to the user "self" org
     pub organization: Option<String>,
 
+    /// Will use the given login profile
     #[arg(short, long, id = "PROFILE", env = "EDGEE_API_PROFILE")]
     profile: Option<String>,
 
+    /// Will push the component as public
     #[arg(long, conflicts_with = "private")]
     pub public: bool,
 
+    /// Will push the component as private
     #[arg(long, conflicts_with = "public")]
     pub private: bool,
 
+    /// Will be used as version changelog (with no inline editor)
     #[arg(long)]
     pub changelog: Option<String>,
 
-    /// Run this command in non-interactive mode (no confirmation prompts)
+    /// Run this command in non-interactive mode (with no confirmation prompts)
     #[arg(long = "yes")]
     noconfirm: bool,
 }
