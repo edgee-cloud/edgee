@@ -15,19 +15,23 @@ setup_command! {
     /// Defaults to the user "self" org
     organization: Option<String>,
 
+    /// Will use the given login profile
     #[arg(short, long, id = "PROFILE", env = "EDGEE_API_PROFILE")]
     profile: Option<String>,
 
+    /// Will push the component as public
     #[arg(long, conflicts_with = "private")]
     public: bool,
 
+    /// Will push the component as private
     #[arg(long, conflicts_with = "public")]
     private: bool,
 
+    /// Will be used as version changelog (with no inline editor)
     #[arg(long)]
     changelog: Option<String>,
 
-    /// Run this command in non-interactive mode (no confirmation prompts)
+    /// Run this command in non-interactive mode (with no confirmation prompts)
     #[arg(long = "yes")]
     noconfirm: bool,
 }
@@ -268,7 +272,14 @@ async fn create_component(
     };
 
     let avatar_url = if let Some(path) = &manifest.component.icon_path {
-        tracing::info!("Uploading Icon... {:?}", manifest.component.icon_path);
+        tracing::info!(
+            "Uploading Icon... {}",
+            manifest
+                .component
+                .icon_path
+                .as_ref()
+                .unwrap_or(&String::new())
+        );
         Some(client.upload_file(std::path::Path::new(path)).await?)
     } else {
         None

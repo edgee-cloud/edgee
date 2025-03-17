@@ -10,9 +10,11 @@ use crate::components::boilerplate::{LanguageConfig, LANGUAGE_OPTIONS};
 use crate::components::manifest::Manifest;
 
 setup_command! {
+    /// Will be used as the local folder name
     #[clap(long, short)]
     name: Option<String>,
 
+    /// One of the supported languages (c, c#, go, js, python, rust, typescript)
     #[clap(long, short)]
     language: Option<String>,
 }

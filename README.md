@@ -23,7 +23,10 @@
 
 ### Useful resources
 
-- Edgee's [Website](https://www.edgee.cloud), [Roadmap](https://www.edgee.cloud/roadmap), and [Documentation](https://www.edgee.cloud/docs/introduction)
+- Edgee's
+[Website](https://www.edgee.cloud),
+[Roadmap](https://roadmap.edgee.cloud/roadmap/data-collection-components), and
+[Documentation](https://www.edgee.cloud/docs/introduction)
 - Edgee's [Community Slack](https://www.edgee.cloud/slack)
 - Edgee on [X](https://x.com/edgee_cloud) and [LinkedIn](https://www.linkedin.com/company/edgee-cloud/)
 
