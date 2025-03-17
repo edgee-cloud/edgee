@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod data_collection;
 mod upload;
 
 pub const PROD_BASEURL: &str = "https://api.edgee.app";
@@ -22,10 +23,6 @@ pub fn connect(#[builder(default = PROD_BASEURL)] baseurl: String, api_token: St
     use reqwest::header::{self, HeaderMap};
 
     let mut default_headers = HeaderMap::new();
-
-    // if EDGEE_API_URL env var is set, redefine baseurl
-    let baseurl = baseurl.to_string();
-    let api_token = api_token.to_string();
 
     let auth_value = format!("Bearer {api_token}");
     default_headers.insert(header::AUTHORIZATION, auth_value.try_into().unwrap());

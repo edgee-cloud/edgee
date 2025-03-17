@@ -938,6 +938,7 @@ version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ddef33a339a91ea89fb53151bd0a4689cfce27055c291dfa69945475d22c747"
 dependencies = [
+ "percent-encoding",
  "time",
  "version_check",
 ]
@@ -1460,6 +1461,7 @@ dependencies = [
  "clap_complete",
  "colored",
  "colored_json",
+ "cookie",
  "edgee-api-client",
  "edgee-components-runtime",
  "edgee-server",
@@ -1493,6 +1495,7 @@ dependencies = [
  "anyhow",
  "bon",
  "chrono",
+ "cookie",
  "dirs 6.0.0",
  "easy-ext",
  "futures",
