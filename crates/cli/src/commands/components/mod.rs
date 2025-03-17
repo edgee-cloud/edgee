@@ -65,6 +65,7 @@ async fn send_telemetry_event(command: &Command, res: &anyhow::Result<()>) -> an
 
     Event::builder()
         .name("command")
+        .title(format!("components {command_name}"))
         .properties(properties)
         .send()
         .await

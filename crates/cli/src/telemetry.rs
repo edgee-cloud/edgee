@@ -6,51 +6,58 @@ use event_builder::{IsComplete, State};
 
 const TELEMETRY_BASE_URL: &str = "https://edgee-cli.edgee.team";
 
+pub fn setup() -> Result<()> {
+    Ok(())
+}
+
 #[derive(Debug, bon::Builder)]
 #[builder(on(String, into))]
 pub struct Event {
     name: String,
+    title: String,
     #[builder(default)]
     properties: HashMap<String, String>,
 }
 
 impl Event {
     pub async fn send(self) -> Result<()> {
-        use reqwest::header;
-        use reqwest::Client;
+        use edgee_api_client::data_collection as dc;
 
-        let client = Client::builder()
-            .user_agent(format!("edgee/{}", env!("CARGO_PKG_VERSION")))
-            .build()?;
+        let client = dc::new()
+            .baseurl(TELEMETRY_BASE_URL)
+            .debug_mode(true)
+            .connect();
 
-        let payload = serde_json::json!({
-            "data_collection": {
-                "events": [
-                    {
-                        "type": "user",
-                        "data": {
-                            "name": self.name,
-                            "properties": self.properties,
-                        }
-                    }
-                ],
-                "context": {
-                    "user": {
-                        // "user_id": "3dc6a439-1d61-4054-a9b9-0634260ff866",
-                    },
-                },
-            }
-        });
+        let track = dc::types::EdgeeEventTrack::builder().data(
+            dc::types::EdgeeEventTrackData::builder()
+                .name(self.name)
+                .properties(self.properties),
+        );
+        let events = vec![dc::types::EdgeeEventDataCollectionEventsItem::track(track)?];
 
-        let req = client
-            .post(format!("{}/_edgee/event", TELEMETRY_BASE_URL))
-            .header(header::COOKIE, "_edgeedebug=true")
-            .json(&payload)
-            .build()?;
-        dbg!(&req);
-        let res = client.execute(req).await?;
-        let body: serde_json::Value = res.json().await?;
-        dbg!(&body);
+        let page = dc::types::EdgeeEventPageData::builder()
+            .title(self.title)
+            .url("cli://edgee-cli")
+            .path("/");
+        let context =
+            dc::types::EdgeeEventDataCollectionContext::builder().page(Some(page.try_into()?));
+
+        let payload = dc::types::EdgeeEvent::builder().data_collection(
+            dc::types::EdgeeEventDataCollection::builder()
+                .events(events)
+                .context(Some(context.try_into()?)),
+        );
+
+        let res = client
+            .collect_event()
+            .body(payload)
+            .send()
+            .await
+            .inspect_err(|err| {
+                dbg!(err);
+            })?;
+        dbg!(res.headers());
+        dbg!(res);
 
         Ok(())
     }
