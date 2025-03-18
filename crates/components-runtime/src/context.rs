@@ -4,7 +4,7 @@ use wasmtime::{
     component::{Component, Linker, ResourceTable},
     Engine, Store,
 };
-use wasmtime_wasi::{WasiCtx, WasiView};
+use wasmtime_wasi::{IoView, WasiCtx, WasiView};
 
 use crate::config::{ComponentsConfiguration, DataCollectionComponents};
 use crate::consent_mapping::{ConsentMapping, ConsentMappingPre};
@@ -179,12 +179,14 @@ impl HostState {
     }
 }
 
+impl IoView for HostState {
+    fn table(&mut self) -> &mut ResourceTable {
+        &mut self.table
+    }
+}
+
 impl WasiView for HostState {
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.ctx
-    }
-
-    fn table(&mut self) -> &mut ResourceTable {
-        &mut self.table
     }
 }
