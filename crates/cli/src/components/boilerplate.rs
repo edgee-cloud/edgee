@@ -132,3 +132,66 @@ pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
         value: api_types::ComponentCreateInputSubcategory::ConversionApi,
     },
 ];
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_language_config_display() {
+        let config = LanguageConfig {
+            name: "Rust",
+            repo_url: "https://github.com/edgee-cloud/example-rust-component",
+            default_build_command: "cargo build --release",
+            alias: &["rs", "rust"],
+            wit_world_extra: "",
+            deps_extra: "",
+        };
+        assert_eq!(format!("{}", config), "Rust");
+    }
+
+    #[test]
+    fn test_category_config_display() {
+        let config = CategoryConfig {
+            name: "Data Collection",
+            value: api_types::ComponentCreateInputCategory::DataCollection,
+            wit_world: "data-collection",
+        };
+        assert_eq!(format!("{}", config), "Data Collection");
+    }
+
+    #[test]
+    fn test_subcategory_config_display() {
+        let config = SubCategoryConfig {
+            name: "Analytics",
+            value: api_types::ComponentCreateInputSubcategory::Analytics,
+        };
+        assert_eq!(format!("{}", config), "Analytics");
+    }
+
+    #[test]
+    fn test_language_options() {
+        let expected_languages = ["C", "CSharp", "Go", "JavaScript", "Python", "Rust", "TypeScript"];
+        for &expected in &expected_languages {
+            assert!(LANGUAGE_OPTIONS.iter().any(|config| config.name == expected));
+        }
+    }
+
+    #[test]
+    fn test_category_options() {
+        assert_eq!(CATEGORY_OPTIONS.len(), 1); // for now!
+        let expected_categories = ["Data Collection"];
+        for &expected in &expected_categories {
+            assert!(CATEGORY_OPTIONS.iter().any(|config| config.name == expected));
+        }
+    }
+
+    #[test]
+    fn test_subcategory_options() {
+        let expected_subcategories = ["Analytics", "Attribution", "Warehouse", "Conversion API"];
+        for &expected in &expected_subcategories {
+            assert!(SUBCATEGORY_OPTIONS.iter().any(|config| config.name == expected));
+        }
+    }
+}
