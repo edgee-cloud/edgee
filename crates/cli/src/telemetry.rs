@@ -6,7 +6,7 @@ use anyhow::Result;
 use event_builder::{IsComplete, IsUnset, SetProperties, State};
 
 const TELEMETRY_BASE_URL: &str = "https://edgee-cli.edgee.team";
-const TELEMETRY_TIMEOUT: Duration = Duration::from_millis(250);
+const TELEMETRY_TIMEOUT: Duration = Duration::from_millis(1000);
 const TELEMETRY_WARNING: &str = r#"Welcome to the Edgee CLI!
 
 Telemetry
