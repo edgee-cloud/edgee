@@ -59,6 +59,10 @@ where
                     os_info.version(),
                 ),
             );
+            properties.insert(
+                "edgee_version".to_string(),
+                env!("CARGO_PKG_VERSION").to_string(),
+            );
 
             properties.insert("command".to_string(), args.clone());
             properties.insert(
