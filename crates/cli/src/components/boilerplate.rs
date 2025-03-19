@@ -133,7 +133,6 @@ pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
     },
 ];
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -172,9 +171,19 @@ mod tests {
 
     #[test]
     fn test_language_options() {
-        let expected_languages = ["C", "CSharp", "Go", "JavaScript", "Python", "Rust", "TypeScript"];
+        let expected_languages = [
+            "C",
+            "CSharp",
+            "Go",
+            "JavaScript",
+            "Python",
+            "Rust",
+            "TypeScript",
+        ];
         for &expected in &expected_languages {
-            assert!(LANGUAGE_OPTIONS.iter().any(|config| config.name == expected));
+            assert!(LANGUAGE_OPTIONS
+                .iter()
+                .any(|config| config.name == expected));
         }
     }
 
@@ -183,7 +192,9 @@ mod tests {
         assert_eq!(CATEGORY_OPTIONS.len(), 1); // for now!
         let expected_categories = ["Data Collection"];
         for &expected in &expected_categories {
-            assert!(CATEGORY_OPTIONS.iter().any(|config| config.name == expected));
+            assert!(CATEGORY_OPTIONS
+                .iter()
+                .any(|config| config.name == expected));
         }
     }
 
@@ -191,7 +202,9 @@ mod tests {
     fn test_subcategory_options() {
         let expected_subcategories = ["Analytics", "Attribution", "Warehouse", "Conversion API"];
         for &expected in &expected_subcategories {
-            assert!(SUBCATEGORY_OPTIONS.iter().any(|config| config.name == expected));
+            assert!(SUBCATEGORY_OPTIONS
+                .iter()
+                .any(|config| config.name == expected));
         }
     }
 }

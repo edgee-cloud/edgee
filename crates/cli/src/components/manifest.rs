@@ -336,7 +336,10 @@ mod tests {
 
         std::env::set_current_dir(&dir.path()).unwrap();
         let found_path = find_manifest_path().unwrap();
-        assert_eq!(found_path.canonicalize().unwrap(), file_path.canonicalize().unwrap());
+        assert_eq!(
+            found_path.canonicalize().unwrap(),
+            file_path.canonicalize().unwrap()
+        );
     }
 
     #[test]
@@ -350,7 +353,10 @@ mod tests {
         // enter child dir and find the manifest in the parent dir
         std::env::set_current_dir(&child_dir).unwrap();
         let found_path = find_manifest_path().unwrap();
-        assert_eq!(found_path.canonicalize().unwrap().into_os_string(), file_path.canonicalize().unwrap().into_os_string());
+        assert_eq!(
+            found_path.canonicalize().unwrap().into_os_string(),
+            file_path.canonicalize().unwrap().into_os_string()
+        );
     }
 
     #[test]
@@ -378,8 +384,14 @@ mod tests {
         let component: Component = toml::from_str(toml_str).unwrap();
         assert_eq!(component.name, "test-component");
         assert_eq!(component.version, "0.1.0");
-        assert_eq!(component.category, api_types::ComponentCreateInputCategory::DataCollection);
-        assert_eq!(component.subcategory, api_types::ComponentCreateInputSubcategory::Analytics);
+        assert_eq!(
+            component.category,
+            api_types::ComponentCreateInputCategory::DataCollection
+        );
+        assert_eq!(
+            component.subcategory,
+            api_types::ComponentCreateInputSubcategory::Analytics
+        );
     }
 
     #[test]
@@ -395,5 +407,4 @@ mod tests {
         assert_eq!(setting.type_, api_types::ConfigurationFieldType::String);
         assert!(setting.required);
     }
-
 }

@@ -64,10 +64,15 @@ mod tests {
     use std::io::Write;
     use tempfile::tempdir;
 
-    fn create_temp_file(dir: &tempfile::TempDir, filename: &str, content: &str) -> std::path::PathBuf {
+    fn create_temp_file(
+        dir: &tempfile::TempDir,
+        filename: &str,
+        content: &str,
+    ) -> std::path::PathBuf {
         let file_path = dir.path().join(filename);
         let mut file = File::create(&file_path).expect("should create temp file");
-        file.write_all(content.as_bytes()).expect("should write to temp file");
+        file.write_all(content.as_bytes())
+            .expect("should write to temp file");
         file_path
     }
 
@@ -229,5 +234,4 @@ mod tests {
         assert_eq!(config.log.level.to_string(), "info");
         assert_eq!(config.log.trace_component, Some("component".to_string()));
     }
-
 }
