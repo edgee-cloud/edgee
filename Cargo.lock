@@ -1462,6 +1462,7 @@ dependencies = [
  "colored",
  "colored_json",
  "cookie",
+ "dirs 6.0.0",
  "edgee-api-client",
  "edgee-components-runtime",
  "edgee-server",

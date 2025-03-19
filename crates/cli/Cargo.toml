@@ -18,6 +18,7 @@ clap_complete.workspace = true
 colored.workspace = true
 colored_json.workspace = true
 cookie.workspace = true
+dirs.workspace = true
 http.workspace = true
 indexmap.workspace = true
 inquire = { workspace = true, features = ["editor"] }
