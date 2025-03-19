@@ -93,10 +93,10 @@ impl Event {
     pub async fn send(self) -> Result<()> {
         use edgee_api_client::data_collection as dc;
 
-        if std::env::var("EDGEE_TELEMETRY_OPTOUT")
-            .is_ok_and(|value| value != "1" && value != "true")
-        {
-            return Ok(());
+        if let Ok(value) = std::env::var("EDGEE_TELEMETRY_OPTOUT") {
+            if value == "1" || value == "true" {
+                return Ok(());
+            }
         }
 
         let client = dc::new()
