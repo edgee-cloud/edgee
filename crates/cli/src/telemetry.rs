@@ -7,6 +7,15 @@ use event_builder::{IsComplete, IsUnset, SetProperties, State};
 
 const TELEMETRY_BASE_URL: &str = "https://edgee-cli.edgee.team";
 
+const TELEMETRY_WARNING: &str = r#"Welcome to the Edgee CLI!
+
+Telemetry
+---------
+The Edgee CLI collect usage data in order to help us improve your experience.
+You can opt-out of telemetry by setting the EDGEE_TELEMETRY_OPTOUT environment
+variable to '1' or 'true' using your favorite shell.
+"#;
+
 pub fn setup() -> Result<()> {
     let state_dir = dirs::state_dir()
         .ok_or_else(|| anyhow::anyhow!("state dir is not existent"))?
@@ -15,7 +24,7 @@ pub fn setup() -> Result<()> {
 
     let first_run = state_dir.join("first_run.marker");
     if !first_run.exists() {
-        // TODO: Print first run message
+        eprintln!("{TELEMETRY_WARNING}");
 
         drop(std::fs::File::create_new(&first_run)?);
     }
