@@ -1,4 +1,6 @@
-use connect_builder::{IsUnset, SetBaseurl, SetCookies, SetDefaultHeaders, State};
+use connect_builder::{
+    IsUnset, SetBaseurl, SetClientBuilder, SetCookies, SetDefaultHeaders, State,
+};
 
 const PROD_DOMAIN: &str = "edgee.app";
 
@@ -15,6 +17,7 @@ progenitor::generate_api! {
 )]
 pub fn connect(
     baseurl: String,
+    #[builder(default, setters(vis = ""))] client_builder: reqwest::ClientBuilder,
     #[builder(default, setters(vis = ""))] mut default_headers: reqwest::header::HeaderMap,
     #[builder(default, setters(vis = ""))] mut cookies: cookie::CookieJar,
     #[builder(default = false)] debug_mode: bool,
@@ -35,7 +38,7 @@ pub fn connect(
     };
     default_headers.insert(header::COOKIE, cookie_header.parse().unwrap());
 
-    let client = reqwest::Client::builder()
+    let client = client_builder
         .default_headers(default_headers)
         .build()
         .unwrap();
@@ -44,6 +47,16 @@ pub fn connect(
 }
 
 impl<S: State> ConnectBuilder<S> {
+    pub fn with_client_builder(
+        self,
+        f: impl Fn(reqwest::ClientBuilder) -> reqwest::ClientBuilder,
+    ) -> ConnectBuilder<SetClientBuilder<S>>
+    where
+        S::ClientBuilder: IsUnset,
+    {
+        self.client_builder(f(Default::default()))
+    }
+
     pub fn with_default_headers(
         self,
         f: impl Fn(&mut reqwest::header::HeaderMap),

@@ -1,12 +1,12 @@
-use std::collections::HashMap;
 use std::future::Future;
+use std::{collections::HashMap, time::Duration};
 
 use anyhow::Result;
 
 use event_builder::{IsComplete, IsUnset, SetProperties, State};
 
 const TELEMETRY_BASE_URL: &str = "https://edgee-cli.edgee.team";
-
+const TELEMETRY_TIMEOUT: Duration = Duration::from_millis(250);
 const TELEMETRY_WARNING: &str = r#"Welcome to the Edgee CLI!
 
 Telemetry
@@ -86,6 +86,7 @@ impl Event {
         let client = dc::new()
             .baseurl(TELEMETRY_BASE_URL)
             .debug_mode(true)
+            .with_client_builder(|builder| builder.timeout(TELEMETRY_TIMEOUT))
             .with_default_headers(|headers| {
                 use reqwest::header;
 
