@@ -39,6 +39,7 @@ pub fn connect(
     default_headers.insert(header::COOKIE, cookie_header.parse().unwrap());
 
     let client = client_builder
+        .user_agent(concat!("edgee/", env!("CARGO_PKG_VERSION")))
         .default_headers(default_headers)
         .build()
         .unwrap();

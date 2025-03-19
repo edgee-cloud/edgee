@@ -99,16 +99,6 @@ impl Event {
             .baseurl(TELEMETRY_BASE_URL)
             .debug_mode(true)
             .with_client_builder(|builder| builder.timeout(TELEMETRY_TIMEOUT))
-            .with_default_headers(|headers| {
-                use reqwest::header;
-
-                headers.insert(
-                    header::USER_AGENT,
-                    format!("edgee/{}", env!("CARGO_PKG_VERSION"))
-                        .parse()
-                        .unwrap(),
-                );
-            })
             .connect();
 
         let track = dc::types::EdgeeEventTrack::builder().data(

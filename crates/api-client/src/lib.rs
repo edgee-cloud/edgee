@@ -28,6 +28,7 @@ pub fn connect(#[builder(default = PROD_BASEURL)] baseurl: String, api_token: St
     default_headers.insert(header::AUTHORIZATION, auth_value.try_into().unwrap());
 
     let client = reqwest::Client::builder()
+        .user_agent(concat!("edgee/", env!("CARGO_PKG_VERSION")))
         .default_headers(default_headers)
         .build()
         .unwrap();
