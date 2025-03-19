@@ -85,6 +85,7 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "should parse valid toml file")]
     fn test_read_config_with_toml_file_invalid_content() {
         let dir = tempdir().expect("should create temp dir");
         let toml_content = r#"
@@ -92,9 +93,7 @@ mod tests {
         "#;
         let toml_path = create_temp_file(&dir, "edgee.toml", toml_content);
 
-        let result = read_config(Some(&toml_path));
-        assert!(result.is_err());
-        assert_eq!(true, result.err().unwrap().contains("should parse valid toml file"));
+        read_config(Some(&toml_path)).expect("should read toml config"); // should panic here
     }
 
     #[test]
@@ -112,6 +111,7 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "should parse valid toml file")]
     fn test_read_config_with_toml_file_invalid_content_current_folder() {
         let dir = tempdir().expect("should create temp dir");
         let toml_content = r#"
@@ -120,9 +120,7 @@ mod tests {
         create_temp_file(&dir, "edgee.toml", toml_content);
 
         std::env::set_current_dir(&dir.path()).unwrap();
-        let result = read_config(None);
-        assert!(result.is_err());
-        assert_eq!(true, result.err().unwrap().contains("should parse valid toml file"));
+        read_config(None).expect("should read toml config"); // should panic here
     }
 
     #[test]
@@ -139,6 +137,7 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "should parse valid yaml file")]
     fn test_read_config_with_yaml_file_invalid_content() {
         let dir = tempdir().expect("should create temp dir");
         let invalid_yaml_content = r#"
@@ -146,9 +145,7 @@ mod tests {
         "#;
         let yaml_path = create_temp_file(&dir, "edgee.yaml", invalid_yaml_content);
 
-        let result = read_config(Some(&yaml_path));
-        assert!(result.is_err());
-        assert_eq!(true, result.err().unwrap().contains("should parse valid yaml file"));
+        read_config(Some(&yaml_path)).expect("should read yaml config"); // should panic here
     }
 
     #[test]
@@ -166,6 +163,7 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "should parse valid yaml file")]
     fn test_read_config_with_yaml_file_invalid_contentcurrent_folder() {
         let dir = tempdir().expect("should create temp dir");
         let yaml_content = r#"
@@ -174,33 +172,32 @@ mod tests {
         create_temp_file(&dir, "edgee.yaml", yaml_content);
 
         std::env::set_current_dir(&dir.path()).unwrap();
-        let result = read_config(None);
-        assert!(result.is_err());
-        assert_eq!(true, result.err().unwrap().contains("should parse valid yaml file"));
+        read_config(None).expect("should read yaml config"); // should panic here
     }
 
     #[test]
+    #[should_panic(expected = "unknown extension")]
     fn test_read_config_with_invalid_extension() {
         let dir = tempdir().expect("should create temp dir");
         let invalid_content = r#"
             log:
               level: "info"
         "#;
-        let invalid_path = create_temp_file(&dir, "edgee.txt", invalid_content);
+        let path = create_temp_file(&dir, "edgee.txt", invalid_content);
 
-        let result = read_config(Some(&invalid_path));
-        assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), "provided configuration file has an unknown extension");
+        read_config(Some(&path)).expect("should read config"); // should panic here
     }
 
     #[test]
+    #[should_panic(expected = "no configuration file found")]
     fn test_read_config_with_no_files() {
-        let result = read_config(None);
-        assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), "no configuration file found, either edgee.toml or edgee.yaml is required.");
+        let dir = tempdir().expect("should create temp dir");
+        std::env::set_current_dir(&dir.path()).unwrap();
+        read_config(None).expect("should read config"); // should panic here
     }
 
     #[test]
+    #[should_panic(expected = "only one is expected")]
     fn test_read_config_with_both_files() {
         let dir = tempdir().expect("should create temp dir");
         let toml_content = r#"
@@ -215,9 +212,7 @@ mod tests {
         create_temp_file(&dir, "edgee.yaml", yaml_content);
 
         std::env::set_current_dir(&dir.path()).unwrap();
-        let result = read_config(None);
-        assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), "both edgee.toml and edgee.yaml exist but only one is expected.");
+        read_config(None).expect("should read config"); // should panic here
     }
 
     #[test]

@@ -192,6 +192,7 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Invalid manifest version")]
     fn test_load_invalid_manifest_version() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("edgee-component.toml");
@@ -214,11 +215,29 @@ mod tests {
         )
         .unwrap();
 
-        let result = Manifest::load(&file_path);
-        assert!(result.is_err());
+        Manifest::load(&file_path).unwrap(); // should panic here
     }
 
     #[test]
+    #[should_panic(expected = "Could not decode the manifest file")]
+    fn test_load_invalid_manifest_format() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("edgee-component.toml");
+        let mut file = fs::File::create(&file_path).unwrap();
+
+        writeln!(
+            file,
+            r#"
+            <some-xml>42</some-xml>
+            "#
+        )
+        .unwrap();
+
+        Manifest::load(&file_path).unwrap(); // should panic here
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid icon path extension")]
     fn test_load_invalid_icon_extension() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("edgee-component.toml");
@@ -242,8 +261,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = Manifest::load(&file_path);
-        assert!(result.is_err());
+        Manifest::load(&file_path).unwrap(); // should panic here
     }
 
     #[test]
@@ -280,6 +298,37 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Could not write manifest file")]
+    fn test_save_manifest_fail() {
+        let dir = tempdir().unwrap();
+        let invalid_path = dir.path().join("invalid/edgee-component.toml");
+
+        let manifest = Manifest {
+            manifest_version: 1,
+            component: Component {
+                name: "test-component".to_string(),
+                slug: None,
+                version: "0.1.0".to_string(),
+                category: api_types::ComponentCreateInputCategory::DataCollection,
+                subcategory: api_types::ComponentCreateInputSubcategory::Analytics,
+                description: Some("Test description".to_string()),
+                icon_path: Some("image.png".to_string()),
+                language: Some("Rust".to_string()),
+                documentation: Some(url::Url::parse("https://github.com/test/test").unwrap()),
+                repository: Some(url::Url::parse("https://github.com/test/test").unwrap()),
+                wit_version: "1.0.0".to_string(),
+                build: Build {
+                    command: "build".to_string(),
+                    output_path: PathBuf::from("file.wasm"),
+                },
+                settings: IndexMap::new(),
+            },
+        };
+
+        manifest.save(&invalid_path).unwrap(); // should panic here
+    }
+
+    #[test]
     fn test_find_manifest_path() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("edgee-component.toml");
@@ -311,6 +360,40 @@ mod tests {
         std::env::set_current_dir(&dir.path()).unwrap();
         let result = find_manifest_path();
         assert_eq!(result.is_none(), true);
+    }
+
+    #[test]
+    fn test_component_deserialize() {
+        let toml_str = r#"
+            name = "test-component"
+            version = "0.1.0"
+            category = "data-collection"
+            subcategory = "analytics"
+            wit-version = "1.0.0"
+            [build]
+            command = "build"
+            output_path = "file.wasm"
+        "#;
+
+        let component: Component = toml::from_str(toml_str).unwrap();
+        assert_eq!(component.name, "test-component");
+        assert_eq!(component.version, "0.1.0");
+        assert_eq!(component.category, api_types::ComponentCreateInputCategory::DataCollection);
+        assert_eq!(component.subcategory, api_types::ComponentCreateInputSubcategory::Analytics);
+    }
+
+    #[test]
+    fn test_setting_deserialize() {
+        let toml_str = r#"
+            title = "test-setting"
+            type = "string"
+            required = true
+        "#;
+
+        let setting: Setting = toml::from_str(toml_str).unwrap();
+        assert_eq!(setting.title, "test-setting");
+        assert_eq!(setting.type_, api_types::ConfigurationFieldType::String);
+        assert!(setting.required);
     }
 
 }
