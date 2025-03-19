@@ -18,6 +18,7 @@ variable to '1' or 'true' using your favorite shell.
 
 pub fn setup() -> Result<()> {
     let state_dir = dirs::state_dir()
+        .or_else(dirs::config_dir)
         .ok_or_else(|| anyhow::anyhow!("state dir is not existent"))?
         .join("edgee");
     std::fs::create_dir_all(&state_dir)?;
