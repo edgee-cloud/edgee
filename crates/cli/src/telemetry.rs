@@ -48,6 +48,18 @@ where
         .name("command")
         .title(&args)
         .with_properties(|properties| {
+            let os_info = os_info::get();
+
+            properties.insert(
+                "os".to_string(),
+                format!(
+                    "{} ({}, {})",
+                    os_info.os_type(),
+                    os_info.bitness(),
+                    os_info.version(),
+                ),
+            );
+
             properties.insert("command".to_string(), args.clone());
             properties.insert(
                 "result".to_string(),
