@@ -36,7 +36,11 @@ pub async fn process_cli_command<F, T, E>(f: F) -> Result<T, E>
 where
     F: Future<Output = Result<T, E>>,
 {
-    let args = std::env::args().skip(1).collect::<Vec<_>>().join(" ");
+    let args = std::env::args()
+        .skip(1)
+        .take_while(|arg| !arg.starts_with("-"))
+        .collect::<Vec<_>>()
+        .join(" ");
 
     let res = f.await;
 
