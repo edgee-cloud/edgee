@@ -41,7 +41,8 @@ docker run \
   -v $PWD/wasm:/var/edgee/wasm \
   -p80:80 \
   -p443:443 \
-  edgeecloud/edgee
+  edgeecloud/edgee \
+  serve
 ```
 
 Or as part of a `docker-compose.yml`:
@@ -58,6 +59,17 @@ service:
       - "./cert:/var/edgee/cert"
       - "./wasm:/var/edgee/wasm"
 ```
+
+##### Note for macOS ARM chips
+
+In case you encounter the error "no match for platform in manifest: not found", simply pull the image as follows:
+
+```shell
+
+docker pull edgeecloud/edgee:latest --platform linux/amd64
+```
+
+And then use the `docker run` command as usual.
 
 #### Building from source
 
