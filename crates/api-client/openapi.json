@@ -3667,11 +3667,6 @@
             "description": "Name of the user",
             "readOnly": true
           },
-          "slug": {
-            "type": "string",
-            "description": "Slug of the user",
-            "readOnly": true
-          },
           "avatar_url": {
             "type": "string",
             "description": "Avatar of the user",
@@ -3697,7 +3692,6 @@
           "id",
           "email",
           "name",
-          "slug",
           "role",
           "created_at",
           "updated_at"
