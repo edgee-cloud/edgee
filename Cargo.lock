@@ -1489,6 +1489,7 @@ dependencies = [
  "tracing-subscriber",
  "unicase",
  "url",
+ "uuid",
  "wit-deps",
  "zip",
 ]

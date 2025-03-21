@@ -39,6 +39,7 @@ toml = { workspace = true, features = ["preserve_order"] }
 tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
 unicase.workspace = true
 url = { workspace = true, features = ["serde"] }
+uuid = { workspace = true, features = ["v4"] }
 wit-deps.workspace = true
 zip.workspace = true
 
