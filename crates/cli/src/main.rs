@@ -17,7 +17,5 @@ struct Options {
 async fn main() -> anyhow::Result<()> {
     let options = Options::parse();
 
-    let _ = telemetry::setup();
-
     options.command.run().await
 }

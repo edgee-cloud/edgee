@@ -29,5 +29,7 @@ pub type Options = Command;
 pub async fn run(command: Command) -> anyhow::Result<()> {
     crate::logger::init_cli();
 
+    let _ = crate::telemetry::setup().inspect_err(|err| tracing::debug!("Telemetry error: {err}"));
+
     crate::telemetry::process_cli_command(command.run()).await
 }
