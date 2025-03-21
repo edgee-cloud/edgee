@@ -1479,6 +1479,7 @@ dependencies = [
  "serde_yml",
  "sha2",
  "slug",
+ "tempfile",
  "tokio",
  "toml 0.8.20",
  "tracing",
