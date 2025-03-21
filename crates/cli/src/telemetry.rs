@@ -102,7 +102,9 @@ where
         .collect::<Vec<_>>()
         .join(" ");
 
+    let start = std::time::Instant::now();
     let res = f.await;
+    let elapsed = start.elapsed();
 
     let _ = Event::builder()
         .name("command")
@@ -125,6 +127,7 @@ where
             );
 
             properties.insert("command".to_string(), args.clone());
+            properties.insert("duration".to_string(), format!("{}ms", elapsed.as_millis()));
             properties.insert(
                 "result".to_string(),
                 if res.is_ok() {
