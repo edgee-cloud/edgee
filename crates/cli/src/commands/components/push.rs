@@ -87,6 +87,7 @@ pub async fn run(opts: Options) -> Result<()> {
     match super::check::check_component(
         super::check::ComponentType::DataCollection,
         output_path.to_str().unwrap(),
+        "1.0.0",
     )
     .await
     {
