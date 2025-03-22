@@ -4,11 +4,23 @@ pub mod logger;
 pub mod payload;
 pub mod version;
 
-wasmtime::component::bindgen!({
-    world: "data-collection",
-    path: "wit/",
-    async: true,
-});
+pub mod data_collection_1_0_0 {
+    wasmtime::component::bindgen!({
+        world: "data-collection-one",
+        path: "wit/",
+        async: true,
+    });
+}
+
+pub mod data_collection_0_5_0 {
+    wasmtime::component::bindgen!({
+        world: "data-collection-o-five-o",
+        path: "wit/",
+        async: true,
+    });
+}
+use crate::data_collection::data_collection_0_5_0::exports::edgee::components0_5_0::data_collection as Component0_5_0;
+use crate::data_collection::data_collection_1_0_0::exports::edgee::components1_0_0::data_collection as Component1_0_0;
 
 use std::str::FromStr;
 use std::time::Duration;
@@ -22,11 +34,7 @@ use tracing::{error, span, Instrument, Level};
 
 use crate::context::ComponentsContext;
 
-use crate::{
-    data_collection::exports::edgee::components0_5_0::data_collection as Component0_5_0,
-    data_collection::exports::edgee::components1_0_0::data_collection as Component1_0_0,
-    data_collection::payload::{Consent, Event, EventType},
-};
+use crate::data_collection::payload::{Consent, Event, EventType};
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -181,19 +189,19 @@ pub async fn send_events(
             }
 
             // get the instance of the component
-            let instance = match component_ctx
-                .get_data_collection_instance(&cfg.id, &mut store)
-                .await
-            {
-                Ok(instance) => instance,
-                Err(err) => {
-                    error!("Failed to get data collection instance. Error: {}", err);
-                    continue;
-                }
-            };
 
             let (headers, method, url, body) = match cfg.version {
                 version::DataCollectionProtocolVersion::V0_5_0 => {
+                    let instance = match component_ctx
+                        .get_data_collection_0_5_0_instance(&cfg.id, &mut store)
+                        .await
+                    {
+                        Ok(instance) => instance,
+                        Err(err) => {
+                            error!("Failed to get data collection instance. Error: {}", err);
+                            continue;
+                        }
+                    };
                     let component = instance.edgee_components0_5_0_data_collection();
 
                     let component_settings: Vec<(String, String)> = cfg
@@ -263,6 +271,16 @@ pub async fn send_events(
                     (headers, method, request.url, request.body)
                 }
                 version::DataCollectionProtocolVersion::V1_0_0 => {
+                    let instance = match component_ctx
+                        .get_data_collection_instance(&cfg.id, &mut store)
+                        .await
+                    {
+                        Ok(instance) => instance,
+                        Err(err) => {
+                            error!("Failed to get data collection instance. Error: {}", err);
+                            continue;
+                        }
+                    };
                     let component = instance.edgee_components1_0_0_data_collection();
 
                     let component_settings: Vec<(String, String)> = cfg

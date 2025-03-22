@@ -4,7 +4,7 @@ pub mod convert_1_0_0;
 
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize, Default, PartialEq)]
 pub enum DataCollectionProtocolVersion {
     V0_5_0,
     #[default]

@@ -1,4 +1,4 @@
-use crate::data_collection::exports::edgee::components0_5_0::data_collection as DataCollection0_5_0;
+use crate::data_collection::data_collection_0_5_0::exports::edgee::components0_5_0::data_collection as DataCollection0_5_0;
 use crate::data_collection::payload;
 use crate::data_collection::version::convert::{convert_products, convert_properties};
 
