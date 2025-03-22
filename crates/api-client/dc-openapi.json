@@ -1,0 +1,466 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Edgee endpoints",
+    "version": "1"
+  },
+  "servers": [
+    {
+      "url": "https://{project_id}.edgee.app",
+      "variables": {
+        "project_id": {
+          "default": "demo",
+          "description": "Project ID assigned by Edgee at creation time"
+        }
+      }
+    }
+  ],
+  "security": [],
+  "paths": {
+    "/_edgee/event": {
+      "post": {
+        "operationId": "collectEvent",
+        "summary": "Collect a new Edgee event",
+        "description": "Collects a new Edgee event at the edge and forwards it to the configured components.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeeEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "No response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EdgeeEvent": {
+        "type": "object",
+        "description": "This is a wrapper for the Edgee event object.",
+        "required": ["data_collection"],
+        "properties": {
+          "data_collection": {
+            "type": "object",
+            "required": ["events"],
+            "description": "The data collection object includes details about context and events.",
+            "properties": {
+              "events": {
+                "type": "array",
+                "description": "The events array includes a list of events to collect at the edge.",
+                "items": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/EdgeeEventPage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/EdgeeEventUser"
+                    },
+                    {
+                      "$ref": "#/components/schemas/EdgeeEventTrack"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "page": "#/components/schemas/EdgeeEventPage",
+                      "user": "#/components/schemas/EdgeeEventUser",
+                      "track": "#/components/schemas/EdgeeEventTrack"
+                    }
+                  }
+                }
+              },
+              "context": {
+                "type": "object",
+                "description": "The context object includes details about client, campaign, page, and user.",
+                "properties": {
+                  "client": {
+                    "type": "object",
+                    "description": "The context.client object includes details about the client device such as screen_width, screen_height, screen_density, and so on.",
+                    "$ref": "#/components/schemas/EdgeeEventClientData"
+                  },
+                  "campaign": {
+                    "type": "object",
+                    "description": "The context.campaign object includes details about the utm data parameters.",
+                    "$ref": "#/components/schemas/EdgeeEventCampaignData"
+                  },
+                  "page": {
+                    "type": "object",
+                    "description": "The context.page object includes details about the page that generated this event, such as its URL, title, referrer, and so on.",
+                    "$ref": "#/components/schemas/EdgeeEventPageData"
+                  },
+                  "user": {
+                    "type": "object",
+                    "description": "The context.user object includes details about the user that generated this event.",
+                    "$ref": "#/components/schemas/EdgeeEventUserData"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "EdgeeEventPage": {
+        "type": "object",
+        "description": "This is a wrapper for the Edgee page event.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "The page event type",
+            "default": "page"
+          },
+          "data": {
+            "type": "object",
+            "description": "The page event's data. This will be merged with the data_collection.context.page object.",
+            "$ref": "#/components/schemas/EdgeeEventPageData"
+          }
+        },
+        "required": ["type", "data"]
+      },
+      "EdgeeEventUser": {
+        "type": "object",
+        "description": "This is a wrapper for the Edgee user event.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "The user event type",
+            "default": "user"
+          },
+          "data": {
+            "type": "object",
+            "description": "The user event's data. This will be merged with the data_collection.context.user object.",
+            "$ref": "#/components/schemas/EdgeeEventUserData"
+          }
+        },
+        "required": ["type", "data"]
+      },
+      "EdgeeEventTrack": {
+        "type": "object",
+        "description": "This is a wrapper for the Edgee track event.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "The track event type",
+            "default": "track"
+          },
+          "data": {
+            "type": "object",
+            "description": "The track event's data.",
+            "$ref": "#/components/schemas/EdgeeEventTrackData"
+          }
+        },
+        "required": ["type", "data"]
+      },
+      "EdgeeEventPageData": {
+        "type": "object",
+        "description": "The page data structure (both page event and page context).",
+        "example": {
+          "name": "Page name",
+          "category": "category 1",
+          "title": "Page title",
+          "url": "https://demo.edgee.app/analytics-with-edgee.html",
+          "path": "/analytics-with-edgee.html",
+          "search": "?test=1",
+          "referrer": "https://demo.edgee.app/previous-page.html",
+          "keywords": ["keyword1", "keyword2"],
+          "properties": {
+            "key": "value"
+          }
+        },
+        "required": [
+          "title",
+          "url",
+          "path"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The page's name/title.",
+            "example": "Page name"
+          },
+          "category": {
+            "type": "string",
+            "description": "The page's category.",
+            "example": "category 1"
+          },
+          "title": {
+            "type": "string",
+            "description": "The page's title.",
+            "example": "Page title"
+          },
+          "url": {
+            "type": "string",
+            "description": "The page's full URL.",
+            "example": "https://demo.edgee.app/analytics-with-edgee.html"
+          },
+          "path": {
+            "type": "string",
+            "description": "The page's path (excluding protocol and hostname).",
+            "example": "/analytics-with-edgee.html"
+          },
+          "search": {
+            "type": "string",
+            "description": "The page's query string.",
+            "example": "?test=1"
+          },
+          "referrer": {
+            "type": "string",
+            "description": "The page's referrer.",
+            "example": "https://demo.edgee.app/previous-page.html"
+          },
+          "keywords": {
+            "type": "array",
+            "description": "The page's meta keywords.",
+            "items": {
+              "type": "string"
+            },
+            "example": ["keyword1", "keyword2"]
+          },
+          "properties": {
+            "type": "object",
+            "description": "The page's custom properties as (string-string) key-value pairs.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "example": {
+              "key": "value"
+            }
+          }
+        }
+      },
+      "EdgeeEventUserData": {
+        "type": "object",
+        "description": "The user data structure (both user event and user context).",
+        "example": {
+          "user_id": "abc123",
+          "anonymous_id": "def345",
+          "properties": {
+            "key1": "value1",
+            "key2": "value2"
+          }
+        },
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The user's ID.",
+            "example": "abc123"
+          },
+          "anonymous_id": {
+            "type": "string",
+            "description": "The user's anonymous ID.",
+            "example": "def345"
+          },
+          "properties": {
+            "type": "object",
+            "description": "The user's custom properties as (string-string) key-value pairs.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "example": {
+              "key1": "value1",
+              "key2": "value2"
+            }
+          }
+        }
+      },
+      "EdgeeEventTrackData": {
+        "type": "object",
+        "description": "The track data structure.",
+        "example": {
+          "name": "custom-event-name",
+          "properties": {
+            "color": "blue",
+            "button": "OK"
+          }
+        },
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "custom-event-name"
+          },
+          "properties": {
+            "type": "object",
+            "description": "The track event custom properties as (string-string) key-value pairs.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "example": {
+              "color": "blue",
+               "button": "OK"
+            }
+          }
+        }
+      },
+      "EdgeeEventClientData": {
+        "type": "object",
+        "description": "The client's context data.",
+        "example": {
+          "timezone": "Europe/Paris",
+          "screen_width": 1512,
+          "screen_height": 982,
+          "screen_density": 2,
+          "user_agent_architecture": "arm",
+          "user_agent_bitness": "64",
+          "os_version": "15.1.1",
+          "user_agent_full_version_list": "Google Chrome;131.0.6778.109|Chromium;131.0.6778.109|Not_A Brand;24.0.0.0"
+        },
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "description": "The client's timezone",
+            "example": "Europe/Paris"
+          },
+          "screen_width": {
+            "type": "number",
+            "description": "The client's screen width in pixels",
+            "example": 1512
+          },
+          "screen_height": {
+            "type": "number",
+            "description": "The client's screen width in pixels",
+            "example": 982
+          },
+          "screen_density": {
+            "type": "number",
+            "description": "The client's screen width in pixels",
+            "example": 2
+          },
+          "user_agent_architecture": {
+            "type": "string",
+            "description": "The client's architecture",
+            "example": "arm"
+          },
+          "user_agent_bitness": {
+            "type": "string",
+            "description": "The client's bitness",
+            "example": "64"
+          },
+          "user_agent_model": {
+            "type": "string",
+            "description": "The client's user agent model"
+          },
+          "os_version": {
+            "type": "string",
+            "description": "The client's operating system version",
+            "example": "15.1.1"
+          },
+          "user_agent_full_version_list": {
+            "type": "string",
+            "description": "The client's user agent full version list",
+            "example": "Google Chrome;131.0.6778.109|Chromium;131.0.6778.109|Not_A Brand;24.0.0.0"
+          }
+        }
+      },
+      "EdgeeEventCampaignData": {
+        "type": "object",
+        "description": "The campaign's context data (utm).",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The campaign name"
+          },
+          "source": {
+            "type": "string",
+            "description": "The campaign source"
+          },
+          "medium": {
+            "type": "string",
+            "description": "The campaign medium"
+          },
+          "term": {
+            "type": "string",
+            "description": "The campaign term"
+          },
+          "content": {
+            "type": "string",
+            "description": "The campaign content"
+          },
+          "creative_format": {
+            "type": "string",
+            "description": "The campaign creative format"
+          },
+          "marketing_tactic": {
+            "type": "string",
+            "description": "The campaign marketing tactis"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "description": "An error response from the API. More info [here]('/docs/api-reference/errors')",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "invalid_request_error",
+                  "not_found_error",
+                  "creation_error",
+                  "update_error",
+                  "deletion_error",
+                  "forbidden_error",
+                  "authentication_error"
+                ],
+                "default": "invalid_request_error",
+                "description": "The type of error returned."
+              },
+              "message": {
+                "type": "string",
+                "description": "A human-readable message providing more details about the error.",
+                "example": "Parameter error."
+              },
+              "params": {
+                "type": "array",
+                "description": "The specific request parameters associated with the error. May be omitted if the error message is generic enough to apply to multiple parameters.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "param": {
+                      "type": "string",
+                      "description": "The parameter related to the error.",
+                      "example": "name"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "A human-readable message providing more details about the error.",
+                      "example": "Name is required."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

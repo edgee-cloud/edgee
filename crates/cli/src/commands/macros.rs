@@ -14,7 +14,7 @@ macro_rules! setup_commands {
             mod $mod_name;
         )*
 
-        #[derive(Debug, clap::Parser)]
+        #[derive(Debug, Clone, clap::Parser)]
         pub enum Command {
             $(
                 $(#[cfg($($cfg_tt)*)])?
@@ -43,7 +43,7 @@ macro_rules! setup_command {
             $field_name:ident: $field_ty:ty
         ),*$(,)?
     } => {
-        #[derive(Debug, clap::Parser)]
+        #[derive(Debug, Clone, clap::Parser)]
         pub struct Options {
             $(
                 $(#[$field_meta])*
