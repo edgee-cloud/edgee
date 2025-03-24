@@ -309,10 +309,13 @@ pub struct Client {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Session {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub session_id: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub previous_session_id: String,
+    #[serde(default)]
     pub session_count: u32,
+    #[serde(default)]
     pub session_start: bool,
     pub first_seen: DateTime<Utc>,
     pub last_seen: DateTime<Utc>,
