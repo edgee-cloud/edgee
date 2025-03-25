@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use edgee_components_runtime::data_collection;
 use std::str::FromStr;
 
-use edgee_components_runtime::data_collection::exports::edgee::components::data_collection::EdgeeRequest;
-use edgee_components_runtime::data_collection::exports::edgee::components::data_collection::HttpMethod;
+use edgee_components_runtime::data_collection::v1_0_0::data_collection::exports::edgee::components1_0_0::data_collection::EdgeeRequest;
+use edgee_components_runtime::data_collection::v1_0_0::data_collection::exports::edgee::components1_0_0::data_collection::HttpMethod;
 use edgee_components_runtime::data_collection::payload::{Event, EventType};
 use http::{HeaderMap, HeaderName, HeaderValue};
 
@@ -105,6 +105,17 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
         data_collection: vec![DataCollectionComponents {
             id: component_path.to_string(),
             file: component_path.to_string(),
+            wit_version: match manifest.component.wit_version.as_str() {
+                "1.0.0" => {
+                    edgee_components_runtime::data_collection::version::DataCollectionWitVersion::V1_0_0
+                },
+                _ => {
+                    return Err(anyhow::anyhow!(
+                        "Unsupported wit version: {}",
+                        manifest.component.wit_version
+                    ));
+                }
+            },
             ..Default::default()
         }],
         ..Default::default()
@@ -118,7 +129,7 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
     let instance = context
         .get_data_collection_instance(&component_path, &mut store)
         .await?;
-    let component = instance.edgee_components_data_collection();
+    let component = instance.edgee_components1_0_0_data_collection();
 
     // events generated with demo.edgee.app
     let page_event_json = r#"[{"uuid":"37009b9b-a572-4615-87c1-09e257331ecb","timestamp":"2025-02-03T15:46:39.283317613Z","type":"page","data":{"keywords":["demo","tag manager"],"title":"Page with Edgee components","url":"https://demo.edgee.app/analytics-with-edgee.html","path":"/analytics-with-edgee.html","referrer":"https://demo.edgee.dev/analytics-with-js.html"},"context":{"page":{"keywords":["demo","tag manager"],"title":"Page with Edgee components","url":"https://demo.edgee.app/analytics-with-edgee.html","path":"/analytics-with-edgee.html","referrer":"https://demo.edgee.dev/analytics-with-js.html"},"user":{"edgee_id":"6bb171d5-2284-41ee-9889-91af03b71dc5"},"client":{"ip":"127.0.0.1","locale":"en-us","accept_language":"en-US,en;q=0.9","timezone":"Europe/Paris","user_agent":"Mozilla/5.0 (X11; Linux x86_64)AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36","user_agent_version_list":"Not A(Brand;8|Chromium;132","user_agent_mobile":"0","os_name":"Linux","user_agent_architecture":"x86","user_agent_bitness":"64","user_agent_full_version_list":"Not A(Brand;8.0.0.0|Chromium;132.0.6834.159","user_agent_model":"","os_version":"6.12.11","screen_width":1920,"screen_height":1280,"screen_density":1.5},"session":{"session_id":"1738597536","session_count":1,"session_start":false,"first_seen":"2025-02-03T15:45:36.569004889Z","last_seen":"2025-02-03T15:46:39.278740029Z"}},"from":"edge"}]"#;

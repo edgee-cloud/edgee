@@ -3,12 +3,12 @@ mod convert;
 mod debug;
 pub mod logger;
 pub mod payload;
+pub mod v0_5_0;
+pub mod v1_0_0;
+pub mod version;
 
-wasmtime::component::bindgen!({
-    world: "data-collection",
-    path: "wit/",
-    async: true,
-});
+use crate::data_collection::v0_5_0::data_collection::exports::edgee::components0_5_0::data_collection as Component0_5_0;
+use crate::data_collection::v1_0_0::data_collection::exports::edgee::components1_0_0::data_collection as Component1_0_0;
 
 use std::str::FromStr;
 use std::time::Duration;
@@ -21,10 +21,8 @@ use tokio::task::JoinHandle;
 use tracing::{error, span, Instrument, Level};
 
 use crate::context::ComponentsContext;
-use crate::{
-    data_collection::exports::edgee::components::data_collection as Component,
-    data_collection::payload::{Consent, Event, EventType},
-};
+
+use crate::data_collection::payload::{Consent, Event, EventType};
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -178,81 +176,180 @@ pub async fn send_events(
                 event.context.session.session_start = false;
             }
 
-            // get the instance of the component
-            let instance = match component_ctx
-                .get_data_collection_instance(&cfg.id, &mut store)
-                .await
-            {
-                Ok(instance) => instance,
-                Err(err) => {
-                    error!("Failed to get data collection instance. Error: {}", err);
-                    continue;
+            let (headers, method, url, body) = match cfg.wit_version {
+                version::DataCollectionWitVersion::V0_5_0 => {
+                    let instance = match component_ctx
+                        .get_data_collection_0_5_0_instance(&cfg.id, &mut store)
+                        .await
+                    {
+                        Ok(instance) => instance,
+                        Err(err) => {
+                            error!("Failed to get data collection instance. Error: {}", err);
+                            continue;
+                        }
+                    };
+                    let component = instance.edgee_components0_5_0_data_collection();
+
+                    let component_settings: Vec<(String, String)> = cfg
+                        .settings
+                        .additional_settings
+                        .clone()
+                        .into_iter()
+                        .collect();
+
+                    // call the corresponding method of the component
+                    let request = match event.event_type {
+                        EventType::Page => {
+                            component
+                                .call_page(&mut store, &event.clone().into(), &component_settings)
+                                .await
+                        }
+                        EventType::Track => {
+                            component
+                                .call_track(&mut store, &event.clone().into(), &component_settings)
+                                .await
+                        }
+                        EventType::User => {
+                            component
+                                .call_user(&mut store, &event.clone().into(), &component_settings)
+                                .await
+                        }
+                    };
+                    let request = match request {
+                        Ok(Ok(request)) => request,
+                        Ok(Err(err)) => {
+                            // todo: debug and trace response (error)
+                            error!(
+                                step = "request",
+                                err = err.to_string(),
+                                "failed to handle data collection payload"
+                            );
+                            continue;
+                        }
+                        Err(err) => {
+                            // todo: debug and trace response (error)
+                            error!(
+                                step = "request",
+                                err = err.to_string(),
+                                "failed to handle data collection payload"
+                            );
+                            continue;
+                        }
+                    };
+
+                    let mut headers = HeaderMap::new();
+                    for (key, value) in request.headers.iter() {
+                        headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
+                    }
+
+                    if request.forward_client_headers {
+                        insert_expected_headers(&mut headers, &event)?;
+                    }
+
+                    let method = match request.method {
+                        Component0_5_0::HttpMethod::Get => "GET",
+                        Component0_5_0::HttpMethod::Put => "PUT",
+                        Component0_5_0::HttpMethod::Post => "POST",
+                        Component0_5_0::HttpMethod::Delete => "DELETE",
+                    }
+                    .to_string();
+
+                    (headers, method, request.url, request.body)
+                }
+                version::DataCollectionWitVersion::V1_0_0 => {
+                    let instance = match component_ctx
+                        .get_data_collection_instance(&cfg.id, &mut store)
+                        .await
+                    {
+                        Ok(instance) => instance,
+                        Err(err) => {
+                            error!("Failed to get data collection instance. Error: {}", err);
+                            continue;
+                        }
+                    };
+                    let component = instance.edgee_components1_0_0_data_collection();
+
+                    let component_settings: Vec<(String, String)> = cfg
+                        .settings
+                        .additional_settings
+                        .clone()
+                        .into_iter()
+                        .collect();
+
+                    // call the corresponding method of the component
+                    let request = match event.event_type {
+                        EventType::Page => {
+                            component
+                                .call_page(&mut store, &event.clone().into(), &component_settings)
+                                .await
+                        }
+                        EventType::Track => {
+                            component
+                                .call_track(&mut store, &event.clone().into(), &component_settings)
+                                .await
+                        }
+                        EventType::User => {
+                            component
+                                .call_user(&mut store, &event.clone().into(), &component_settings)
+                                .await
+                        }
+                    };
+                    let request = match request {
+                        Ok(Ok(request)) => request,
+                        Ok(Err(err)) => {
+                            // todo: debug and trace response (error)
+                            error!(
+                                step = "request",
+                                err = err.to_string(),
+                                "failed to handle data collection payload"
+                            );
+                            continue;
+                        }
+                        Err(err) => {
+                            // todo: debug and trace response (error)
+                            error!(
+                                step = "request",
+                                err = err.to_string(),
+                                "failed to handle data collection payload"
+                            );
+                            continue;
+                        }
+                    };
+
+                    let mut headers = HeaderMap::new();
+                    for (key, value) in request.headers.iter() {
+                        headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
+                    }
+
+                    if request.forward_client_headers {
+                        insert_expected_headers(&mut headers, &event)?;
+                    }
+
+                    let method = match request.method {
+                        Component1_0_0::HttpMethod::Get => "GET",
+                        Component1_0_0::HttpMethod::Put => "PUT",
+                        Component1_0_0::HttpMethod::Post => "POST",
+                        Component1_0_0::HttpMethod::Delete => "DELETE",
+                    }
+                    .to_string();
+
+                    (headers, method, request.url, request.body)
                 }
             };
-            let component = instance.edgee_components_data_collection();
-
-            let component_event: Component::Event = event.clone().into();
-            let component_settings: Vec<(String, String)> = cfg
-                .settings
-                .additional_settings
-                .clone()
-                .into_iter()
-                .collect();
-
-            // call the corresponding method of the component
-            let request = match component_event.event_type {
-                Component::EventType::Page => {
-                    component
-                        .call_page(&mut store, &component_event, &component_settings)
-                        .await
-                }
-                Component::EventType::Track => {
-                    component
-                        .call_track(&mut store, &component_event, &component_settings)
-                        .await
-                }
-                Component::EventType::User => {
-                    component
-                        .call_user(&mut store, &component_event, &component_settings)
-                        .await
-                }
-            };
-            let request = match request {
-                Ok(Ok(request)) => request,
-                Ok(Err(err)) => {
-                    // todo: debug and trace response (error)
-                    error!(
-                        step = "request",
-                        err = err.to_string(),
-                        "failed to handle data collection payload"
-                    );
-                    continue;
-                }
-                Err(err) => {
-                    // todo: debug and trace response (error)
-                    error!(
-                        step = "request",
-                        err = err.to_string(),
-                        "failed to handle data collection payload"
-                    );
-                    continue;
-                }
-            };
-
-            let mut headers = HeaderMap::new();
-            for (key, value) in request.headers.iter() {
-                headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
-            }
-
-            if request.forward_client_headers {
-                insert_expected_headers(&mut headers, &event)?;
-            }
 
             let client = reqwest::Client::builder()
                 .timeout(Duration::from_secs(5))
                 .build()?;
 
-            trace_request(trace, &request, &headers, &outgoing_consent, anonymization);
+            trace_request(
+                trace,
+                &method,
+                &url,
+                &headers,
+                &body,
+                &outgoing_consent,
+                anonymization,
+            );
 
             // spawn a separated async thread
             let cfg_project_component_id = cfg.project_component_id.to_string();
@@ -264,32 +361,55 @@ pub async fn send_events(
                 acc
             });
 
+            let method_clone = method.to_string();
+            let url_clone = url.clone();
+            let body_clone = body.clone();
+
             let future = tokio::spawn(
                 async move {
                     let timer = std::time::Instant::now();
-                    let request_clone = request.clone();
-                    let res = match request.method {
-                        Component::HttpMethod::Get => {
-                            client.get(request.url).headers(headers).send().await
-                        }
-                        Component::HttpMethod::Put => {
+                    let res = match method_clone.as_str() {
+                        "GET" => client.get(url_clone).headers(headers).send().await,
+                        "PUT" => {
                             client
-                                .put(request.url)
+                                .put(url_clone)
                                 .headers(headers)
-                                .body(request.body)
+                                .body(body_clone)
                                 .send()
                                 .await
                         }
-                        Component::HttpMethod::Post => {
+                        "POST" => {
                             client
-                                .post(request.url)
+                                .post(url_clone)
                                 .headers(headers)
-                                .body(request.body)
+                                .body(body_clone)
                                 .send()
                                 .await
                         }
-                        Component::HttpMethod::Delete => {
-                            client.delete(request.url).headers(headers).send().await
+                        "DELETE" => client.delete(url_clone).headers(headers).send().await,
+                        _ => {
+                            return EventResponse {
+                                context: ctx_clone,
+                                event,
+                                component_metadata: ComponentMetadata {
+                                    component_id: cfg_project_component_id,
+                                    component: cfg_id,
+                                    anonymization,
+                                },
+                                response: Response {
+                                    status: 500,
+                                    body: "".to_string(),
+                                    content_type: "text/plain".to_string(),
+                                    message: "Unknown method".to_string(),
+                                    duration: timer.elapsed().as_millis(),
+                                },
+                                request: Request {
+                                    method: method_clone,
+                                    url: url_clone,
+                                    body: body_clone,
+                                    headers: headers_map,
+                                },
+                            }
                         }
                     };
 
@@ -298,7 +418,10 @@ pub async fn send_events(
                         &cfg_project_component_id,
                         &cfg_id,
                         &event,
-                        &request_clone,
+                        &method_clone,
+                        &url,
+                        &headers_map,
+                        &body,
                         timer,
                         anonymization,
                     );
@@ -355,14 +478,9 @@ pub async fn send_events(
                             duration: timer.elapsed().as_millis(),
                         },
                         request: Request {
-                            method: match debug_params.request.method {
-                                Component::HttpMethod::Get => "GET".to_string(),
-                                Component::HttpMethod::Put => "PUT".to_string(),
-                                Component::HttpMethod::Post => "POST".to_string(),
-                                Component::HttpMethod::Delete => "DELETE".to_string(),
-                            },
-                            url: debug_params.request.url.to_string(),
-                            body: debug_params.request.body,
+                            method,
+                            url: url.to_string(),
+                            body,
                             headers: headers_map,
                         },
                     }

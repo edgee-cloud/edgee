@@ -1,7 +1,4 @@
-use crate::data_collection::{
-    exports::edgee::components::data_collection::{self as Component, EdgeeRequest},
-    payload::{Consent, Context, Data, Event, EventType},
-};
+use crate::data_collection::payload::{Consent, Context, Data, Event, EventType};
 use chrono::{DateTime, Utc};
 use http::HeaderMap;
 use json_pretty::PrettyFormatter;
@@ -33,7 +30,12 @@ pub struct DebugPayload {
 
 impl DebugPayload {
     pub fn new(params: DebugParams, error: &str) -> Self {
-        let component_request = DebugComponentRequest::new(&params.request);
+        let component_request = DebugComponentRequest::new(
+            &params.method.to_string(),
+            &params.url,
+            &params.headers,
+            &params.body,
+        );
 
         let mut body = params.response_body;
         if !error.is_empty() {
@@ -80,7 +82,10 @@ pub struct DebugParams {
     pub component_id: String,
     pub component_slug: String,
     pub event: Event,
-    pub request: EdgeeRequest,
+    pub method: String,
+    pub url: String,
+    pub headers: HashMap<String, String>,
+    pub body: String,
     pub response_content_type: String,
     pub response_status: i32,
     pub response_body: Option<String>,
@@ -101,7 +106,10 @@ impl DebugParams {
         project_component_id: &str,
         component_slug: &str,
         event: &Event,
-        request: &EdgeeRequest,
+        method: &String,
+        url: &String,
+        headers: &HashMap<String, String>,
+        body: &String,
         timer: std::time::Instant,
         anonymization: bool,
     ) -> DebugParams {
@@ -111,7 +119,10 @@ impl DebugParams {
             component_id: project_component_id.to_string(),
             component_slug: component_slug.to_string(),
             event: event.clone(),
-            request: request.clone(),
+            method: method.to_string(),
+            url: url.clone(),
+            headers: headers.clone(),
+            body: body.clone(),
             response_content_type: "".to_string(),
             response_status: 500,
             response_body: None,
@@ -137,38 +148,33 @@ pub struct DebugComponentRequest {
 }
 
 impl DebugComponentRequest {
-    pub fn new(edgee_request: &EdgeeRequest) -> DebugComponentRequest {
-        let method = match edgee_request.method {
-            Component::HttpMethod::Get => "GET",
-            Component::HttpMethod::Post => "POST",
-            Component::HttpMethod::Put => "PUT",
-            Component::HttpMethod::Delete => "DELETE",
-        };
-
-        let content_type = edgee_request
-            .headers
+    pub fn new(
+        method: &String,
+        url: &String,
+        headers: &HashMap<String, String>,
+        body: &String,
+    ) -> DebugComponentRequest {
+        let content_type = headers
             .iter()
             .find(|(k, _)| k.to_lowercase() == "content-type")
             .map(|(_, v)| v.to_string())
             .unwrap_or_else(|| "text/plain".to_string());
 
-        let b: Option<serde_json::Value> = if edgee_request.body.is_empty() {
+        let b: Option<serde_json::Value> = if body.is_empty() {
             None
-        } else if content_type.contains("application/json")
-            || is_body_json(edgee_request.body.as_str())
-        {
+        } else if content_type.contains("application/json") || is_body_json(body.as_str()) {
             Some(
-                serde_json::from_str(edgee_request.body.as_str())
-                    .unwrap_or(serde_json::Value::String(edgee_request.body.clone())),
+                serde_json::from_str(body.as_str())
+                    .unwrap_or(serde_json::Value::String(body.clone())),
             )
         } else {
-            Some(serde_json::Value::String(edgee_request.body.clone()))
+            Some(serde_json::Value::String(body.clone()))
         };
 
         DebugComponentRequest {
             method: method.to_string(),
-            url: edgee_request.url.clone(),
-            headers: Some(edgee_request.headers.iter().cloned().collect()),
+            url: url.clone(),
+            headers: Some(headers.clone()),
             body: b,
         }
     }
@@ -225,21 +231,16 @@ pub fn trace_disabled_event(trace: bool, event: &str) {
 
 pub fn trace_request(
     trace: bool,
-    request: &Component::EdgeeRequest,
+    method: &String,
+    url: &String,
     headers: &HeaderMap,
+    body: &String,
     outgoing_consent: &String,
     anonymization: bool,
 ) {
     if !trace {
         return;
     }
-
-    let method_str = match request.method {
-        Component::HttpMethod::Get => "GET",
-        Component::HttpMethod::Put => "PUT",
-        Component::HttpMethod::Post => "POST",
-        Component::HttpMethod::Delete => "DELETE",
-    };
 
     let anonymization_str = if anonymization { "true" } else { "false" };
 
@@ -250,8 +251,8 @@ pub fn trace_request(
         "Config:   Consent: {}, Anonymization: {}",
         outgoing_consent, anonymization_str
     );
-    println!("Method:   {}", method_str);
-    println!("Url:      {}", request.url);
+    println!("Method:   {}", method);
+    println!("Url:      {}", url);
     if !headers.is_empty() {
         print!("Headers:  ");
         for (i, (key, value)) in headers.iter().enumerate() {
@@ -265,9 +266,9 @@ pub fn trace_request(
         println!("Headers:  None");
     }
 
-    if !request.body.is_empty() {
+    if !body.is_empty() {
         println!("Body:");
-        let formatter = PrettyFormatter::from_str(request.body.as_str());
+        let formatter = PrettyFormatter::from_str(body.as_str());
         let result = formatter.pretty();
         println!("{}", result);
     } else {
