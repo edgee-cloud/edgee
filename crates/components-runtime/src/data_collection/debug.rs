@@ -101,15 +101,16 @@ pub struct DebugParams {
 }
 
 impl DebugParams {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         ctx: &EventContext,
         project_component_id: &str,
         component_slug: &str,
         event: &Event,
         method: &String,
-        url: &String,
+        url: &str,
         headers: &HashMap<String, String>,
-        body: &String,
+        body: &str,
         timer: std::time::Instant,
         anonymization: bool,
     ) -> DebugParams {
@@ -120,9 +121,9 @@ impl DebugParams {
             component_slug: component_slug.to_string(),
             event: event.clone(),
             method: method.to_string(),
-            url: url.clone(),
+            url: url.to_string(),
             headers: headers.clone(),
-            body: body.clone(),
+            body: body.to_string(),
             response_content_type: "".to_string(),
             response_status: 500,
             response_body: None,
@@ -150,9 +151,9 @@ pub struct DebugComponentRequest {
 impl DebugComponentRequest {
     pub fn new(
         method: &String,
-        url: &String,
+        url: &str,
         headers: &HashMap<String, String>,
-        body: &String,
+        body: &str,
     ) -> DebugComponentRequest {
         let content_type = headers
             .iter()
@@ -162,18 +163,15 @@ impl DebugComponentRequest {
 
         let b: Option<serde_json::Value> = if body.is_empty() {
             None
-        } else if content_type.contains("application/json") || is_body_json(body.as_str()) {
-            Some(
-                serde_json::from_str(body.as_str())
-                    .unwrap_or(serde_json::Value::String(body.clone())),
-            )
+        } else if content_type.contains("application/json") || is_body_json(body) {
+            Some(serde_json::from_str(body).unwrap_or(serde_json::Value::String(body.to_string())))
         } else {
-            Some(serde_json::Value::String(body.clone()))
+            Some(serde_json::Value::String(body.to_string()))
         };
 
         DebugComponentRequest {
             method: method.to_string(),
-            url: url.clone(),
+            url: url.to_string(),
             headers: Some(headers.clone()),
             body: b,
         }
@@ -234,7 +232,7 @@ pub fn trace_request(
     method: &String,
     url: &String,
     headers: &HeaderMap,
-    body: &String,
+    body: &str,
     outgoing_consent: &String,
     anonymization: bool,
 ) {
@@ -268,7 +266,7 @@ pub fn trace_request(
 
     if !body.is_empty() {
         println!("Body:");
-        let formatter = PrettyFormatter::from_str(body.as_str());
+        let formatter = PrettyFormatter::from_str(body);
         let result = formatter.pretty();
         println!("{}", result);
     } else {
