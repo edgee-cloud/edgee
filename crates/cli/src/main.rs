@@ -17,5 +17,9 @@ struct Options {
 async fn main() -> anyhow::Result<()> {
     let options = Options::parse();
 
-    options.command.run().await
+    if let Err(err) = crate::telemetry::setup() {
+        tracing::debug!("Telemetry error: {err}");
+    }
+
+    telemetry::process_cli_command(options.command.run()).await
 }
