@@ -66,8 +66,9 @@ pub async fn run(opts: Options) -> Result<()> {
         .into_inner();
     println!("Logged as {} ({})", user.name, user.email);
 
-    let _ =
-        crate::telemetry::login(&user).inspect_err(|err| tracing::debug!("Telemetry error: {err}"));
+    let _ = crate::telemetry::login(&user)
+        .await
+        .inspect_err(|err| tracing::debug!("Telemetry error: {err}"));
 
     config.set(opts.profile, creds);
     config.save()

@@ -4,16 +4,20 @@ use std::sync::LazyLock;
 use std::{collections::HashMap, time::Duration};
 
 use anyhow::Result;
-
-use edgee_api_client::types::UserWithRoles;
-use event_builder::{IsComplete, IsUnset, SetProperties, State};
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
+
+use edgee_api_client::{data_collection as dc, types::UserWithRoles};
+use event_builder::{IsComplete, IsUnset, SetProperties, State};
 
 static STATE_DIR: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
     dirs::state_dir()
         .or_else(dirs::config_dir)
         .map(|path| path.join("edgee"))
 });
+
+static EVENTS: LazyLock<Mutex<Vec<dc::types::EdgeeEventDataCollectionEventsItem>>> =
+    LazyLock::new(|| Mutex::new(Vec::new()));
 
 const TELEMETRY_BASE_URL: &str = "https://edgee-cli.edgee.app";
 const TELEMETRY_TIMEOUT: Duration = Duration::from_millis(1000);
@@ -70,7 +74,12 @@ pub fn setup() -> Result<()> {
     Ok(())
 }
 
-pub fn login(user: &UserWithRoles) -> Result<()> {
+pub async fn add_extra_event(event: dc::types::EdgeeEventDataCollectionEventsItem) {
+    let mut events = EVENTS.lock().await;
+    events.push(event);
+}
+
+pub async fn login(user: &UserWithRoles) -> Result<()> {
     let data = Data {
         is_logged_in: true,
         id: user.id.clone(),
@@ -82,7 +91,13 @@ pub fn login(user: &UserWithRoles) -> Result<()> {
         .join(Data::FILENAME);
     let f = std::fs::File::create(data_file)?;
 
-    serde_json::to_writer(f, &data).map_err(Into::into)
+    serde_json::to_writer(f, &data)?;
+
+    let user = dc::types::EdgeeEventUser::builder()
+        .data(dc::types::EdgeeEventUserData::builder().user_id(Some(user.id.clone())));
+    add_extra_event(dc::types::EdgeeEventDataCollectionEventsItem::user(user)?).await;
+
+    Ok(())
 }
 
 pub fn is_telemetry_enabled() -> bool {
@@ -154,8 +169,6 @@ pub struct Event {
 
 impl Event {
     pub async fn send(self) -> Result<()> {
-        use edgee_api_client::data_collection as dc;
-
         if !is_telemetry_enabled() {
             return Ok(());
         }
@@ -171,12 +184,14 @@ impl Event {
             .with_client_builder(|builder| builder.timeout(TELEMETRY_TIMEOUT))
             .connect();
 
+        let mut events = EVENTS.lock().await.clone();
+
         let track = dc::types::EdgeeEventTrack::builder().data(
             dc::types::EdgeeEventTrackData::builder()
                 .name(self.name)
                 .properties(self.properties),
         );
-        let events = vec![dc::types::EdgeeEventDataCollectionEventsItem::track(track)?];
+        events.push(dc::types::EdgeeEventDataCollectionEventsItem::track(track)?);
 
         let page = dc::types::EdgeeEventPageData::builder()
             .title(self.title)
