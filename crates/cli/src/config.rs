@@ -63,6 +63,7 @@ mod tests {
     use std::fs::File;
     use std::io::Write;
     use tempfile::tempdir;
+    use serial_test::serial;
 
     fn create_temp_file(
         dir: &tempfile::TempDir,
@@ -77,6 +78,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_read_config_with_toml_file() {
         let dir = tempdir().expect("should create temp dir");
         let toml_content = r#"
@@ -90,6 +92,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     #[should_panic(expected = "should parse valid toml file")]
     fn test_read_config_with_toml_file_invalid_content() {
         let dir = tempdir().expect("should create temp dir");
@@ -102,6 +105,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_read_config_with_toml_file_current_folder() {
         let dir = tempdir().expect("should create temp dir");
         let toml_content = r#"
@@ -116,6 +120,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     #[should_panic(expected = "should parse valid toml file")]
     fn test_read_config_with_toml_file_invalid_content_current_folder() {
         let dir = tempdir().expect("should create temp dir");
@@ -129,6 +134,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_read_config_with_yaml_file() {
         let dir = tempdir().expect("should create temp dir");
         let yaml_content = r#"
@@ -142,6 +148,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     #[should_panic(expected = "should parse valid yaml file")]
     fn test_read_config_with_yaml_file_invalid_content() {
         let dir = tempdir().expect("should create temp dir");
@@ -154,6 +161,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_read_config_with_yaml_file_current_folder() {
         let dir = tempdir().expect("should create temp dir");
         let yaml_content = r#"
@@ -168,8 +176,9 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     #[should_panic(expected = "should parse valid yaml file")]
-    fn test_read_config_with_yaml_file_invalid_contentcurrent_folder() {
+    fn test_read_config_with_yaml_file_invalid_content_current_folder() {
         let dir = tempdir().expect("should create temp dir");
         let yaml_content = r#"
             <some-xml>42</some-xml>
@@ -181,6 +190,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     #[should_panic(expected = "unknown extension")]
     fn test_read_config_with_invalid_extension() {
         let dir = tempdir().expect("should create temp dir");
@@ -194,6 +204,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     #[should_panic(expected = "no configuration file found")]
     fn test_read_config_with_no_files() {
         let dir = tempdir().expect("should create temp dir");
@@ -202,6 +213,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     #[should_panic(expected = "only one is expected")]
     fn test_read_config_with_both_files() {
         let dir = tempdir().expect("should create temp dir");
@@ -221,6 +233,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_init_with_trace_component() {
         let dir = tempdir().expect("should create temp dir");
         let toml_content = r#"
