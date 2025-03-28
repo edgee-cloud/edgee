@@ -159,11 +159,13 @@ pub fn find_manifest_path() -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::fs;
     use std::io::Write;
     use tempfile::tempdir;
 
     #[test]
+    #[serial]
     fn test_load_valid_manifest() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("edgee-component.toml");
@@ -192,6 +194,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     #[should_panic(expected = "Invalid manifest version")]
     fn test_load_invalid_manifest_version() {
         let dir = tempdir().unwrap();
@@ -219,6 +222,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     #[should_panic(expected = "Could not decode the manifest file")]
     fn test_load_invalid_manifest_format() {
         let dir = tempdir().unwrap();
@@ -237,6 +241,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     #[should_panic(expected = "Invalid icon path extension")]
     fn test_load_invalid_icon_extension() {
         let dir = tempdir().unwrap();
@@ -265,6 +270,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_save_manifest() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("edgee-component.toml");
@@ -298,6 +304,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     #[should_panic(expected = "Could not write manifest file")]
     fn test_save_manifest_fail() {
         let dir = tempdir().unwrap();
@@ -329,6 +336,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_find_manifest_path() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("edgee-component.toml");
@@ -343,6 +351,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_find_manifest_path_parent() {
         let dir = tempdir().unwrap();
         let child_dir = dir.path().join("child");
@@ -360,6 +369,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_find_manifest_path_not_found() {
         let dir = tempdir().unwrap();
         // manifest file won't be found
@@ -369,6 +379,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_component_deserialize() {
         let toml_str = r#"
             name = "test-component"
@@ -395,6 +406,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_setting_deserialize() {
         let toml_str = r#"
             title = "test-setting"
