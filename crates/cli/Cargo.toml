@@ -28,6 +28,7 @@ self_update.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_yml.workspace = true
 serde_json.workspace = true
+serial_test.workspace = true
 sha2.workspace = true
 slug.workspace = true
 tempfile.workspace = true
