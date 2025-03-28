@@ -3032,15 +3032,15 @@
       "UserUpdateInput": {
         "type": "object",
         "properties": {
-          "AvatarUrl": {
+          "avatar_url": {
             "type": "string",
             "description": "The user avatar URL."
           },
-          "TermsVersion": {
+          "terms_version": {
             "type": "string",
             "description": "The Terms version accepted by the user."
           },
-          "PrivacyVersion": {
+          "privacy_version": {
             "type": "string",
             "description": "The Privacy version accepted by the user."
           }
