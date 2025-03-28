@@ -2400,6 +2400,53 @@
             }
           }
         }
+      },
+      "post": {
+        "operationId": "updateUser",
+        "summary": "Update a User",
+        "description": "Update a User that has previously been created.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated User",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserWithRoles"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/projects/{id}/debug/data-collection/incoming": {
@@ -2981,6 +3028,23 @@
           }
         ],
         "required": ["id"]
+      },
+      "UserUpdateInput": {
+        "type": "object",
+        "properties": {
+          "AvatarUrl": {
+            "type": "string",
+            "description": "The user avatar URL."
+          },
+          "TermsVersion": {
+            "type": "string",
+            "description": "The Terms version accepted by the user."
+          },
+          "PrivacyVersion": {
+            "type": "string",
+            "description": "The Privacy version accepted by the user."
+          }
+        }
       },
       "Domain": {
         "type": "object",
