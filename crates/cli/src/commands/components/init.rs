@@ -6,8 +6,7 @@ use crate::components::{
     manifest::{self, Build, Component, Manifest, Setting},
 };
 
-#[derive(Debug, clap::Parser)]
-pub struct Options {}
+setup_command! {}
 
 pub async fn run(_opts: Options) -> anyhow::Result<()> {
     use inquire::{Select, Text};

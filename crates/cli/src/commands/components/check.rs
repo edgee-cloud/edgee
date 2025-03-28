@@ -1,7 +1,6 @@
 use colored::Colorize;
 
-#[derive(Debug, clap::Parser)]
-pub struct Options {
+setup_command! {
     #[arg(long = "filename")]
     filename: Option<String>,
 }
