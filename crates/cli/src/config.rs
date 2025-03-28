@@ -60,10 +60,10 @@ pub fn init(config_path: Option<&Path>, trace_component: Option<&str>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::fs::File;
     use std::io::Write;
     use tempfile::tempdir;
-    use serial_test::serial;
 
     fn create_temp_file(
         dir: &tempfile::TempDir,
