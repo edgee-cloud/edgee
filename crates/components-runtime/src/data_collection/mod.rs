@@ -516,9 +516,9 @@ fn parse_brand_version(pair: &str) -> Option<(String, &str)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::{DataCollectionComponentSettings, DataCollectionComponents};
+    use crate::data_collection::payload::{Client, Context, Page};
     use http::HeaderValue;
-    use crate::data_collection::payload::{Context, Client, Page};
-    use crate::config::{DataCollectionComponents, DataCollectionComponentSettings};
 
     #[test]
     fn test_format_ch_ua_header() {
@@ -599,7 +599,6 @@ mod tests {
 
     #[test]
     fn test_insert_expected_headers() {
-
         let mut headers = HeaderMap::new();
         let event = create_test_event();
 
@@ -624,7 +623,10 @@ mod tests {
         );
         assert_eq!(
             headers.get("sec-ch-ua"),
-            Some(&HeaderValue::from_str("\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\"").unwrap())
+            Some(
+                &HeaderValue::from_str("\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\"")
+                    .unwrap()
+            )
         );
         assert_eq!(
             headers.get("sec-ch-ua-mobile"),
@@ -796,35 +798,37 @@ mod tests {
             "uuid": "12345",
             "timestamp": "2025-01-01T00:00:00Z",
             "consent": "granted"
-        }]"#.to_string()
+        }]"#
+        .to_string()
     }
 
     fn create_component_config() -> ComponentsConfiguration {
         let mut component_config = ComponentsConfiguration::default();
-        component_config.data_collection.push(DataCollectionComponents {
-            id: "test_component".to_string(),
-            slug: "test_slug".to_string(),
-            file: String::from("tests/ga.wasm"),
-            project_component_id: "test_project_component_id".to_string(),
-            settings: DataCollectionComponentSettings {
-                edgee_page_event_enabled: true,
-                edgee_user_event_enabled: true,
-                edgee_track_event_enabled: true,
-                edgee_anonymization: true,
-                edgee_default_consent: "granted".to_string(),
-                additional_settings: {
-                    let mut map = HashMap::new();
-                    map.insert("ga_measurement_id".to_string(), "abcdefg".to_string());
-                    map
+        component_config
+            .data_collection
+            .push(DataCollectionComponents {
+                id: "test_component".to_string(),
+                slug: "test_slug".to_string(),
+                file: String::from("tests/ga.wasm"),
+                project_component_id: "test_project_component_id".to_string(),
+                settings: DataCollectionComponentSettings {
+                    edgee_page_event_enabled: true,
+                    edgee_user_event_enabled: true,
+                    edgee_track_event_enabled: true,
+                    edgee_anonymization: true,
+                    edgee_default_consent: "granted".to_string(),
+                    additional_settings: {
+                        let mut map = HashMap::new();
+                        map.insert("ga_measurement_id".to_string(), "abcdefg".to_string());
+                        map
+                    },
                 },
-            },
-        });
+            });
         component_config
     }
 
     #[tokio::test]
     async fn test_send_json_events_with_single_event() {
-
         let component_config = create_component_config();
         let ctx = ComponentsContext::new(&component_config).unwrap();
 
@@ -837,8 +841,7 @@ mod tests {
         )
         .await;
 
-
-        if !result.is_ok()  {
+        if !result.is_ok() {
             println!("Error: {:?}", result.err());
             assert!(false);
             return;
@@ -852,8 +855,10 @@ mod tests {
         let event_response = handles.into_iter().next().unwrap().await.unwrap();
         assert_eq!(event_response.event.event_type, EventType::Page);
         assert_eq!(event_response.event.context.client.ip, "192.168.1.1");
-        assert_eq!(event_response.event.context.page.url, "https://example.com/test");
+        assert_eq!(
+            event_response.event.context.page.url,
+            "https://example.com/test"
+        );
         assert_eq!(event_response.event.consent, Some(Consent::Granted));
     }
-
 }
