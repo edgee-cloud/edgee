@@ -2,8 +2,7 @@ use std::path::Path;
 
 use crate::components::manifest::Manifest;
 
-#[derive(Debug, clap::Parser)]
-pub struct Options {}
+setup_command! {}
 
 pub async fn run(_opts: Options) -> anyhow::Result<()> {
     use crate::components::manifest;

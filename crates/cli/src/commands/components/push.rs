@@ -9,12 +9,11 @@ use edgee_api_client::{types as api_types, Client};
 
 use crate::components::manifest::Manifest;
 
-#[derive(Debug, clap::Parser)]
-pub struct Options {
+setup_command! {
     /// The organization name used to create or update your component
     ///
     /// Defaults to the user "self" org
-    pub organization: Option<String>,
+    organization: Option<String>,
 
     /// Will use the given login profile
     #[arg(short, long, id = "PROFILE", env = "EDGEE_API_PROFILE")]
@@ -22,15 +21,15 @@ pub struct Options {
 
     /// Will push the component as public
     #[arg(long, conflicts_with = "private")]
-    pub public: bool,
+    public: bool,
 
     /// Will push the component as private
     #[arg(long, conflicts_with = "public")]
-    pub private: bool,
+    private: bool,
 
     /// Will be used as version changelog (with no inline editor)
     #[arg(long)]
-    pub changelog: Option<String>,
+    changelog: Option<String>,
 
     /// Run this command in non-interactive mode (with no confirmation prompts)
     #[arg(long = "yes")]
