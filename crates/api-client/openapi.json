@@ -440,25 +440,15 @@
             "schema": {
               "type": "string"
             }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/ListParams"
-                  }
-                ],
-                "properties": {
-                  "role": {
-                    "type": "string",
-                    "description": "The role of the users.",
-                    "enum": ["admin", "editor", "member"]
-                  }
-                }
-              }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The role of the users.",
+              "enum": ["admin", "editor", "member"]
             }
           },
           {"$ref": "#/components/parameters/limit"},
@@ -3652,7 +3642,7 @@
           "role": {
             "type": "string",
             "description": "The future role of the user in the organization.",
-            "enum": ["admin", "editor", "member"]
+            "enum": ["admin", "member"]
           },
           "email": {
             "type": "string",
@@ -3760,7 +3750,7 @@
             "type": "object",
             "additionalProperties": {
               "type": "string",
-              "enum": ["admin", "editor", "member"],
+              "enum": ["admin", "member"],
               "description": "The role of the user in each organization."
             },
             "description": "Roles of the user in multiple organizations. The keys are organization IDs, and values are roles ('admin', 'member')."
@@ -3778,7 +3768,7 @@
           "role": {
             "type": "string",
             "description": "The role of the user in the organization.",
-            "enum": ["admin", "editor", "member"]
+            "enum": ["admin", "member"]
           }
         }
       },
