@@ -20,26 +20,20 @@
         "operationId": "listApiTokens",
         "summary": "List all ApiTokens",
         "description": "Returns a list of your ApiTokens. The ApiTokens are returned sorted by creation date, with the most recent ApiTokens appearing first.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/ListParams"
-                  }
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "description": "The name of the ApiToken."
-                  }
-                }
-              }
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "The name of the ApiToken."
             }
           },
-          "required": false
-        },
+          {"$ref": "#/components/parameters/limit"},
+          {"$ref": "#/components/parameters/start_key"},
+          {"$ref": "#/components/parameters/order_direction"}
+        ],
         "responses": {
           "200": {
             "description": "A list of ApiTokens",
@@ -194,26 +188,20 @@
         "operationId": "listOrganizations",
         "summary": "List all Organizations",
         "description": "Returns a list of your Organizations. The Organizations are returned sorted by creation date, with the most recent Organizations appearing first.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/ListParams"
-                  }
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "description": "The name of the organization."
-                  }
-                }
-              }
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "The name of the organization."
             }
           },
-          "required": false
-        },
+          {"$ref": "#/components/parameters/limit"},
+          {"$ref": "#/components/parameters/start_key"},
+          {"$ref": "#/components/parameters/order_direction"}
+        ],
         "responses": {
           "200": {
             "description": "A list of Organizations",
@@ -473,8 +461,10 @@
               }
             }
           },
-          "required": false
-        },
+          {"$ref": "#/components/parameters/limit"},
+          {"$ref": "#/components/parameters/start_key"},
+          {"$ref": "#/components/parameters/order_direction"}
+        ],
         "responses": {
           "200": {
             "description": "A list of Users",
@@ -618,26 +608,20 @@
         "operationId": "listProjects",
         "summary": "List all Projects",
         "description": "Returns a list of your Projects. The Projects are returned sorted by creation date, with the most recent Project appearing first.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/ListParams"
-                  }
-                ],
-                "properties": {
-                  "organization_id": {
-                    "type": "string",
-                    "description": "The organization ID."
-                  }
-                }
-              }
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "The organization ID."
             }
           },
-          "required": false
-        },
+          {"$ref": "#/components/parameters/limit"},
+          {"$ref": "#/components/parameters/start_key"},
+          {"$ref": "#/components/parameters/order_direction"}
+        ],
         "responses": {
           "200": {
             "description": "A list of Projects",
@@ -724,22 +708,17 @@
             "schema": {
               "type": "string"
             }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {
-                  "organization_id": {
-                    "type": "string",
-                    "description": "The organization ID."
-                  }
-                }
-              }
+          },
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "The organization ID."
             }
           }
-        },
+        ],
         "responses": {
           "200": {
             "description": "The retrieved Project",
@@ -1387,22 +1366,10 @@
             "schema": {
               "type": "string"
             }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/ComponentListParams"
-                  }
-                ]
-              }
-            }
           },
-          "required": false
-        },
+          {"$ref": "#/components/parameters/componentCategory"},
+          {"$ref": "#/components/parameters/componentSubcategory"}
+        ],
         "responses": {
           "200": {
             "description": "A list of Project Components",
@@ -1638,20 +1605,10 @@
         "operationId": "listPublicComponents",
         "summary": "List public components",
         "description": "Returns a list of public components.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/ComponentListParams"
-                  }
-                ]
-              }
-            }
-          },
-          "required": false
-        },
+        "parameters": [
+          {"$ref": "#/components/parameters/componentCategory"},
+          {"$ref": "#/components/parameters/componentSubcategory"}
+        ],
         "responses": {
           "200": {
             "description": "A list of Components",
@@ -2179,22 +2136,10 @@
             "schema": {
               "type": "string"
             }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/ComponentListParams"
-                  }
-                ]
-              }
-            }
           },
-          "required": false
-        },
+          {"$ref": "#/components/parameters/componentCategory"},
+          {"$ref": "#/components/parameters/componentSubcategory"}
+        ],
         "responses": {
           "200": {
             "description": "A list of Components",
@@ -2236,26 +2181,20 @@
         "operationId": "listInvitations",
         "summary": "List all Invitations",
         "description": "Returns a list of the invitation of your organizations. The Invitations are returned sorted by creation date, with the most recent Invitation appearing first.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/ListParams"
-                  }
-                ],
-                "properties": {
-                  "organization_id": {
-                    "type": "string",
-                    "description": "The organization ID."
-                  }
-                }
-              }
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "The organization ID."
             }
           },
-          "required": false
-        },
+          {"$ref": "#/components/parameters/limit"},
+          {"$ref": "#/components/parameters/start_key"},
+          {"$ref": "#/components/parameters/order_direction"}
+        ],
         "responses": {
           "200": {
             "description": "A list of Invitations",
@@ -2471,6 +2410,53 @@
             }
           }
         }
+      },
+      "post": {
+        "operationId": "updateUser",
+        "summary": "Update a User",
+        "description": "Update a User that has previously been created.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated User",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserWithRoles"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/projects/{id}/debug/data-collection/incoming": {
@@ -2486,22 +2472,11 @@
             "schema": {
               "type": "string"
             }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/ListParams"
-                  }
-                ]
-              }
-            }
           },
-          "required": false
-        },
+          {"$ref": "#/components/parameters/limit"},
+          {"$ref": "#/components/parameters/start_key"},
+          {"$ref": "#/components/parameters/order_direction"}
+        ],
         "responses": {
           "200": {
             "description": "A list of Incoming Data Collection Events",
@@ -2559,22 +2534,11 @@
             "schema": {
               "type": "string"
             }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/ListParams"
-                  }
-                ]
-              }
-            }
           },
-          "required": false
-        },
+          {"$ref": "#/components/parameters/limit"},
+          {"$ref": "#/components/parameters/start_key"},
+          {"$ref": "#/components/parameters/order_direction"}
+        ],
         "responses": {
           "200": {
             "description": "A list of Outgoing Data Collection Events",
@@ -2631,6 +2595,59 @@
     }
   },
   "components": {
+    "parameters": {
+      "limit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "description": "A limit on the number of objects to be returned."
+        }
+      },
+      "start_key": {
+        "name": "start_key",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "description": "A cursor for use in pagination. `start_key` parameter defines the place in the list for your subsequent calls. For instance, if you make a list request and receive 100 objects, the last one having `ABCDE` key, you can make a subsequent call with `start_key=ABCDE` in order to fetch the next page of the list."
+        }
+      },
+      "order_direction": {
+        "name": "order_direction",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": [
+              "ASC",
+              "DESC"
+            ],
+          "description": "The order direction of the returned list. Objects are returned sorted by creation date. By default, the order is descending, so the most recent object appears first. Possible values are ASC and DESC. Default is DESC."
+        }
+      },
+      "componentCategory": {
+        "name": "category",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": ["data_collection"],
+          "description": "Filter components by category."
+        }
+      },
+      "componentSubcategory": {
+        "name": "subcategory",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": ["analytics", "warehouse", "attribution", "conversion api"],
+          "description": "Filter components by sub category."
+        }
+      }
+    },
     "schemas": {
       "ApiToken": {
         "type": "object",
@@ -3021,6 +3038,23 @@
           }
         ],
         "required": ["id"]
+      },
+      "UserUpdateInput": {
+        "type": "object",
+        "properties": {
+          "avatar_url": {
+            "type": "string",
+            "description": "The user avatar URL."
+          },
+          "terms_version": {
+            "type": "string",
+            "description": "The Terms version accepted by the user."
+          },
+          "privacy_version": {
+            "type": "string",
+            "description": "The Privacy version accepted by the user."
+          }
+        }
       },
       "Domain": {
         "type": "object",

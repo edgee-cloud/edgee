@@ -155,3 +155,268 @@ pub fn find_manifest_path() -> Option<PathBuf> {
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+    use std::fs;
+    use std::io::Write;
+    use tempfile::tempdir;
+
+    #[test]
+    #[serial]
+    fn test_load_valid_manifest() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("edgee-component.toml");
+        let mut file = fs::File::create(&file_path).unwrap();
+
+        writeln!(
+            file,
+            r#"
+            manifest-version = 1
+            [component]
+            name = "test-component"
+            version = "0.1.0"
+            category = "data-collection"
+            subcategory = "analytics"
+            wit-version = "1.0.0"
+            [component.build]
+            command = "build"
+            output_path = "file.wasm"
+            "#
+        )
+        .unwrap();
+
+        let manifest = Manifest::load(&file_path).unwrap();
+        assert_eq!(manifest.manifest_version, 1);
+        assert_eq!(manifest.component.name, "test-component");
+    }
+
+    #[test]
+    #[serial]
+    #[should_panic(expected = "Invalid manifest version")]
+    fn test_load_invalid_manifest_version() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("edgee-component.toml");
+        let mut file = fs::File::create(&file_path).unwrap();
+
+        writeln!(
+            file,
+            r#"
+            manifest-version = 2
+            [component]
+            name = "test-component"
+            version = "0.1.0"
+            category = "data-collection"
+            subcategory = "analytics"
+            wit-version = "1.0.0"
+            [component.build]
+            command = "build"
+            output_path = "file.wasm"
+            "#
+        )
+        .unwrap();
+
+        Manifest::load(&file_path).unwrap(); // should panic here
+    }
+
+    #[test]
+    #[serial]
+    #[should_panic(expected = "Could not decode the manifest file")]
+    fn test_load_invalid_manifest_format() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("edgee-component.toml");
+        let mut file = fs::File::create(&file_path).unwrap();
+
+        writeln!(
+            file,
+            r#"
+            <some-xml>42</some-xml>
+            "#
+        )
+        .unwrap();
+
+        Manifest::load(&file_path).unwrap(); // should panic here
+    }
+
+    #[test]
+    #[serial]
+    #[should_panic(expected = "Invalid icon path extension")]
+    fn test_load_invalid_icon_extension() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("edgee-component.toml");
+        let mut file = fs::File::create(&file_path).unwrap();
+
+        writeln!(
+            file,
+            r#"
+            manifest-version = 1
+            [component]
+            name = "test-component"
+            version = "0.1.0"
+            category = "data-collection"
+            subcategory = "analytics"
+            icon-path = "icon.bmp"
+            wit-version = "1.0.0"
+            [component.build]
+            command = "build"
+            output_path = "file.wasm"
+            "#
+        )
+        .unwrap();
+
+        Manifest::load(&file_path).unwrap(); // should panic here
+    }
+
+    #[test]
+    #[serial]
+    fn test_save_manifest() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("edgee-component.toml");
+
+        let manifest = Manifest {
+            manifest_version: 1,
+            component: Component {
+                name: "test-component".to_string(),
+                slug: None,
+                version: "0.1.0".to_string(),
+                category: api_types::ComponentCreateInputCategory::DataCollection,
+                subcategory: api_types::ComponentCreateInputSubcategory::Analytics,
+                description: Some("Test description".to_string()),
+                icon_path: Some("image.png".to_string()),
+                language: Some("Rust".to_string()),
+                documentation: Some(url::Url::parse("https://github.com/test/test").unwrap()),
+                repository: Some(url::Url::parse("https://github.com/test/test").unwrap()),
+                wit_version: "1.0.0".to_string(),
+                build: Build {
+                    command: "build".to_string(),
+                    output_path: PathBuf::from("file.wasm"),
+                },
+                settings: IndexMap::new(),
+            },
+        };
+
+        manifest.save(dir.path()).unwrap();
+        let loaded_manifest = Manifest::load(&file_path).unwrap();
+        assert_eq!(loaded_manifest.manifest_version, 1);
+        assert_eq!(loaded_manifest.component.name, "test-component");
+    }
+
+    #[test]
+    #[serial]
+    #[should_panic(expected = "Could not write manifest file")]
+    fn test_save_manifest_fail() {
+        let dir = tempdir().unwrap();
+        let invalid_path = dir.path().join("invalid/edgee-component.toml");
+
+        let manifest = Manifest {
+            manifest_version: 1,
+            component: Component {
+                name: "test-component".to_string(),
+                slug: None,
+                version: "0.1.0".to_string(),
+                category: api_types::ComponentCreateInputCategory::DataCollection,
+                subcategory: api_types::ComponentCreateInputSubcategory::Analytics,
+                description: Some("Test description".to_string()),
+                icon_path: Some("image.png".to_string()),
+                language: Some("Rust".to_string()),
+                documentation: Some(url::Url::parse("https://github.com/test/test").unwrap()),
+                repository: Some(url::Url::parse("https://github.com/test/test").unwrap()),
+                wit_version: "1.0.0".to_string(),
+                build: Build {
+                    command: "build".to_string(),
+                    output_path: PathBuf::from("file.wasm"),
+                },
+                settings: IndexMap::new(),
+            },
+        };
+
+        manifest.save(&invalid_path).unwrap(); // should panic here
+    }
+
+    #[test]
+    #[serial]
+    fn test_find_manifest_path() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("edgee-component.toml");
+        fs::File::create(&file_path).unwrap();
+
+        std::env::set_current_dir(&dir.path()).unwrap();
+        let found_path = find_manifest_path().unwrap();
+        assert_eq!(
+            found_path.canonicalize().unwrap(),
+            file_path.canonicalize().unwrap()
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_find_manifest_path_parent() {
+        let dir = tempdir().unwrap();
+        let child_dir = dir.path().join("child");
+        fs::create_dir(&child_dir).unwrap();
+        let file_path = dir.path().join("edgee-component.toml");
+        fs::File::create(&file_path).unwrap();
+
+        // enter child dir and find the manifest in the parent dir
+        std::env::set_current_dir(&child_dir).unwrap();
+        let found_path = find_manifest_path().unwrap();
+        assert_eq!(
+            found_path.canonicalize().unwrap().into_os_string(),
+            file_path.canonicalize().unwrap().into_os_string()
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_find_manifest_path_not_found() {
+        let dir = tempdir().unwrap();
+        // manifest file won't be found
+        std::env::set_current_dir(&dir.path()).unwrap();
+        let result = find_manifest_path();
+        assert_eq!(result.is_none(), true);
+    }
+
+    #[test]
+    #[serial]
+    fn test_component_deserialize() {
+        let toml_str = r#"
+            name = "test-component"
+            version = "0.1.0"
+            category = "data-collection"
+            subcategory = "analytics"
+            wit-version = "1.0.0"
+            [build]
+            command = "build"
+            output_path = "file.wasm"
+        "#;
+
+        let component: Component = toml::from_str(toml_str).unwrap();
+        assert_eq!(component.name, "test-component");
+        assert_eq!(component.version, "0.1.0");
+        assert_eq!(
+            component.category,
+            api_types::ComponentCreateInputCategory::DataCollection
+        );
+        assert_eq!(
+            component.subcategory,
+            api_types::ComponentCreateInputSubcategory::Analytics
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_setting_deserialize() {
+        let toml_str = r#"
+            title = "test-setting"
+            type = "string"
+            required = true
+        "#;
+
+        let setting: Setting = toml::from_str(toml_str).unwrap();
+        assert_eq!(setting.title, "test-setting");
+        assert_eq!(setting.type_, api_types::ConfigurationFieldType::String);
+        assert!(setting.required);
+    }
+}
