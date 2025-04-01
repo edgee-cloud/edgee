@@ -52,7 +52,35 @@ impl Data {
             .ok_or_else(|| anyhow::anyhow!("no state dir"))?
             .join(Self::FILENAME);
         let f = std::fs::File::open(data_file)?;
+
         serde_json::from_reader(f).map_err(Into::into)
+    }
+
+    async fn check_user(&mut self) -> Result<()> {
+        use edgee_api_client::auth::Config;
+
+        if !self.is_logged_in {
+            if let Some(creds) = Config::load().ok().and_then(|config| config.get(&None)) {
+                let client = edgee_api_client::new().credentials(&creds).connect();
+                let user = client.get_me().send().await?;
+
+                self.is_logged_in = true;
+                self.id = user.id.clone();
+
+                self.save()?;
+            }
+        }
+        Ok(())
+    }
+
+    fn save(&self) -> Result<()> {
+        let data_file = STATE_DIR
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("no state dir"))?
+            .join(Self::FILENAME);
+        let f = std::fs::File::create(data_file)?;
+
+        serde_json::to_writer(f, self).map_err(Into::into)
     }
 }
 
@@ -84,14 +112,7 @@ pub async fn login(user: &UserWithRoles) -> Result<()> {
         is_logged_in: true,
         id: user.id.clone(),
     };
-
-    let data_file = STATE_DIR
-        .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("no state dir"))?
-        .join(Data::FILENAME);
-    let f = std::fs::File::create(data_file)?;
-
-    serde_json::to_writer(f, &data)?;
+    data.save()?;
 
     let user = dc::types::EdgeeEventUser::builder()
         .data(dc::types::EdgeeEventUserData::builder().user_id(Some(user.id.clone())));
@@ -173,7 +194,10 @@ impl Event {
             return Ok(());
         }
 
-        let data = Data::load()?;
+        let mut data = Data::load()?;
+        if let Err(err) = data.check_user().await {
+            tracing::debug!("Error during updating user context: {err}");
+        }
 
         let client = dc::new()
             .baseurl(
