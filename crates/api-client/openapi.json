@@ -467,7 +467,7 @@
                   "role": {
                     "type": "string",
                     "description": "The role of the users.",
-                    "enum": ["admin", "member"]
+                    "enum": ["admin", "editor", "member"]
                   }
                 }
               }
@@ -3618,7 +3618,7 @@
           "role": {
             "type": "string",
             "description": "The future role of the user in the organization.",
-            "enum": ["admin", "member"]
+            "enum": ["admin", "editor", "member"]
           },
           "email": {
             "type": "string",
@@ -3667,11 +3667,6 @@
             "description": "Name of the user",
             "readOnly": true
           },
-          "slug": {
-            "type": "string",
-            "description": "Slug of the user",
-            "readOnly": true
-          },
           "avatar_url": {
             "type": "string",
             "description": "Avatar of the user",
@@ -3697,7 +3692,6 @@
           "id",
           "email",
           "name",
-          "slug",
           "role",
           "created_at",
           "updated_at"
@@ -3732,7 +3726,7 @@
             "type": "object",
             "additionalProperties": {
               "type": "string",
-              "enum": ["admin", "member"],
+              "enum": ["admin", "editor", "member"],
               "description": "The role of the user in each organization."
             },
             "description": "Roles of the user in multiple organizations. The keys are organization IDs, and values are roles ('admin', 'member')."
@@ -3750,7 +3744,7 @@
           "role": {
             "type": "string",
             "description": "The role of the user in the organization.",
-            "enum": ["admin", "member"]
+            "enum": ["admin", "editor", "member"]
           }
         }
       },
