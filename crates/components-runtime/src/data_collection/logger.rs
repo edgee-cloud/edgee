@@ -27,6 +27,7 @@ impl Logger {
             proxy_type = params.proxy_type,
             proxy_desc = params.proxy_desc,
             as_name = params.as_name,
+            as_number = params.as_number,
 
             path = path,
             consent = consent,

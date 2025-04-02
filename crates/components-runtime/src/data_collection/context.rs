@@ -14,6 +14,7 @@ pub struct EventContext {
     pub proxy_type: String,
     pub proxy_desc: String,
     pub as_name: String,
+    pub as_number: u32,
     pub project_id: String,
     pub proxy_host: String,
 }
@@ -32,6 +33,7 @@ impl EventContext {
             proxy_type: "".to_string(),
             proxy_desc: "".to_string(),
             as_name: "".to_string(),
+            as_number: 0,
             project_id: project_id.to_string(),
             proxy_host: proxy_host.to_string(),
         };
@@ -64,6 +66,7 @@ impl EventContext {
                 .as_name
                 .clone()
                 .unwrap_or("-".to_string());
+            ctx.as_number = event.context.client.as_number.unwrap_or(0);
         }
         ctx
     }
@@ -106,6 +109,10 @@ impl EventContext {
 
     pub fn get_as_name(&self) -> &String {
         &self.as_name
+    }
+
+    pub fn get_as_number(&self) -> u32 {
+        self.as_number
     }
 
     pub fn get_project_id(&self) -> &String {

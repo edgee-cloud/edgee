@@ -233,6 +233,7 @@ pub struct Client {
     pub proxy_type: Option<String>,
     pub proxy_desc: Option<String>,
     pub as_name: Option<String>,
+    pub as_number: Option<u32>,
 
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub locale: String,

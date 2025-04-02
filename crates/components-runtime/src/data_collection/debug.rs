@@ -92,6 +92,7 @@ pub struct DebugParams {
     pub proxy_type: String,
     pub proxy_desc: String,
     pub as_name: String,
+    pub as_number: u32,
 }
 
 impl DebugParams {
@@ -122,6 +123,7 @@ impl DebugParams {
             proxy_type: ctx.get_proxy_type().clone(),
             proxy_desc: ctx.get_proxy_desc().clone(),
             as_name: ctx.get_as_name().clone(),
+            as_number: ctx.get_as_number(),
         }
     }
 }
