@@ -401,16 +401,20 @@ fn handle_consent_and_anonymization(
 
 pub fn insert_expected_headers(headers: &mut HeaderMap, event: &Event) -> anyhow::Result<()> {
     // Insert client ip in the x-forwarded-for header
-    headers.insert(
-        HeaderName::from_str("x-forwarded-for")?,
-        HeaderValue::from_str(&event.context.client.ip)?,
-    );
+    if !event.context.client.ip.is_empty() {
+        headers.insert(
+            HeaderName::from_str("x-forwarded-for")?,
+            HeaderValue::from_str(&event.context.client.ip)?,
+        );
+    }
 
     // Insert User-Agent in the user-agent header
-    headers.insert(
-        header::USER_AGENT,
-        HeaderValue::from_str(&event.context.client.user_agent)?,
-    );
+    if !event.context.client.user_agent.is_empty() {
+        headers.insert(
+            header::USER_AGENT,
+            HeaderValue::from_str(&event.context.client.user_agent)?,
+        );
+    }
 
     // Insert referrer in the referer header like an analytics client-side collect does
     if !event.context.page.url.is_empty() {
@@ -512,6 +516,9 @@ fn parse_brand_version(pair: &str) -> Option<(String, &str)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::{DataCollectionComponentSettings, DataCollectionComponents};
+    use crate::data_collection::payload::{Client, Context, Page};
+    use http::HeaderValue;
 
     #[test]
     fn test_format_ch_ua_header() {
@@ -542,5 +549,316 @@ mod tests {
         assert_eq!(format_ch_ua_header("Invalid"), "");
         assert_eq!(format_ch_ua_header("No Version;"), "");
         assert_eq!(format_ch_ua_header(";No Brand"), "");
+    }
+
+    fn create_test_event() -> Event {
+        Event {
+            context: Context {
+                client: Client {
+                    ip: "192.168.1.1".to_string(),
+                    user_agent: "Mozilla/5.0".to_string(),
+                    accept_language: "en-US,en;q=0.9".to_string(),
+                    user_agent_version_list: "Chromium;128|Google Chrome;128".to_string(),
+                    user_agent_mobile: "0".to_string(),
+                    os_name: "Windows".to_string(),
+                    ..Default::default()
+                },
+                page: Page {
+                    url: "https://example.com".to_string(),
+                    search: "?query=test".to_string(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    fn create_empty_test_event() -> Event {
+        Event {
+            context: Context {
+                client: Client {
+                    ip: "".to_string(),
+                    user_agent: "".to_string(),
+                    accept_language: "".to_string(),
+                    user_agent_version_list: "".to_string(),
+                    user_agent_mobile: "".to_string(),
+                    os_name: "".to_string(),
+                    ..Default::default()
+                },
+                page: Page {
+                    url: "".to_string(),
+                    search: "".to_string(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn test_insert_expected_headers() {
+        let mut headers = HeaderMap::new();
+        let event = create_test_event();
+
+        let result = insert_expected_headers(&mut headers, &event);
+
+        assert!(result.is_ok());
+        assert_eq!(
+            headers.get("x-forwarded-for"),
+            Some(&HeaderValue::from_str("192.168.1.1").unwrap())
+        );
+        assert_eq!(
+            headers.get("user-agent"),
+            Some(&HeaderValue::from_str("Mozilla/5.0").unwrap())
+        );
+        assert_eq!(
+            headers.get("accept-language"),
+            Some(&HeaderValue::from_str("en-US,en;q=0.9").unwrap())
+        );
+        assert_eq!(
+            headers.get("referer"),
+            Some(&HeaderValue::from_str("https://example.com?query=test").unwrap())
+        );
+        assert_eq!(
+            headers.get("sec-ch-ua"),
+            Some(
+                &HeaderValue::from_str("\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\"")
+                    .unwrap()
+            )
+        );
+        assert_eq!(
+            headers.get("sec-ch-ua-mobile"),
+            Some(&HeaderValue::from_str("?0").unwrap())
+        );
+        assert_eq!(
+            headers.get("sec-ch-ua-platform"),
+            Some(&HeaderValue::from_str("\"Windows\"").unwrap())
+        );
+    }
+
+    #[test]
+    fn test_insert_expected_headers_with_empty_fields() {
+        let mut headers = HeaderMap::new();
+
+        let event = create_empty_test_event();
+
+        // Call the function
+        let result = insert_expected_headers(&mut headers, &event);
+
+        assert!(result.is_ok());
+        assert_eq!(headers.keys().len(), 0);
+    }
+
+    #[test]
+    fn test_handle_consent_and_anonymization_granted() {
+        let mut event = Event {
+            consent: None,
+            ..Default::default()
+        };
+
+        // Test with default consent "granted"
+        let (anonymization, outgoing_consent) =
+            handle_consent_and_anonymization(&mut event, "granted", true);
+        assert_eq!(event.consent, Some(Consent::Granted));
+        assert_eq!(anonymization, false);
+        assert_eq!(outgoing_consent, "granted");
+    }
+
+    #[test]
+    fn test_handle_consent_and_anonymization_denied() {
+        // Test with default consent "denied"
+        let mut event = Event {
+            consent: None,
+            ..Default::default()
+        };
+        let (anonymization, outgoing_consent) =
+            handle_consent_and_anonymization(&mut event, "denied", true);
+        assert_eq!(event.consent, Some(Consent::Denied));
+        assert_eq!(anonymization, true);
+        assert_eq!(outgoing_consent, "denied");
+    }
+
+    #[test]
+    fn test_handle_consent_and_anonymization_pending() {
+        // Test with default consent "pending"
+        let mut event = Event {
+            consent: None,
+            ..Default::default()
+        };
+        let (anonymization, outgoing_consent) =
+            handle_consent_and_anonymization(&mut event, "pending", true);
+        assert_eq!(event.consent, Some(Consent::Pending));
+        assert_eq!(anonymization, true);
+        assert_eq!(outgoing_consent, "pending");
+    }
+
+    #[test]
+    fn test_handle_consent_and_anonymization_existing_granted() {
+        // Test with existing consent "granted"
+        let mut event = Event {
+            consent: Some(Consent::Granted),
+            ..Default::default()
+        };
+        let (anonymization, outgoing_consent) =
+            handle_consent_and_anonymization(&mut event, "denied", true);
+        assert_eq!(event.consent, Some(Consent::Granted));
+        assert_eq!(anonymization, false);
+        assert_eq!(outgoing_consent, "granted");
+    }
+
+    #[test]
+    fn test_handle_consent_and_anonymization_existing_denied() {
+        // Test with existing consent "denied"
+        let mut event = Event {
+            consent: Some(Consent::Denied),
+            ..Default::default()
+        };
+        let (anonymization, outgoing_consent) =
+            handle_consent_and_anonymization(&mut event, "granted", false);
+        assert_eq!(event.consent, Some(Consent::Denied));
+        assert_eq!(anonymization, false);
+        assert_eq!(outgoing_consent, "denied");
+    }
+
+    #[test]
+    fn test_handle_consent_and_anonymization_existing_pending() {
+        // Test with existing consent "pending"
+        let mut event = Event {
+            consent: Some(Consent::Pending),
+            ..Default::default()
+        };
+        let (anonymization, outgoing_consent) =
+            handle_consent_and_anonymization(&mut event, "granted", true);
+        assert_eq!(event.consent, Some(Consent::Pending));
+        assert_eq!(anonymization, true);
+        assert_eq!(outgoing_consent, "pending");
+    }
+
+    #[tokio::test]
+    async fn test_send_json_events_with_empty_json() {
+        let component_config = ComponentsConfiguration::default();
+        let component_ctx = ComponentsContext::new(&component_config).unwrap();
+        let events_json = "";
+        let trace_component = None;
+        let debug = false;
+
+        let result = send_json_events(
+            &component_ctx,
+            events_json,
+            &component_config,
+            &trace_component,
+            debug,
+        )
+        .await;
+
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    fn create_sample_json_events() -> String {
+        r#"[{
+            "context": {
+                "client": {
+                    "ip": "192.168.1.1",
+                    "user_agent": "Mozilla/5.0",
+                    "accept_language": "en-US,en;q=0.9",
+                    "user_agent_version_list": "Chromium;128|Google Chrome;128",
+                    "user_agent_mobile": "0",
+                    "os_name": "Windows"
+                },
+                "session": {
+                    "session_id": "12345",
+                    "previous_session_id": "67890",
+                    "session_start": true,
+                    "session_count": 123,
+                    "first_seen": "2023-01-01T00:00:00Z",
+                    "last_seen": "2023-01-01T00:00:00Z"
+                },
+                "page": {
+                    "title": "Test Page",
+                    "referrer": "https://example.com",
+                    "path": "/test",
+                    "url": "https://example.com/test",
+                    "search": "?query=test"
+                },
+                "user": {
+                    "edgee_id": "abc123"
+                }
+            },
+            "data": {
+                "title": "Test Page",
+                "referrer": "https://example.com",
+                "path": "/test",
+                "url": "https://example.com/test",
+                "search": "?query=test"
+            },
+            "type": "page",
+            "uuid": "12345",
+            "timestamp": "2025-01-01T00:00:00Z",
+            "consent": "granted"
+        }]"#
+        .to_string()
+    }
+
+    fn create_component_config() -> ComponentsConfiguration {
+        let mut component_config = ComponentsConfiguration::default();
+        component_config
+            .data_collection
+            .push(DataCollectionComponents {
+                id: "test_component".to_string(),
+                slug: "test_slug".to_string(),
+                file: String::from("tests/ga.wasm"),
+                project_component_id: "test_project_component_id".to_string(),
+                settings: DataCollectionComponentSettings {
+                    edgee_page_event_enabled: true,
+                    edgee_user_event_enabled: true,
+                    edgee_track_event_enabled: true,
+                    edgee_anonymization: true,
+                    edgee_default_consent: "granted".to_string(),
+                    additional_settings: {
+                        let mut map = HashMap::new();
+                        map.insert("ga_measurement_id".to_string(), "abcdefg".to_string());
+                        map
+                    },
+                },
+            });
+        component_config
+    }
+
+    #[tokio::test]
+    async fn test_send_json_events_with_single_event() {
+        let component_config = create_component_config();
+        let ctx = ComponentsContext::new(&component_config).unwrap();
+
+        let result = send_json_events(
+            &ctx,
+            create_sample_json_events().as_str(),
+            &component_config,
+            &None,
+            false,
+        )
+        .await;
+
+        if !result.is_ok() {
+            println!("Error: {:?}", result.err());
+            assert!(false);
+            return;
+        }
+
+        assert!(result.is_ok());
+        let handles = result.unwrap();
+        assert_eq!(handles.len(), 1);
+
+        // verify the future's result
+        let event_response = handles.into_iter().next().unwrap().await.unwrap();
+        assert_eq!(event_response.event.event_type, EventType::Page);
+        assert_eq!(event_response.event.context.client.ip, "192.168.1.1");
+        assert_eq!(
+            event_response.event.context.page.url,
+            "https://example.com/test"
+        );
+        assert_eq!(event_response.event.consent, Some(Consent::Granted));
     }
 }
