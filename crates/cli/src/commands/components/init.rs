@@ -64,6 +64,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
                     required: true,
                     title: "ExampleConfigField".to_string(),
                     type_: edgee_api_client::types::ConfigurationFieldType::String,
+                    secret: false,
                 },
             },
             build: Build {
