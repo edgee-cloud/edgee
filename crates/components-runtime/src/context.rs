@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use wasmtime::{
-    component::{Component, Linker, ResourceTable},
+    component::{Component, Linker},
     Engine, Store,
 };
-use wasmtime_wasi::{IoView, WasiCtx, WasiView};
+use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiView};
 
 use crate::config::{ComponentsConfiguration, DataCollectionComponents};
 use crate::consent_mapping::{ConsentMapping, ConsentMappingPre};
