@@ -170,7 +170,7 @@ impl HostState {
     }
 
     fn new_with_stdout() -> Self {
-        Self::new_with_ctx(WasiCtx::builder().inherit_stdout().build())
+        Self::new_with_ctx(WasiCtx::builder().inherit_stdout().inherit_stderr().build())
     }
 
     fn new_with_ctx(ctx: WasiCtx) -> Self {
