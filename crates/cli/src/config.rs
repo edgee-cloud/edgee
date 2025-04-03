@@ -114,7 +114,7 @@ mod tests {
         "#;
         create_temp_file(&dir, "edgee.toml", toml_content);
 
-        std::env::set_current_dir(&dir.path()).unwrap();
+        std::env::set_current_dir(dir.path()).unwrap();
         let config = read_config(None).expect("should read toml config");
         assert_eq!(config.log.level.to_string(), "info");
     }
@@ -129,7 +129,7 @@ mod tests {
         "#;
         create_temp_file(&dir, "edgee.toml", toml_content);
 
-        std::env::set_current_dir(&dir.path()).unwrap();
+        std::env::set_current_dir(dir.path()).unwrap();
         read_config(None).expect("should read toml config"); // should panic here
     }
 
@@ -170,7 +170,7 @@ mod tests {
         "#;
         create_temp_file(&dir, "edgee.yaml", yaml_content);
 
-        std::env::set_current_dir(&dir.path()).unwrap();
+        std::env::set_current_dir(dir.path()).unwrap();
         let config = read_config(None).expect("should read yaml config");
         assert_eq!(config.log.level.to_string(), "info");
     }
@@ -185,7 +185,7 @@ mod tests {
         "#;
         create_temp_file(&dir, "edgee.yaml", yaml_content);
 
-        std::env::set_current_dir(&dir.path()).unwrap();
+        std::env::set_current_dir(dir.path()).unwrap();
         read_config(None).expect("should read yaml config"); // should panic here
     }
 
@@ -208,7 +208,7 @@ mod tests {
     #[should_panic(expected = "no configuration file found")]
     fn test_read_config_with_no_files() {
         let dir = tempdir().expect("should create temp dir");
-        std::env::set_current_dir(&dir.path()).unwrap();
+        std::env::set_current_dir(dir.path()).unwrap();
         read_config(None).expect("should read config"); // should panic here
     }
 
@@ -228,7 +228,7 @@ mod tests {
         create_temp_file(&dir, "edgee.toml", toml_content);
         create_temp_file(&dir, "edgee.yaml", yaml_content);
 
-        std::env::set_current_dir(&dir.path()).unwrap();
+        std::env::set_current_dir(dir.path()).unwrap();
         read_config(None).expect("should read config"); // should panic here
     }
 

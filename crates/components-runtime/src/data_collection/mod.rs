@@ -662,7 +662,7 @@ mod tests {
         let (anonymization, outgoing_consent) =
             handle_consent_and_anonymization(&mut event, "granted", true);
         assert_eq!(event.consent, Some(Consent::Granted));
-        assert_eq!(anonymization, false);
+        assert!(!anonymization);
         assert_eq!(outgoing_consent, "granted");
     }
 
@@ -676,7 +676,7 @@ mod tests {
         let (anonymization, outgoing_consent) =
             handle_consent_and_anonymization(&mut event, "denied", true);
         assert_eq!(event.consent, Some(Consent::Denied));
-        assert_eq!(anonymization, true);
+        assert!(anonymization);
         assert_eq!(outgoing_consent, "denied");
     }
 
@@ -690,7 +690,7 @@ mod tests {
         let (anonymization, outgoing_consent) =
             handle_consent_and_anonymization(&mut event, "pending", true);
         assert_eq!(event.consent, Some(Consent::Pending));
-        assert_eq!(anonymization, true);
+        assert!(anonymization);
         assert_eq!(outgoing_consent, "pending");
     }
 
@@ -704,7 +704,7 @@ mod tests {
         let (anonymization, outgoing_consent) =
             handle_consent_and_anonymization(&mut event, "denied", true);
         assert_eq!(event.consent, Some(Consent::Granted));
-        assert_eq!(anonymization, false);
+        assert!(!anonymization);
         assert_eq!(outgoing_consent, "granted");
     }
 
@@ -718,7 +718,7 @@ mod tests {
         let (anonymization, outgoing_consent) =
             handle_consent_and_anonymization(&mut event, "granted", false);
         assert_eq!(event.consent, Some(Consent::Denied));
-        assert_eq!(anonymization, false);
+        assert!(!anonymization);
         assert_eq!(outgoing_consent, "denied");
     }
 
@@ -732,7 +732,7 @@ mod tests {
         let (anonymization, outgoing_consent) =
             handle_consent_and_anonymization(&mut event, "granted", true);
         assert_eq!(event.consent, Some(Consent::Pending));
-        assert_eq!(anonymization, true);
+        assert!(anonymization);
         assert_eq!(outgoing_consent, "pending");
     }
 
@@ -841,14 +841,10 @@ mod tests {
         )
         .await;
 
-        if !result.is_ok() {
-            println!("Error: {:?}", result.err());
-            assert!(false);
-            return;
-        }
-
-        assert!(result.is_ok());
-        let handles = result.unwrap();
+        let handles = result.unwrap_or_else(|err| {
+            println!("Error: {:?}", err);
+            panic!("Test failed");
+        });
         assert_eq!(handles.len(), 1);
 
         // verify the future's result

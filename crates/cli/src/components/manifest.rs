@@ -342,7 +342,7 @@ mod tests {
         let file_path = dir.path().join("edgee-component.toml");
         fs::File::create(&file_path).unwrap();
 
-        std::env::set_current_dir(&dir.path()).unwrap();
+        std::env::set_current_dir(dir.path()).unwrap();
         let found_path = find_manifest_path().unwrap();
         assert_eq!(
             found_path.canonicalize().unwrap(),
@@ -363,8 +363,8 @@ mod tests {
         std::env::set_current_dir(&child_dir).unwrap();
         let found_path = find_manifest_path().unwrap();
         assert_eq!(
-            found_path.canonicalize().unwrap().into_os_string(),
-            file_path.canonicalize().unwrap().into_os_string()
+            found_path.canonicalize().unwrap(),
+            file_path.canonicalize().unwrap()
         );
     }
 
@@ -373,9 +373,9 @@ mod tests {
     fn test_find_manifest_path_not_found() {
         let dir = tempdir().unwrap();
         // manifest file won't be found
-        std::env::set_current_dir(&dir.path()).unwrap();
+        std::env::set_current_dir(dir.path()).unwrap();
         let result = find_manifest_path();
-        assert_eq!(result.is_none(), true);
+        assert!(result.is_none());
     }
 
     #[test]
