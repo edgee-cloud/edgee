@@ -126,6 +126,19 @@ fn do_process_payload(request: &RequestHandle, response: &mut Parts) -> Result<b
         Err("compute-aborted(prefetch)")?;
     }
 
+    // do not process the payload if the request is made for specific fetch destination
+    let set_fetch_dest = request
+        .get_header("sec-fetch-dest")
+        .unwrap_or("".to_string());
+    if !set_fetch_dest.is_empty() {
+        let forbidden_fetch_dest = [
+            "audio", "font", "image", "manifest", "script", "style", "video",
+        ];
+        if forbidden_fetch_dest.contains(&set_fetch_dest.as_str()) {
+            Err("compute-aborted(fetch-dest)")?;
+        }
+    }
+
     Ok(true)
 }
 
