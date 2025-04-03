@@ -111,7 +111,7 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
     };
 
     let context = ComponentsContext::new(&config)
-        .map_err(|_e| anyhow::anyhow!("Something went wrong when trying to load the Wasm file. Please re-build and try again."))?;
+        .map_err(|e| anyhow::anyhow!("Something went wrong when trying to load the Wasm file. Please re-build and try again. {}", e))?;
 
     let mut store = context.empty_store_with_stdout();
 
