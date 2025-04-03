@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use wasmtime::{
-    component::{Component, Linker, ResourceTable},
+    component::{Component, Linker},
     Engine, Store,
 };
-use wasmtime_wasi::{IoView, WasiCtx, WasiView};
+use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiView};
 
 use crate::config::{ComponentsConfiguration, DataCollectionComponents};
 use crate::consent_mapping::{ConsentMapping, ConsentMappingPre};
@@ -170,7 +170,7 @@ impl HostState {
     }
 
     fn new_with_stdout() -> Self {
-        Self::new_with_ctx(WasiCtx::builder().inherit_stdout().build())
+        Self::new_with_ctx(WasiCtx::builder().inherit_stdout().inherit_stderr().build())
     }
 
     fn new_with_ctx(ctx: WasiCtx) -> Self {
