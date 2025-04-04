@@ -22,6 +22,9 @@ setup_commands! {
 
     /// Run the component in the current folder with sample events
     Test(test),
+
+    /// Fetch WIT dependencies needed for building
+    FetchWit(fetch_wit),
 }
 
 pub type Options = Command;
