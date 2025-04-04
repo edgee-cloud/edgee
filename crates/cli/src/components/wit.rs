@@ -112,7 +112,7 @@ world {world} {{
     Ok(())
 }
 
-pub async fn should_update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
+pub async fn should_update(manifest: &Manifest, root_dir: &Path) -> Result<bool> {
     let wit_path = root_dir.join(".edgee/wit");
     let lockfile = wit_path.join(Lock::FILENAME);
 
@@ -121,7 +121,8 @@ pub async fn should_update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
             "Downloading WIT files (v{})",
             manifest.component.wit_version
         );
-        return update(manifest, root_dir).await;
+        update(manifest, root_dir).await?;
+        return Ok(true);
     }
 
     let lock = Lock::load(&lockfile)?;
@@ -131,8 +132,9 @@ pub async fn should_update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
             lock.version,
             manifest.component.wit_version
         );
-        return update(manifest, root_dir).await;
+        update(manifest, root_dir).await?;
+        return Ok(true);
     }
 
-    Ok(())
+    Ok(false)
 }
