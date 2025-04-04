@@ -9,7 +9,9 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
     let root_dir = manifest_path.parent().expect("project root directory");
     let manifest = Manifest::load(&manifest_path).map_err(|err| anyhow::anyhow!(err))?;
 
-    crate::components::wit::should_update(&manifest, root_dir).await?;
+    if !crate::components::wit::should_update(&manifest, root_dir).await? {
+        tracing::info!("WIT files are up-to-date");
+    }
 
     Ok(())
 }
