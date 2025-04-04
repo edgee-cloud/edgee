@@ -24,7 +24,7 @@ setup_commands! {
     Test(test),
 
     /// Fetch WIT dependencies needed for building
-    FetchWit(fetch_wit),
+    Wit(fetch_wit),
 }
 
 pub type Options = Command;
