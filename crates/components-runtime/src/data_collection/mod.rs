@@ -795,6 +795,7 @@ mod tests {
                         map
                     },
                 },
+                wit_version: version::DataCollectionWitVersion::V1_0_0,
             });
         component_config
     }
