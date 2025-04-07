@@ -11,7 +11,6 @@ setup_command! {
 
 pub enum ComponentType {
     DataCollection,
-    #[allow(dead_code)]
     ConsentMapping,
 }
 
