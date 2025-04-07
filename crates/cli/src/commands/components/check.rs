@@ -34,15 +34,6 @@ pub async fn check_component(
 
     let config = match component_type {
         ComponentType::DataCollection => match component_wit_version {
-            "0.5.0" => ComponentsConfiguration {
-                data_collection: vec![DataCollectionComponents {
-                    id: component_path.to_string(),
-                    file: component_path.to_string(),
-                    wit_version: edgee_components_runtime::data_collection::version::DataCollectionWitVersion::V0_5_0,
-                    ..Default::default()
-                }],
-                ..Default::default()
-            },
             "1.0.0" => ComponentsConfiguration {
                 data_collection: vec![DataCollectionComponents {
                     id: component_path.to_string(),
@@ -71,11 +62,6 @@ pub async fn check_component(
 
     match component_type {
         ComponentType::DataCollection => match component_wit_version {
-            "0.5.0" => {
-                let _ = context
-                    .get_data_collection_0_5_0_instance(component_path, &mut store)
-                    .await?;
-            }
             "1.0.0" => {
                 let _ = context
                     .get_data_collection_instance(component_path, &mut store)

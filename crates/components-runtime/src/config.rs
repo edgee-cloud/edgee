@@ -7,6 +7,7 @@ use serde::Deserialize;
 pub struct ComponentsConfiguration {
     #[serde(default)]
     pub data_collection: Vec<DataCollectionComponents>,
+    // NOTE: add other version here
     #[serde(default)]
     pub consent_mapping: Vec<ConsentMappingComponents>,
     pub cache: Option<PathBuf>,
