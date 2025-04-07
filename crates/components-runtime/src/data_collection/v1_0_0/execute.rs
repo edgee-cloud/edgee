@@ -2,7 +2,7 @@ use crate::config::DataCollectionComponents;
 use crate::context::HostState;
 use crate::data_collection::insert_expected_headers;
 use crate::data_collection::payload::EventType;
-use crate::data_collection::v1_0_0::data_collection::exports::edgee::components1_0_0::data_collection as Component1_0_0;
+use crate::data_collection::v1_0_0::data_collection::exports::edgee::components::data_collection as Component1_0_0;
 use crate::{context::ComponentsContext, data_collection::payload};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use std::str::FromStr;
@@ -25,7 +25,7 @@ pub async fn get_edgee_request(
             return Err(err);
         }
     };
-    let component = instance.edgee_components1_0_0_data_collection();
+    let component = instance.edgee_components_data_collection();
 
     let component_settings: Vec<(String, String)> = cfg
         .settings
