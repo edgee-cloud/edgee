@@ -21,7 +21,7 @@ pub struct Components {
     pub consent_mapping: HashMap<String, ConsentMappingPre<HostState>>,
 }
 
-pub fn pre_instanciate_data_collection_component_internal(
+pub fn pre_instanciate_data_collection_component_1_0_0_internal(
     engine: &Engine,
     component_config: &DataCollectionComponents,
 ) -> anyhow::Result<DataCollectionPre<HostState>> {
@@ -66,7 +66,7 @@ impl ComponentsContext {
             .filter(|entry| entry.wit_version == DataCollectionWitVersion::V1_0_0)
             .map(|entry| {
                 let instance_pre =
-                    pre_instanciate_data_collection_component_internal(&engine, entry)?;
+                    pre_instanciate_data_collection_component_1_0_0_internal(&engine, entry)?;
                 Ok((entry.id.clone(), instance_pre))
             })
             .collect::<anyhow::Result<_>>()?;
@@ -99,16 +99,18 @@ impl ComponentsContext {
         Ok(Self { engine, components })
     }
 
-    pub fn pre_instanciate_data_collection_component(
+    pub fn pre_instanciate_data_collection_1_0_0_component(
         &self,
         component_config: DataCollectionComponents,
     ) -> anyhow::Result<DataCollectionPre<HostState>> {
-        let instance_pre =
-            pre_instanciate_data_collection_component_internal(&self.engine, &component_config)?;
+        let instance_pre = pre_instanciate_data_collection_component_1_0_0_internal(
+            &self.engine,
+            &component_config,
+        )?;
         Ok(instance_pre)
     }
 
-    pub fn add_data_collection_component(
+    pub fn add_data_collection_1_0_0_component(
         &mut self,
         component_config: DataCollectionComponents,
         instance_pre: DataCollectionPre<HostState>,
