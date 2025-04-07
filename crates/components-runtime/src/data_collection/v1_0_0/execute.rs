@@ -80,7 +80,7 @@ pub async fn get_edgee_request(
     }
 
     if request.forward_client_headers {
-        let _ = insert_expected_headers(&mut headers, &event);
+        let _ = insert_expected_headers(&mut headers, event);
     }
 
     let method = match request.method {
