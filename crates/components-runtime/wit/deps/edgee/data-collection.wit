@@ -1,4 +1,4 @@
-package edgee:components@1.0.0;
+package edgee:components;
 
 interface data-collection {
     type dict = list<tuple<string,string>>;

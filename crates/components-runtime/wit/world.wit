@@ -1,13 +1,10 @@
 package edgee:native;
 
-world data-collection-one-zero-zero {
-  export edgee:components/data-collection@1.0.0;
-}
-
-world data-collection-zero-five-zero {
-  export edgee:components/data-collection@0.5.0;
+// world data-collection-one-zero-zero {
+world data-collection {
+  export edgee:components/data-collection;
 }
 
 world consent-mapping {
-  export edgee:components/consent-mapping@1.0.0;
+  export edgee:components/consent-mapping;
 }
