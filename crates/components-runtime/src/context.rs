@@ -8,7 +8,7 @@ use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiView};
 
 use crate::config::ComponentsConfiguration;
 use crate::consent_mapping::{ConsentMapping, ConsentMappingPre};
-use crate::data_collection::v1_0_0::data_collection::DataCollectionOneZeroZeroPre;
+use crate::data_collection::v1_0_0::data_collection::DataCollectionV100Pre;
 use crate::data_collection::v1_0_0::pre_instanciate_data_collection_component_1_0_0_internal;
 use crate::data_collection::version::DataCollectionWitVersion;
 
@@ -18,7 +18,7 @@ pub struct ComponentsContext {
 }
 
 pub struct Components {
-    pub data_collection_1_0_0: HashMap<String, DataCollectionOneZeroZeroPre<HostState>>,
+    pub data_collection_1_0_0: HashMap<String, DataCollectionV100Pre<HostState>>,
     pub consent_mapping: HashMap<String, ConsentMappingPre<HostState>>,
 }
 

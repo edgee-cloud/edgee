@@ -1,6 +1,6 @@
 package edgee:native;
 
-world data-collection-one-zero-zero {
+world data-collection-v100 {
   export edgee:components/data-collection;
 }
 

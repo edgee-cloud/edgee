@@ -3,9 +3,7 @@ pub mod execute;
 use crate::config::DataCollectionComponents;
 use crate::context::ComponentsContext;
 use crate::context::HostState;
-use crate::data_collection::v1_0_0::data_collection::{
-    DataCollectionOneZeroZero, DataCollectionOneZeroZeroPre,
-};
+use crate::data_collection::v1_0_0::data_collection::{DataCollectionV100, DataCollectionV100Pre};
 use wasmtime::{
     component::{Component, Linker},
     Engine, Store,
@@ -13,7 +11,7 @@ use wasmtime::{
 
 pub mod data_collection {
     wasmtime::component::bindgen!({
-        world: "data-collection-one-zero-zero",
+        world: "data-collection-v100",
         path: "wit/",
         async: true,
     });
@@ -22,7 +20,7 @@ pub mod data_collection {
 pub fn pre_instanciate_data_collection_component_1_0_0_internal(
     engine: &Engine,
     component_config: &DataCollectionComponents,
-) -> anyhow::Result<DataCollectionOneZeroZeroPre<HostState>> {
+) -> anyhow::Result<DataCollectionV100Pre<HostState>> {
     let mut linker = Linker::new(engine);
     wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
@@ -33,7 +31,7 @@ pub fn pre_instanciate_data_collection_component_1_0_0_internal(
 
     let component = Component::from_file(engine, &component_config.file)?;
     let instance_pre = linker.instantiate_pre(&component)?;
-    let instance_pre = DataCollectionOneZeroZeroPre::new(instance_pre)?;
+    let instance_pre = DataCollectionV100Pre::new(instance_pre)?;
 
     tracing::debug!("loaded new data collection component");
 
@@ -44,7 +42,7 @@ impl ComponentsContext {
     pub fn pre_instanciate_data_collection_1_0_0_component(
         &self,
         component_config: DataCollectionComponents,
-    ) -> anyhow::Result<DataCollectionOneZeroZeroPre<HostState>> {
+    ) -> anyhow::Result<DataCollectionV100Pre<HostState>> {
         let instance_pre = pre_instanciate_data_collection_component_1_0_0_internal(
             &self.engine,
             &component_config,
@@ -55,7 +53,7 @@ impl ComponentsContext {
     pub fn add_data_collection_1_0_0_component(
         &mut self,
         component_config: DataCollectionComponents,
-        instance_pre: DataCollectionOneZeroZeroPre<HostState>,
+        instance_pre: DataCollectionV100Pre<HostState>,
     ) {
         if !self
             .components
@@ -72,7 +70,7 @@ impl ComponentsContext {
         &self,
         id: &str,
         store: &mut Store<HostState>,
-    ) -> anyhow::Result<DataCollectionOneZeroZero> {
+    ) -> anyhow::Result<DataCollectionV100> {
         let instance_pre = self.components.data_collection_1_0_0.get(id);
 
         if instance_pre.is_none() {
