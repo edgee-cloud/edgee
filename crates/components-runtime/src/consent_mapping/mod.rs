@@ -1,5 +1,5 @@
 wasmtime::component::bindgen!({
     world: "consent-mapping",
-    path: "wit/",
+    path: "src/consent_mapping/wit",
     async: true,
 });

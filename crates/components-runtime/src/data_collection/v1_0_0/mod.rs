@@ -12,7 +12,7 @@ use wasmtime::{
 pub mod data_collection {
     wasmtime::component::bindgen!({
         world: "data-collection-v100",
-        path: "wit/",
+        path: "src/data_collection/wit",
         async: true,
     });
 }

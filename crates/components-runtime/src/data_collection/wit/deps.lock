@@ -1,0 +1,4 @@
+[edgee]
+url = "https://github.com/edgee-cloud/edgee-wit/archive/refs/tags/v1.0.0.tar.gz"
+sha256 = "f6e11c5cde39ec04b024b1181f45e896f154f7677ff5a904c99f6af5224dc371"
+sha512 = "21b045d0fb82a793a6176f6d9e98dab868563ab7906e3762601e14f06a715e36c965e83e6f5c76cf016af03df48d219b86165a7c18d14284e967d0b837bf99e4"
