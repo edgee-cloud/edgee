@@ -127,7 +127,7 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
     let mut store = context.empty_store_with_stdout();
 
     let instance = context
-        .get_data_collection_instance(&component_path, &mut store)
+        .get_data_collection_1_0_0_instance(&component_path, &mut store)
         .await?;
     let component = instance.edgee_components_data_collection();
 

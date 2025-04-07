@@ -64,7 +64,7 @@ pub async fn check_component(
         ComponentType::DataCollection => match component_wit_version {
             "1.0.0" => {
                 let _ = context
-                    .get_data_collection_instance(component_path, &mut store)
+                    .get_data_collection_1_0_0_instance(component_path, &mut store)
                     .await?;
             }
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),

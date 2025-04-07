@@ -16,7 +16,7 @@ pub async fn get_edgee_request(
     store: &mut Store<HostState>,
 ) -> Result<(HeaderMap, String, String, String), anyhow::Error> {
     let instance = match component_ctx
-        .get_data_collection_instance(&cfg.id, store)
+        .get_data_collection_1_0_0_instance(&cfg.id, store)
         .await
     {
         Ok(instance) => instance,

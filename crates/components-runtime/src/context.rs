@@ -17,7 +17,7 @@ pub struct ComponentsContext {
 }
 
 pub struct Components {
-    pub data_collection: HashMap<String, DataCollectionPre<HostState>>,
+    pub data_collection_1_0_0: HashMap<String, DataCollectionPre<HostState>>,
     pub consent_mapping: HashMap<String, ConsentMappingPre<HostState>>,
 }
 
@@ -60,7 +60,7 @@ impl ComponentsContext {
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
         // Data collection components
-        let data_collection_components = config
+        let data_collection_1_0_0_components = config
             .data_collection
             .iter()
             .filter(|entry| entry.wit_version == DataCollectionWitVersion::V1_0_0)
@@ -92,7 +92,7 @@ impl ComponentsContext {
             .collect::<anyhow::Result<_>>()?;
 
         let components = Components {
-            data_collection: data_collection_components,
+            data_collection_1_0_0: data_collection_1_0_0_components,
             consent_mapping: consent_mapping_components,
         };
 
@@ -115,11 +115,11 @@ impl ComponentsContext {
     ) {
         if !self
             .components
-            .data_collection
+            .data_collection_1_0_0
             .contains_key(&component_config.id)
         {
             self.components
-                .data_collection
+                .data_collection_1_0_0
                 .insert(component_config.id.clone(), instance_pre);
         }
     }
@@ -132,12 +132,12 @@ impl ComponentsContext {
         Store::new(&self.engine, HostState::new_with_stdout())
     }
 
-    pub async fn get_data_collection_instance(
+    pub async fn get_data_collection_1_0_0_instance(
         &self,
         id: &str,
         store: &mut Store<HostState>,
     ) -> anyhow::Result<DataCollection> {
-        let instance_pre = self.components.data_collection.get(id);
+        let instance_pre = self.components.data_collection_1_0_0.get(id);
 
         if instance_pre.is_none() {
             return Err(anyhow::anyhow!("component not found: {}", id));
