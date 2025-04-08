@@ -1,6 +1,6 @@
 use crate::data_collection::convert::{convert_products, convert_properties};
 use crate::data_collection::payload;
-use crate::data_collection::v1_0_0::data_collection::exports::edgee::components::data_collection as DataCollection1_0_0;
+use crate::data_collection::versions::v1_0_0::data_collection::exports::edgee::components::data_collection as DataCollection1_0_0;
 
 impl From<payload::Event> for DataCollection1_0_0::Event {
     fn from(value: payload::Event) -> Self {

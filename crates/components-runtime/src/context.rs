@@ -8,9 +8,9 @@ use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiView};
 
 use crate::config::ComponentsConfiguration;
 use crate::consent_mapping::{ConsentMapping, ConsentMappingPre};
-use crate::data_collection::v1_0_0::data_collection::DataCollectionV100Pre;
-use crate::data_collection::v1_0_0::pre_instanciate_data_collection_component_1_0_0_internal;
-use crate::data_collection::version::DataCollectionWitVersion;
+use crate::data_collection::versions::v1_0_0::data_collection::DataCollectionV100Pre;
+use crate::data_collection::versions::v1_0_0::pre_instanciate_data_collection_component_1_0_0_internal;
+use crate::data_collection::versions::DataCollectionWitVersion;
 
 pub struct ComponentsContext {
     pub engine: Engine,

@@ -37,7 +37,7 @@ pub async fn check_component(
                 data_collection: vec![DataCollectionComponents {
                     id: component_path.to_string(),
                     file: component_path.to_string(),
-                    wit_version: edgee_components_runtime::data_collection::version::DataCollectionWitVersion::V1_0_0,
+                    wit_version: edgee_components_runtime::data_collection::versions::DataCollectionWitVersion::V1_0_0,
                     ..Default::default()
                 }],
                 ..Default::default()

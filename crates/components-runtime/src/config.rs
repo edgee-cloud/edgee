@@ -1,4 +1,4 @@
-use crate::data_collection::version::DataCollectionWitVersion;
+use crate::data_collection::versions::DataCollectionWitVersion;
 use std::{collections::HashMap, path::PathBuf};
 
 use serde::Deserialize;

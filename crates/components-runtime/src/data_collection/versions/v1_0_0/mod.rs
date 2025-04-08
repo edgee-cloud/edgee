@@ -3,7 +3,9 @@ pub mod execute;
 use crate::config::DataCollectionComponents;
 use crate::context::ComponentsContext;
 use crate::context::HostState;
-use crate::data_collection::v1_0_0::data_collection::{DataCollectionV100, DataCollectionV100Pre};
+use crate::data_collection::versions::v1_0_0::data_collection::{
+    DataCollectionV100, DataCollectionV100Pre,
+};
 use wasmtime::{
     component::{Component, Linker},
     Engine, Store,

@@ -3,8 +3,7 @@ mod convert;
 mod debug;
 pub mod logger;
 pub mod payload;
-pub mod v1_0_0;
-pub mod version;
+pub mod versions;
 
 use std::str::FromStr;
 use std::time::Duration;
@@ -173,8 +172,8 @@ pub async fn send_events(
             }
 
             let (headers, method, url, body) = match cfg.wit_version {
-                version::DataCollectionWitVersion::V1_0_0 => {
-                    match crate::data_collection::v1_0_0::execute::get_edgee_request(
+                versions::DataCollectionWitVersion::V1_0_0 => {
+                    match crate::data_collection::versions::v1_0_0::execute::get_edgee_request(
                         &event,
                         component_ctx,
                         cfg,
@@ -795,7 +794,7 @@ mod tests {
                         map
                     },
                 },
-                wit_version: version::DataCollectionWitVersion::V1_0_0,
+                wit_version: versions::DataCollectionWitVersion::V1_0_0,
             });
         component_config
     }

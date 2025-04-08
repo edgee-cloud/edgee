@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use edgee_components_runtime::data_collection;
 use std::str::FromStr;
 
-use edgee_components_runtime::data_collection::v1_0_0::data_collection::exports::edgee::components::data_collection::EdgeeRequest;
-use edgee_components_runtime::data_collection::v1_0_0::data_collection::exports::edgee::components::data_collection::HttpMethod;
+use edgee_components_runtime::data_collection::versions::v1_0_0::data_collection::exports::edgee::components::data_collection::EdgeeRequest;
+use edgee_components_runtime::data_collection::versions::v1_0_0::data_collection::exports::edgee::components::data_collection::HttpMethod;
 use edgee_components_runtime::data_collection::payload::{Event, EventType};
 use http::{HeaderMap, HeaderName, HeaderValue};
 
@@ -107,7 +107,7 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
             file: component_path.to_string(),
             wit_version: match manifest.component.wit_version.as_str() {
                 "1.0.0" => {
-                    edgee_components_runtime::data_collection::version::DataCollectionWitVersion::V1_0_0
+                    edgee_components_runtime::data_collection::versions::DataCollectionWitVersion::V1_0_0
                 },
                 _ => {
                     return Err(anyhow::anyhow!(
