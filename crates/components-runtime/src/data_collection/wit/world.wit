@@ -1,5 +1,5 @@
 package edgee:native;
 
 world data-collection-v100 {
-  export edgee:components/data-collection@1.0.0;
+  export edgee:components/data-collection;
 }
