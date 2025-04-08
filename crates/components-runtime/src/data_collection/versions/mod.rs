@@ -7,5 +7,3 @@ pub enum DataCollectionWitVersion {
     #[default]
     V1_0_0,
 }
-
-impl DataCollectionWitVersion {}
