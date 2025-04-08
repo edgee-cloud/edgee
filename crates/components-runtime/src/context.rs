@@ -10,6 +10,8 @@ use crate::config::ComponentsConfiguration;
 use crate::consent_mapping::versions::v1_0_0::consent_mapping::ConsentMappingV100Pre;
 use crate::data_collection::versions::v1_0_0::data_collection::DataCollectionV100Pre;
 use crate::data_collection::versions::v1_0_0::pre_instanciate_data_collection_component_1_0_0;
+use crate::data_collection::versions::v1_1_0::data_collection::DataCollectionV110Pre;
+use crate::data_collection::versions::v1_1_0::pre_instanciate_data_collection_component_1_1_0;
 use crate::data_collection::versions::DataCollectionWitVersion;
 
 pub struct ComponentsContext {
@@ -20,6 +22,7 @@ pub struct ComponentsContext {
 pub struct Components {
     pub data_collection_1_0_0: HashMap<String, DataCollectionV100Pre<HostState>>,
     pub consent_mapping_1_0_0: HashMap<String, ConsentMappingV100Pre<HostState>>,
+    pub data_collection_1_1_0: HashMap<String, DataCollectionV110Pre<HostState>>,
 }
 
 impl ComponentsContext {
@@ -50,6 +53,16 @@ impl ComponentsContext {
             })
             .collect::<anyhow::Result<_>>()?;
 
+        let data_collection_1_1_0_components = config
+            .data_collection
+            .iter()
+            .filter(|entry| entry.wit_version == DataCollectionWitVersion::V1_1_0)
+            .map(|entry| {
+                let instance_pre = pre_instanciate_data_collection_component_1_1_0(&engine, entry)?;
+                Ok((entry.id.clone(), instance_pre))
+            })
+            .collect::<anyhow::Result<_>>()?;
+
         // Consent mapping components
         let consent_mapping_components = config
             .consent_mapping
@@ -73,6 +86,7 @@ impl ComponentsContext {
         let components = Components {
             data_collection_1_0_0: data_collection_1_0_0_components,
             consent_mapping_1_0_0: consent_mapping_components,
+            data_collection_1_1_0: data_collection_1_1_0_components,
         };
 
         Ok(Self { engine, components })
