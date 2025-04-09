@@ -2916,6 +2916,13 @@
             "default": false,
             "nullable": true
           },
+          "override_cache": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CacheRule"
+            },
+            "description": "List of cache rules that override the default cache settings."
+          },
           "cookie_name": {
             "type": "string",
             "description": "The name of the cookie that edgee will use to store the session ID.",
@@ -3028,6 +3035,100 @@
           }
         ],
         "required": ["id"]
+      },
+      "CacheRule": {
+        "type": "object",
+        "description": "A CacheRule is a rule that overrides the default cache settings.",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "regex": {
+            "type": "boolean"
+          },
+          "ttl": {
+            "type": "number"
+          },
+          "swr": {
+            "type": "number"
+          },
+          "pass": {
+            "type": "boolean"
+          },
+          "rank": {
+            "type": "number"
+          },
+          "conditions": {
+            "type": "object",
+            "properties": {
+              "request_cookies": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/KeyValueConditions"
+                  }
+                ]
+              },
+              "request_headers": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/KeyValueConditions"
+                  }
+                ]
+              },
+              "request_query_params": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/KeyValueConditions"
+                  }
+                ]
+              },
+              "request_methods": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "response_status": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "response_headers": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/KeyValueConditions"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "KeyValueConditions": {
+        "type": "object",
+        "properties": {
+          "present": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "absent": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
       },
       "UserUpdateInput": {
         "type": "object",
