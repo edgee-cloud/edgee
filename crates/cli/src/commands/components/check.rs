@@ -71,7 +71,7 @@ pub async fn check_component(
         ComponentType::ConsentMapping => match component_wit_version {
             "1.0.0" => {
                 let _ = context
-                    .get_consent_mapping_instance(component_path, &mut store)
+                    .get_consent_mapping_1_0_0_instance(component_path, &mut store)
                     .await?;
             }
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),

@@ -87,7 +87,7 @@ impl ComponentsContext {
         Store::new(&self.engine, HostState::new_with_stdout())
     }
 
-    pub async fn get_consent_mapping_instance(
+    pub async fn get_consent_mapping_1_0_0_instance(
         &self,
         id: &str,
         store: &mut Store<HostState>,
