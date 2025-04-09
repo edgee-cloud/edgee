@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use edgee_components_runtime::data_collection;
 use std::str::FromStr;
 
-use edgee_components_runtime::data_collection::exports::edgee::components::data_collection::EdgeeRequest;
-use edgee_components_runtime::data_collection::exports::edgee::components::data_collection::HttpMethod;
+use edgee_components_runtime::data_collection::versions::v1_0_0::data_collection::exports::edgee::components::data_collection::EdgeeRequest;
+use edgee_components_runtime::data_collection::versions::v1_0_0::data_collection::exports::edgee::components::data_collection::HttpMethod;
 use edgee_components_runtime::data_collection::payload::{Event, EventType};
 use http::{HeaderMap, HeaderName, HeaderValue};
 
@@ -105,6 +105,17 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
         data_collection: vec![DataCollectionComponents {
             id: component_path.to_string(),
             file: component_path.to_string(),
+            wit_version: match manifest.component.wit_version.as_str() {
+                "1.0.0" => {
+                    edgee_components_runtime::data_collection::versions::DataCollectionWitVersion::V1_0_0
+                },
+                _ => {
+                    return Err(anyhow::anyhow!(
+                        "Unsupported wit version: {}",
+                        manifest.component.wit_version
+                    ));
+                }
+            },
             ..Default::default()
         }],
         ..Default::default()
@@ -116,7 +127,7 @@ async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
     let mut store = context.empty_store_with_stdout();
 
     let instance = context
-        .get_data_collection_instance(&component_path, &mut store)
+        .get_data_collection_1_0_0_instance(&component_path, &mut store)
         .await?;
     let component = instance.edgee_components_data_collection();
 

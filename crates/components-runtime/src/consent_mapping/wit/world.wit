@@ -1,0 +1,5 @@
+package edgee:native;
+
+world consent-mapping-v100 {
+  export edgee:components/consent-mapping;
+}

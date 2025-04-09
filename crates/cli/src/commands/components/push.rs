@@ -84,8 +84,13 @@ pub async fn run(opts: Options) -> Result<()> {
 
     // check if the output file is a valid Data Collection component
     match super::check::check_component(
-        super::check::ComponentType::DataCollection,
+        match manifest.component.category {
+            api_types::ComponentCreateInputCategory::DataCollection => {
+                super::check::ComponentType::DataCollection
+            }
+        },
         output_path.to_str().unwrap(),
+        &manifest.component.wit_version,
     )
     .await
     {

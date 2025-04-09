@@ -3,17 +3,21 @@ use colored::Colorize;
 setup_command! {
     #[arg(long = "filename")]
     filename: Option<String>,
+    #[arg(long = "component-type")]
+    component_type: Option<String>,
+    #[arg(long = "wit-version")]
+    wit_version: Option<String>,
 }
 
 pub enum ComponentType {
     DataCollection,
-    #[allow(dead_code)]
     ConsentMapping,
 }
 
 pub async fn check_component(
     component_type: ComponentType,
     component_path: &str,
+    component_wit_version: &str,
 ) -> anyhow::Result<()> {
     use edgee_components_runtime::config::{
         ComponentsConfiguration, ConsentMappingComponents, DataCollectionComponents,
@@ -28,13 +32,17 @@ pub async fn check_component(
     }
 
     let config = match component_type {
-        ComponentType::DataCollection => ComponentsConfiguration {
-            data_collection: vec![DataCollectionComponents {
-                id: component_path.to_string(),
-                file: component_path.to_string(),
+        ComponentType::DataCollection => match component_wit_version {
+            "1.0.0" => ComponentsConfiguration {
+                data_collection: vec![DataCollectionComponents {
+                    id: component_path.to_string(),
+                    file: component_path.to_string(),
+                    wit_version: edgee_components_runtime::data_collection::versions::DataCollectionWitVersion::V1_0_0,
+                    ..Default::default()
+                }],
                 ..Default::default()
-            }],
-            ..Default::default()
+            },
+            _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
         },
         ComponentType::ConsentMapping => ComponentsConfiguration {
             consent_mapping: vec![ConsentMappingComponents {
@@ -52,16 +60,22 @@ pub async fn check_component(
     let mut store = context.empty_store();
 
     match component_type {
-        ComponentType::DataCollection => {
-            let _ = context
-                .get_data_collection_instance(component_path, &mut store)
-                .await?;
-        }
-        ComponentType::ConsentMapping => {
-            let _ = context
-                .get_consent_mapping_instance(component_path, &mut store)
-                .await?;
-        }
+        ComponentType::DataCollection => match component_wit_version {
+            "1.0.0" => {
+                let _ = context
+                    .get_data_collection_1_0_0_instance(component_path, &mut store)
+                    .await?;
+            }
+            _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
+        },
+        ComponentType::ConsentMapping => match component_wit_version {
+            "1.0.0" => {
+                let _ = context
+                    .get_consent_mapping_1_0_0_instance(component_path, &mut store)
+                    .await?;
+            }
+            _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
+        },
     }
 
     tracing::info!("Component {} is valid", component_path.green());
@@ -73,9 +87,20 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
 
     use crate::components::manifest::{self, Manifest};
 
-    let component_path = match _opts.filename {
-        Some(filename) => filename,
-        None => {
+    let (component_path, component_type, component_wit_version) = match (
+        _opts.filename,
+        _opts.component_type,
+        _opts.wit_version,
+    ) {
+        (Some(filename), Some(component_type), Some(version)) => match component_type.as_str() {
+            "data-collection" => (filename, ComponentType::DataCollection, version),
+            "consent-mapping" => (filename, ComponentType::ConsentMapping, version),
+            _ => anyhow::bail!(
+                "Invalid component type: {}, expected 'data-collection' or 'consent-mapping'",
+                component_type
+            ),
+        },
+        _ => {
             let Some(manifest_path) = manifest::find_manifest_path() else {
                 anyhow::bail!("Edgee Manifest not found. Please run `edgee component new` and start from a template or `edgee component init` to create a new empty manifest in this folder.");
             };
@@ -87,12 +112,20 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
                 .output_path
                 .to_str()
                 .context("Output path should be a valid UTF-8 string")?;
-            component_path.to_string()
+            (
+                component_path.to_string(),
+                ComponentType::DataCollection,
+                manifest.component.wit_version,
+            )
         }
     };
 
-    // TODO: dont assume that it is a data collection component, add type in manifest
-    check_component(ComponentType::DataCollection, component_path.as_str()).await?;
+    check_component(
+        component_type,
+        component_path.as_str(),
+        component_wit_version.as_str(),
+    )
+    .await?;
 
     Ok(())
 }

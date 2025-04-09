@@ -1,3 +1,4 @@
+use crate::data_collection::versions::DataCollectionWitVersion;
 use std::{collections::HashMap, path::PathBuf};
 
 use serde::Deserialize;
@@ -6,12 +7,13 @@ use serde::Deserialize;
 pub struct ComponentsConfiguration {
     #[serde(default)]
     pub data_collection: Vec<DataCollectionComponents>,
+    // NOTE: add other version here
     #[serde(default)]
     pub consent_mapping: Vec<ConsentMappingComponents>,
     pub cache: Option<PathBuf>,
 }
 
-#[derive(Deserialize, Debug, Default, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct DataCollectionComponents {
     #[serde(skip_deserializing)]
     pub project_component_id: String,
@@ -21,6 +23,7 @@ pub struct DataCollectionComponents {
     pub file: String,
     #[serde(default)]
     pub settings: DataCollectionComponentSettings,
+    pub wit_version: DataCollectionWitVersion,
 }
 
 #[derive(Deserialize, Debug, Clone)]
