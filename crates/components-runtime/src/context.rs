@@ -9,7 +9,7 @@ use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiView};
 use crate::config::ComponentsConfiguration;
 use crate::consent_mapping::{ConsentMapping, ConsentMappingPre};
 use crate::data_collection::versions::v1_0_0::data_collection::DataCollectionV100Pre;
-use crate::data_collection::versions::v1_0_0::pre_instanciate_data_collection_component_1_0_0_internal;
+use crate::data_collection::versions::v1_0_0::pre_instanciate_data_collection_component_1_0_0;
 use crate::data_collection::versions::DataCollectionWitVersion;
 
 pub struct ComponentsContext {
@@ -45,8 +45,7 @@ impl ComponentsContext {
             .iter()
             .filter(|entry| entry.wit_version == DataCollectionWitVersion::V1_0_0)
             .map(|entry| {
-                let instance_pre =
-                    pre_instanciate_data_collection_component_1_0_0_internal(&engine, entry)?;
+                let instance_pre = pre_instanciate_data_collection_component_1_0_0(&engine, entry)?;
                 Ok((entry.id.clone(), instance_pre))
             })
             .collect::<anyhow::Result<_>>()?;

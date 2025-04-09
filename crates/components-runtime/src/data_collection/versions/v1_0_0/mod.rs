@@ -19,7 +19,7 @@ pub mod data_collection {
     });
 }
 
-pub fn pre_instanciate_data_collection_component_1_0_0_internal(
+pub fn pre_instanciate_data_collection_component_1_0_0(
     engine: &Engine,
     component_config: &DataCollectionComponents,
 ) -> anyhow::Result<DataCollectionV100Pre<HostState>> {
@@ -45,10 +45,8 @@ impl ComponentsContext {
         &self,
         component_config: DataCollectionComponents,
     ) -> anyhow::Result<DataCollectionV100Pre<HostState>> {
-        let instance_pre = pre_instanciate_data_collection_component_1_0_0_internal(
-            &self.engine,
-            &component_config,
-        )?;
+        let instance_pre =
+            pre_instanciate_data_collection_component_1_0_0(&self.engine, &component_config)?;
         Ok(instance_pre)
     }
 
