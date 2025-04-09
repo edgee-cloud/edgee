@@ -68,11 +68,14 @@ pub async fn check_component(
             }
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
         },
-        ComponentType::ConsentMapping => {
-            let _ = context
-                .get_consent_mapping_instance(component_path, &mut store)
-                .await?;
-        }
+        ComponentType::ConsentMapping => match component_wit_version {
+            "1.0.0" => {
+                let _ = context
+                    .get_consent_mapping_instance(component_path, &mut store)
+                    .await?;
+            }
+            _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
+        },
     }
 
     tracing::info!("Component {} is valid", component_path.green());
