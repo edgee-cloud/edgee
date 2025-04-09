@@ -1,18 +1,18 @@
 use crate::data_collection::convert::{convert_products, convert_properties};
 use crate::data_collection::payload;
-use crate::data_collection::versions::v1_0_0::data_collection::exports::edgee::components::data_collection as DataCollection1_0_0;
+use crate::data_collection::versions::v1_0_0::data_collection::exports::edgee::components::data_collection as DC;
 
-impl From<payload::Event> for DataCollection1_0_0::Event {
+impl From<payload::Event> for DC::Event {
     fn from(value: payload::Event) -> Self {
         let data = match value.data {
-            payload::Data::Page(page) => DataCollection1_0_0::Data::Page(page.into()),
-            payload::Data::User(user) => DataCollection1_0_0::Data::User(user.into()),
-            payload::Data::Track(track) => DataCollection1_0_0::Data::Track(track.into()),
+            payload::Data::Page(page) => DC::Data::Page(page.into()),
+            payload::Data::User(user) => DC::Data::User(user.into()),
+            payload::Data::Track(track) => DC::Data::Track(track.into()),
         };
         let consent = match value.consent {
-            Some(payload::Consent::Pending) => Some(DataCollection1_0_0::Consent::Pending),
-            Some(payload::Consent::Granted) => Some(DataCollection1_0_0::Consent::Granted),
-            Some(payload::Consent::Denied) => Some(DataCollection1_0_0::Consent::Denied),
+            Some(payload::Consent::Pending) => Some(DC::Consent::Pending),
+            Some(payload::Consent::Granted) => Some(DC::Consent::Granted),
+            Some(payload::Consent::Denied) => Some(DC::Consent::Denied),
             None => None,
         };
         Self {
@@ -28,7 +28,7 @@ impl From<payload::Event> for DataCollection1_0_0::Event {
     }
 }
 
-impl From<payload::EventType> for DataCollection1_0_0::EventType {
+impl From<payload::EventType> for DC::EventType {
     fn from(value: payload::EventType) -> Self {
         match value {
             payload::EventType::Page => Self::Page,
@@ -38,7 +38,7 @@ impl From<payload::EventType> for DataCollection1_0_0::EventType {
     }
 }
 
-impl From<payload::Page> for DataCollection1_0_0::PageData {
+impl From<payload::Page> for DC::PageData {
     fn from(value: payload::Page) -> Self {
         Self {
             name: value.name,
@@ -54,7 +54,7 @@ impl From<payload::Page> for DataCollection1_0_0::PageData {
     }
 }
 
-impl From<payload::User> for DataCollection1_0_0::UserData {
+impl From<payload::User> for DC::UserData {
     fn from(value: payload::User) -> Self {
         Self {
             user_id: value.user_id,
@@ -65,7 +65,7 @@ impl From<payload::User> for DataCollection1_0_0::UserData {
     }
 }
 
-impl From<payload::Track> for DataCollection1_0_0::TrackData {
+impl From<payload::Track> for DC::TrackData {
     fn from(value: payload::Track) -> Self {
         Self {
             name: value.name,
@@ -75,7 +75,7 @@ impl From<payload::Track> for DataCollection1_0_0::TrackData {
     }
 }
 
-impl From<payload::Context> for DataCollection1_0_0::Context {
+impl From<payload::Context> for DC::Context {
     fn from(value: payload::Context) -> Self {
         Self {
             page: value.page.into(),
@@ -87,7 +87,7 @@ impl From<payload::Context> for DataCollection1_0_0::Context {
     }
 }
 
-impl From<payload::Campaign> for DataCollection1_0_0::Campaign {
+impl From<payload::Campaign> for DC::Campaign {
     fn from(value: payload::Campaign) -> Self {
         Self {
             name: value.name,
@@ -101,7 +101,7 @@ impl From<payload::Campaign> for DataCollection1_0_0::Campaign {
     }
 }
 
-impl From<payload::Client> for DataCollection1_0_0::Client {
+impl From<payload::Client> for DC::Client {
     fn from(value: payload::Client) -> Self {
         Self {
             ip: value.ip,
@@ -128,7 +128,7 @@ impl From<payload::Client> for DataCollection1_0_0::Client {
     }
 }
 
-impl From<payload::Session> for DataCollection1_0_0::Session {
+impl From<payload::Session> for DC::Session {
     fn from(value: payload::Session) -> Self {
         Self {
             session_id: value.session_id,
