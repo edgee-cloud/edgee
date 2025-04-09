@@ -7,7 +7,7 @@ use wasmtime::{
 use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiView};
 
 use crate::config::ComponentsConfiguration;
-use crate::consent_mapping::{ConsentMapping, ConsentMappingPre};
+use crate::consent_mapping::versions::v1_0_0::consent_mapping::ConsentMappingV100Pre;
 use crate::data_collection::versions::v1_0_0::data_collection::DataCollectionV100Pre;
 use crate::data_collection::versions::v1_0_0::pre_instanciate_data_collection_component_1_0_0;
 use crate::data_collection::versions::DataCollectionWitVersion;
@@ -19,7 +19,7 @@ pub struct ComponentsContext {
 
 pub struct Components {
     pub data_collection_1_0_0: HashMap<String, DataCollectionV100Pre<HostState>>,
-    pub consent_mapping: HashMap<String, ConsentMappingPre<HostState>>,
+    pub consent_mapping_1_0_0: HashMap<String, ConsentMappingV100Pre<HostState>>,
 }
 
 impl ComponentsContext {
@@ -62,7 +62,7 @@ impl ComponentsContext {
 
                 let component = Component::from_file(&engine, &entry.component)?;
                 let instance_pre = linker.instantiate_pre(&component)?;
-                let instance_pre = ConsentMappingPre::new(instance_pre)?;
+                let instance_pre = ConsentMappingV100Pre::new(instance_pre)?;
 
                 tracing::debug!("Finished pre-instantiate consent mapping component");
 
@@ -72,7 +72,7 @@ impl ComponentsContext {
 
         let components = Components {
             data_collection_1_0_0: data_collection_1_0_0_components,
-            consent_mapping: consent_mapping_components,
+            consent_mapping_1_0_0: consent_mapping_components,
         };
 
         Ok(Self { engine, components })
@@ -84,20 +84,6 @@ impl ComponentsContext {
 
     pub fn empty_store_with_stdout(&self) -> Store<HostState> {
         Store::new(&self.engine, HostState::new_with_stdout())
-    }
-
-    pub async fn get_consent_mapping_1_0_0_instance(
-        &self,
-        id: &str,
-        store: &mut Store<HostState>,
-    ) -> anyhow::Result<ConsentMapping> {
-        let instance_pre = self.components.consent_mapping.get(id);
-
-        if instance_pre.is_none() {
-            return Err(anyhow::anyhow!("component not found: {}", id));
-        }
-
-        instance_pre.unwrap().instantiate_async(store).await
     }
 }
 
