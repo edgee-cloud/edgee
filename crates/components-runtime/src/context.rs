@@ -32,7 +32,9 @@ impl ComponentsContext {
 
         if let Some(path) = config.cache.as_deref() {
             engine_config.cache_config_load(path)?;
-        };
+        } else {
+            engine_config.cache_config_load_default()?;
+        }
 
         let engine = Engine::new(&engine_config)?;
 
