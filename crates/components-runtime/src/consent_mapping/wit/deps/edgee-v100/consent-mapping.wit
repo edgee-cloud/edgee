@@ -1,4 +1,4 @@
-package edgee:components;
+package edgee:components@1.0.0;
 
 interface consent-mapping {
     type dict = list<tuple<string,string>>;
@@ -9,5 +9,5 @@ interface consent-mapping {
         denied,
     }
 
-    map: func(cookie: string, settings: dict) -> option<consent>;
+    map: func(cookies: dict, settings: dict) -> option<consent>;
 }
