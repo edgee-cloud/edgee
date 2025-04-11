@@ -200,8 +200,8 @@ mod tests {
 
     #[test]
     fn test_category_options() {
-        assert_eq!(CATEGORY_OPTIONS.len(), 1); // for now!
-        let expected_categories = ["Data Collection"];
+        assert_eq!(CATEGORY_OPTIONS.len(), 2); // for now!
+        let expected_categories = ["Data Collection", "Consent Mapping"];
         for &expected in &expected_categories {
             assert!(CATEGORY_OPTIONS
                 .iter()
@@ -211,7 +211,13 @@ mod tests {
 
     #[test]
     fn test_subcategory_options() {
-        let expected_subcategories = ["Analytics", "Attribution", "Warehouse", "Conversion API"];
+        let expected_subcategories = [
+            "Analytics",
+            "Attribution",
+            "Warehouse",
+            "Conversion API",
+            "Consent Mapping",
+        ];
         for &expected in &expected_subcategories {
             assert!(SUBCATEGORY_OPTIONS
                 .iter()
