@@ -48,6 +48,7 @@ pub struct Component {
 )]
 pub enum Category {
     DataCollection,
+    ConsentMapping,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -60,6 +61,7 @@ pub enum SubCategory {
     Warehouse,
     Attribution,
     ConversionApi,
+    ConsentMapping,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

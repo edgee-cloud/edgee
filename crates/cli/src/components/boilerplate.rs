@@ -138,6 +138,10 @@ pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
         name: "Conversion API",
         value: api_types::ComponentCreateInputSubcategory::ConversionApi,
     },
+    SubCategoryConfig {
+        name: "Consent Mapping",
+        value: api_types::ComponentCreateInputSubcategory::ConsentMapping,
+    },
 ];
 
 #[cfg(test)]
