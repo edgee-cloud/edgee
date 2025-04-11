@@ -11,7 +11,7 @@ setup_command! {
 
 pub enum ComponentType {
     DataCollection,
-    ConsentMapping,
+    ConsentManagement,
 }
 
 pub async fn check_component(
@@ -44,8 +44,8 @@ pub async fn check_component(
             },
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
         },
-        ComponentType::ConsentMapping => ComponentsConfiguration {
-            consent_mapping: vec![ConsentMappingComponents {
+        ComponentType::ConsentManagement => ComponentsConfiguration {
+            consent_management: vec![ConsentMappingComponents {
                 name: component_path.to_string(),
                 component: component_path.to_string(),
                 ..Default::default()
@@ -68,10 +68,10 @@ pub async fn check_component(
             }
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
         },
-        ComponentType::ConsentMapping => match component_wit_version {
+        ComponentType::ConsentManagement => match component_wit_version {
             "1.0.0" => {
                 let _ = context
-                    .get_consent_mapping_1_0_0_instance(component_path, &mut store)
+                    .get_consent_management_1_0_0_instance(component_path, &mut store)
                     .await?;
             }
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
@@ -94,7 +94,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
     ) {
         (Some(filename), Some(component_type), Some(version)) => match component_type.as_str() {
             "data-collection" => (filename, ComponentType::DataCollection, version),
-            "consent-mapping" => (filename, ComponentType::ConsentMapping, version),
+            "consent-mapping" => (filename, ComponentType::ConsentManagement, version),
             _ => anyhow::bail!(
                 "Invalid component type: {}, expected 'data-collection' or 'consent-mapping'",
                 component_type

@@ -66,9 +66,10 @@ pub async fn update(manifest: &Manifest, root_dir: &Path) -> Result<()> {
 
     let deps_manifest = format!(
         "\
-edgee = \"https://github.com/edgee-cloud/edgee-wit/archive/refs/tags/v{wit_world_version}.tar.gz\"
+edgee = \"https://github.com/edgee-cloud/edgee-{world}-wit/archive/refs/tags/v{wit_world_version}.tar.gz\"
 {extra}
 ",
+        world = category_config.wit_world,
         wit_world_version = manifest.component.wit_version,
         extra = language_config
             .map(|config| config.deps_extra)
@@ -86,13 +87,20 @@ package edgee:native;
 world {world} {{
   {extra}
 
-  export edgee:components/{world};
+  export edgee:components/{world}{version};
 }}
 ",
         world = category_config.wit_world,
         extra = language_config
             .map(|config| config.wit_world_extra)
             .unwrap_or_default(),
+        version = match (
+            category_config.wit_world,
+            manifest.component.wit_version.as_str()
+        ) {
+            ("edgee:components/data-collection", "1.0.0") => "".to_string(),
+            (_, _) => format!("@{}", manifest.component.wit_version),
+        }
     );
 
     let wit_world_path = wit_path.join("world.wit");

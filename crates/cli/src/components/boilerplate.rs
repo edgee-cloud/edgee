@@ -108,11 +108,18 @@ cli = \"https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.0.tar.gz\
     },
 ];
 
-pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[CategoryConfig {
-    name: "Data Collection",
-    value: api_types::ComponentCreateInputCategory::DataCollection,
-    wit_world: "data-collection",
-}];
+pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[
+    CategoryConfig {
+        name: "Data Collection",
+        value: api_types::ComponentCreateInputCategory::DataCollection,
+        wit_world: "data-collection",
+    },
+    CategoryConfig {
+        name: "Consent Mapping",
+        value: api_types::ComponentCreateInputCategory::ConsentManagement,
+        wit_world: "consent-management",
+    },
+];
 
 pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
     SubCategoryConfig {
@@ -130,6 +137,10 @@ pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
     SubCategoryConfig {
         name: "Conversion API",
         value: api_types::ComponentCreateInputSubcategory::ConversionApi,
+    },
+    SubCategoryConfig {
+        name: "Consent Mapping",
+        value: api_types::ComponentCreateInputSubcategory::ConsentMapping,
     },
 ];
 
@@ -189,8 +200,8 @@ mod tests {
 
     #[test]
     fn test_category_options() {
-        assert_eq!(CATEGORY_OPTIONS.len(), 1); // for now!
-        let expected_categories = ["Data Collection"];
+        assert_eq!(CATEGORY_OPTIONS.len(), 2); // for now!
+        let expected_categories = ["Data Collection", "Consent Mapping"];
         for &expected in &expected_categories {
             assert!(CATEGORY_OPTIONS
                 .iter()
@@ -200,7 +211,13 @@ mod tests {
 
     #[test]
     fn test_subcategory_options() {
-        let expected_subcategories = ["Analytics", "Attribution", "Warehouse", "Conversion API"];
+        let expected_subcategories = [
+            "Analytics",
+            "Attribution",
+            "Warehouse",
+            "Conversion API",
+            "Consent Mapping",
+        ];
         for &expected in &expected_subcategories {
             assert!(SUBCATEGORY_OPTIONS
                 .iter()

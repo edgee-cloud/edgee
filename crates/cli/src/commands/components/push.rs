@@ -88,6 +88,9 @@ pub async fn run(opts: Options) -> Result<()> {
             api_types::ComponentCreateInputCategory::DataCollection => {
                 super::check::ComponentType::DataCollection
             }
+            api_types::ComponentCreateInputCategory::ConsentManagement => {
+                super::check::ComponentType::ConsentManagement
+            }
         },
         output_path.to_str().unwrap(),
         &manifest.component.wit_version,

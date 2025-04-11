@@ -1,0 +1,5 @@
+package edgee:native;
+
+world consent-management-v100 {
+  export edgee:components/consent-management@1.0.0;
+}
