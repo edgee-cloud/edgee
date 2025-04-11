@@ -9,7 +9,7 @@ pub struct ComponentsConfiguration {
     pub data_collection: Vec<DataCollectionComponents>,
     // NOTE: add other version here
     #[serde(default)]
-    pub consent_mapping: Vec<ConsentMappingComponents>,
+    pub consent_management: Vec<ConsentMappingComponents>,
     pub cache: Option<PathBuf>,
 }
 

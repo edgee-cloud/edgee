@@ -88,8 +88,8 @@ pub async fn run(opts: Options) -> Result<()> {
             api_types::ComponentCreateInputCategory::DataCollection => {
                 super::check::ComponentType::DataCollection
             }
-            api_types::ComponentCreateInputCategory::ConsentMapping => {
-                super::check::ComponentType::ConsentMapping
+            api_types::ComponentCreateInputCategory::ConsentManagement => {
+                super::check::ComponentType::ConsentManagement
             }
         },
         output_path.to_str().unwrap(),
