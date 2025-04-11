@@ -108,11 +108,18 @@ cli = \"https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.0.tar.gz\
     },
 ];
 
-pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[CategoryConfig {
-    name: "Data Collection",
-    value: api_types::ComponentCreateInputCategory::DataCollection,
-    wit_world: "data-collection",
-}];
+pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[
+    CategoryConfig {
+        name: "Data Collection",
+        value: api_types::ComponentCreateInputCategory::DataCollection,
+        wit_world: "data-collection",
+    },
+    CategoryConfig {
+        name: "Consent Mapping",
+        value: api_types::ComponentCreateInputCategory::ConsentMapping,
+        wit_world: "consent-mapping",
+    },
+];
 
 pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
     SubCategoryConfig {
