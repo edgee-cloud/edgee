@@ -94,17 +94,12 @@ world {world} {{
         extra = language_config
             .map(|config| config.wit_world_extra)
             .unwrap_or_default(),
-        version = match category_config.wit_world {
-            "data-collection" => {
-                match manifest.component.wit_version.as_str() {
-                    // 1.0.0 is the first version of the WIT world, which wasnt versioned
-                    "1.0.0" => "".to_string(),
-                    _ => format!("@{}", manifest.component.wit_version),
-                }
-            }
-            _ => {
-                format!("@{}", manifest.component.wit_version)
-            }
+        version = match (
+            category_config.wit_world,
+            manifest.component.wit_version.as_str()
+        ) {
+            ("edgee:components/data-collection", "1.0.0") => "".to_string(),
+            (_, _) => format!("@{}", manifest.component.wit_version),
         }
     );
 
