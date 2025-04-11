@@ -48,7 +48,7 @@ pub struct Component {
 )]
 pub enum Category {
     DataCollection,
-    ConsentMapping,
+    ConsentManagement,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]

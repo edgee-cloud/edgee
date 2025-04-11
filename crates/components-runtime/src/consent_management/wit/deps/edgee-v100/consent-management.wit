@@ -1,6 +1,6 @@
 package edgee:components@1.0.0;
 
-interface consent-mapping {
+interface consent-management {
     type dict = list<tuple<string,string>>;
 
     enum consent {

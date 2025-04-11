@@ -116,8 +116,8 @@ pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[
     },
     CategoryConfig {
         name: "Consent Mapping",
-        value: api_types::ComponentCreateInputCategory::ConsentMapping,
-        wit_world: "consent-mapping",
+        value: api_types::ComponentCreateInputCategory::ConsentManagement,
+        wit_world: "consent-management",
     },
 ];
 
