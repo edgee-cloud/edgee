@@ -3594,12 +3594,12 @@
           "category": {
             "type": "string",
             "description": "Category of the component.",
-            "enum": ["data_collection"]
+            "enum": ["data_collection", "consent mapping"]
           },
           "subcategory": {
             "type": "string",
             "description": "Subcategory of the component.",
-            "enum": ["analytics", "warehouse", "attribution", "conversion api"]
+            "enum": ["analytics", "warehouse", "attribution", "conversion api", "consent mapping"]
           },
           "documentation_link": {
             "type": "string",
