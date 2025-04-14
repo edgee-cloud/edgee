@@ -98,7 +98,7 @@ world {world} {{
             category_config.wit_world,
             manifest.component.wit_version.as_str()
         ) {
-            ("edgee:components/data-collection", "1.0.0") => "".to_string(),
+            ("data-collection", "1.0.0") => "".to_string(),
             (_, _) => format!("@{}", manifest.component.wit_version),
         }
     );
