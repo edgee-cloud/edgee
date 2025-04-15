@@ -31,6 +31,7 @@ pub struct DataCollectionComponentSettings {
     pub edgee_track_event_enabled: bool,
     pub edgee_user_event_enabled: bool,
     pub edgee_page_event_enabled: bool,
+    pub edgee_require_auth: bool,
     #[serde(flatten)]
     pub additional_settings: HashMap<String, String>,
 }
@@ -43,6 +44,7 @@ impl Default for DataCollectionComponentSettings {
             edgee_track_event_enabled: true,
             edgee_user_event_enabled: true,
             edgee_page_event_enabled: true,
+            edgee_require_auth: false,
             additional_settings: HashMap::new(),
         }
     }

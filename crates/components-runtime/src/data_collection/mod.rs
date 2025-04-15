@@ -1,3 +1,4 @@
+mod auth;
 mod context;
 mod convert;
 mod debug;
@@ -192,12 +193,36 @@ pub async fn send_events(
             let component = instance.edgee_components_data_collection();
 
             let component_event: Component::Event = event.clone().into();
-            let component_settings: Vec<(String, String)> = cfg
+            let mut component_settings: Vec<(String, String)> = cfg
                 .settings
                 .additional_settings
                 .clone()
                 .into_iter()
                 .collect();
+
+            let token: Option<String> = if cfg.settings.edgee_require_auth {
+                match auth::get_token_from_cache(&cfg).await {
+                    Ok(Some(token)) => Some(token),
+                    _ => {
+                        if let Some((new_token, _headers)) =
+                            auth::fetch_token_from_auth(&component, &mut store, &component_settings)
+                                .await
+                        {
+                            let _ = auth::cache_token(&cfg, &new_token).await;
+                            Some(new_token)
+                        } else {
+                            None
+                        }
+                    }
+                }
+            } else {
+                None
+            };
+
+            if let Some(ref token) = token {
+                println!("Token fetched from auth: {}", token);
+                component_settings.push(("token".to_string(), token.clone()));
+            }
 
             // call the corresponding method of the component
             let request = match component_event.event_type {
@@ -817,6 +842,7 @@ mod tests {
                     edgee_track_event_enabled: true,
                     edgee_anonymization: true,
                     edgee_default_consent: "granted".to_string(),
+                    edgee_require_auth: false,
                     additional_settings: {
                         let mut map = HashMap::new();
                         map.insert("ga_measurement_id".to_string(), "abcdefg".to_string());
