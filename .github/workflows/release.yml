@@ -70,6 +70,6 @@ jobs:
     needs: build-release-binaries
     runs-on: ubuntu-latest
     steps:
-      - uses: edgee-cloud/homebrew-edgee@v0.1.0
+      - uses: edgee-cloud/homebrew-edgee@v0.1.1
         with:
           ACTION_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
