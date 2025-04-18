@@ -188,6 +188,22 @@ pub async fn send_events(
                         }
                     }
                 }
+                versions::DataCollectionWitVersion::V1_0_1 => {
+                    match crate::data_collection::versions::v1_0_1::execute::get_edgee_request(
+                        &event,
+                        component_ctx,
+                        cfg,
+                        &mut store,
+                    )
+                    .await
+                    {
+                        Ok((headers, method, url, body)) => (headers, method, url, body),
+                        Err(err) => {
+                            error!("Failed to get edgee request. Error: {}", err);
+                            continue;
+                        }
+                    }
+                }
             };
 
             let client = reqwest::Client::builder()
