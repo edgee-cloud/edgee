@@ -1,13 +1,12 @@
 use std::collections::HashMap;
 
-use wasmtime::{
-    component::{Component, Linker},
-    Engine, Store,
-};
+use wasmtime::{Engine, Store};
 use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiView};
 
 use crate::config::ComponentsConfiguration;
 use crate::consent_management::versions::v1_0_0::consent_management::ConsentManagementV100Pre;
+use crate::consent_management::versions::v1_0_0::pre_instanciate_consent_management_component_1_0_0;
+use crate::consent_management::versions::ConsentManagementWitVersion;
 use crate::data_collection::versions::v1_0_0::data_collection::DataCollectionV100Pre;
 use crate::data_collection::versions::v1_0_0::pre_instanciate_data_collection_component_1_0_0;
 use crate::data_collection::versions::DataCollectionWitVersion;
@@ -39,9 +38,6 @@ impl ComponentsContext {
 
         let engine = Engine::new(&engine_config)?;
 
-        let mut linker = Linker::new(&engine);
-        wasmtime_wasi::add_to_linker_async(&mut linker)?;
-
         // Data collection components
         let data_collection_1_0_0_components = config
             .data_collection
@@ -57,19 +53,11 @@ impl ComponentsContext {
         let consent_management_components = config
             .consent_management
             .iter()
+            .filter(|entry| entry.wit_version == ConsentManagementWitVersion::V1_0_0)
             .map(|entry| {
-                let span = tracing::info_span!("component-context", component = %entry.name, category = "consent-management");
-                let _span = span.enter();
-
-                tracing::debug!("Start pre-instantiate consent management component");
-
-                let component = Component::from_file(&engine, &entry.component)?;
-                let instance_pre = linker.instantiate_pre(&component)?;
-                let instance_pre = ConsentManagementV100Pre::new(instance_pre)?;
-
-                tracing::debug!("Finished pre-instantiate consent management component");
-
-                Ok((entry.name.clone(), instance_pre))
+                let instance_pre =
+                    pre_instanciate_consent_management_component_1_0_0(&engine, entry)?;
+                Ok((entry.id.clone(), instance_pre))
             })
             .collect::<anyhow::Result<_>>()?;
 
