@@ -13,9 +13,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
     let root_dir = manifest_path.parent().expect("project root directory");
     let manifest = Manifest::load(&manifest_path).map_err(|err| anyhow::anyhow!(err))?;
 
-    do_build(&manifest, root_dir).await?;
-
-    Ok(())
+    do_build(&manifest, root_dir).await
 }
 
 pub async fn do_build(manifest: &Manifest, root_dir: &Path) -> anyhow::Result<()> {
@@ -30,9 +28,9 @@ pub async fn do_build(manifest: &Manifest, root_dir: &Path) -> anyhow::Result<()
 
     if status.success() {
         tracing::info!("Build successful!");
+        Ok(())
     } else {
         tracing::error!("Build errored!");
+        Err(anyhow::anyhow!("Build failed with status code: {}", status))
     }
-
-    Ok(())
 }
