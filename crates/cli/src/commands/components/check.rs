@@ -20,7 +20,7 @@ pub async fn check_component(
     component_wit_version: &str,
 ) -> anyhow::Result<()> {
     use edgee_components_runtime::config::{
-        ComponentsConfiguration, ConsentMappingComponents, DataCollectionComponents,
+        ComponentsConfiguration, ConsentManagementComponents, DataCollectionComponents,
     };
     use edgee_components_runtime::context::ComponentsContext;
 
@@ -45,7 +45,7 @@ pub async fn check_component(
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
         },
         ComponentType::ConsentManagement => ComponentsConfiguration {
-            consent_management: vec![ConsentMappingComponents {
+            consent_management: vec![ConsentManagementComponents {
                 name: component_path.to_string(),
                 component: component_path.to_string(),
                 ..Default::default()
