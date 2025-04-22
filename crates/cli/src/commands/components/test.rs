@@ -6,11 +6,13 @@ use std::collections::HashMap;
 
 use edgee_components_runtime::data_collection;
 use std::str::FromStr;
-
 use edgee_components_runtime::data_collection::versions::v1_0_0::data_collection::exports::edgee::components::data_collection::EdgeeRequest;
 use edgee_components_runtime::data_collection::versions::v1_0_0::data_collection::exports::edgee::components::data_collection::HttpMethod;
 use edgee_components_runtime::data_collection::payload::{Event, EventType};
 use http::{HeaderMap, HeaderName, HeaderValue};
+
+use crate::components::manifest;
+use crate::components::manifest::Manifest;
 
 setup_command! {
     /// Comma-separated key=value pairs for settings
@@ -81,18 +83,12 @@ fn parse_settings(settings_str: &str) -> Result<HashMap<String, String>, String>
     Ok(settings_map)
 }
 
-async fn test_data_collection_component(opts: Options) -> anyhow::Result<()> {
-    use crate::components::manifest;
-    use crate::components::manifest::Manifest;
-
-    let manifest_path =
-        manifest::find_manifest_path().ok_or_else(|| anyhow::anyhow!("Manifest not found"))?;
-
-    let manifest = Manifest::load(&manifest_path)?;
+async fn test_data_collection_component(opts: Options, manifest: &Manifest) -> anyhow::Result<()> {
     let component_path = manifest
         .component
         .build
         .output_path
+        .clone()
         .into_os_string()
         .into_string()
         .map_err(|_| anyhow::anyhow!("Invalid path"))?;
@@ -383,8 +379,21 @@ async fn run_request(request: EdgeeRequest) -> anyhow::Result<()> {
 }
 
 pub async fn run(opts: Options) -> anyhow::Result<()> {
-    // TODO: dont assume that it is a data collection component, add type in manifest
-    test_data_collection_component(opts).await?;
+    let manifest_path =
+        manifest::find_manifest_path().ok_or_else(|| anyhow::anyhow!("Manifest not found"))?;
+
+    let manifest = Manifest::load(&manifest_path)?;
+
+    match manifest.component.category {
+        edgee_api_client::types::ComponentCreateInputCategory::ConsentManagement => {
+            return Err(anyhow::anyhow!(
+                "Consent Management components are not supported yet"
+            ));
+        }
+        edgee_api_client::types::ComponentCreateInputCategory::DataCollection => {
+            test_data_collection_component(opts, &manifest).await?;
+        }
+    }
 
     Ok(())
 }
