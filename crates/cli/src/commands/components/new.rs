@@ -6,7 +6,9 @@ use std::io::{Cursor, Read, Write};
 use std::path::Path;
 use zip::read::ZipArchive;
 
-use crate::components::boilerplate::{LanguageConfig, LANGUAGE_OPTIONS};
+use crate::components::boilerplate::{
+    CategoryConfig, LanguageConfig, CATEGORY_OPTIONS, LANGUAGE_OPTIONS,
+};
 use crate::components::manifest::Manifest;
 
 setup_command! {
@@ -17,6 +19,10 @@ setup_command! {
     /// One of the supported languages (c, c#, go, js, python, rust, typescript)
     #[clap(long, short)]
     language: Option<String>,
+
+    /// One of the supported categories (data-collection, consent-management)
+    #[clap(long, short)]
+    category: Option<String>,
 }
 
 fn prompt_for_language() -> LanguageConfig {
@@ -25,8 +31,14 @@ fn prompt_for_language() -> LanguageConfig {
         .expect("Failed to prompt for language")
 }
 
-pub async fn run(_opts: Options) -> anyhow::Result<()> {
-    let component_name = match _opts.name {
+fn prompt_for_category() -> CategoryConfig {
+    Select::new("Select the main category:", CATEGORY_OPTIONS.to_vec())
+        .prompt()
+        .expect("Failed to prompt for category")
+}
+
+pub async fn run(opts: Options) -> anyhow::Result<()> {
+    let component_name = match opts.name {
         Some(name) => name,
         None => Text::new("Enter the component name:")
             .with_validator(inquire::required!("Component name cannot be empty"))
@@ -36,7 +48,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             ))
             .prompt()?,
     };
-    let component_language = match _opts
+    let component_language = match opts
         .language
         .as_deref()
         .filter(|language| !language.is_empty())
@@ -53,6 +65,25 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
                 prompt_for_language()
             }),
         None => prompt_for_language(),
+    };
+
+    let component_category = match opts
+        .category
+        .as_deref()
+        .filter(|category| !category.is_empty())
+    {
+        Some(category) => CATEGORY_OPTIONS
+            .iter()
+            .find(|c| c.name.to_lowercase() == category.to_lowercase())
+            .cloned()
+            .unwrap_or_else(|| {
+                tracing::info!(
+                    "Category '{}' is not available. Please select from the list:",
+                    category
+                );
+                prompt_for_category()
+            }),
+        None => prompt_for_category(),
     };
 
     let component_path = Path::new(&component_name);
@@ -75,13 +106,18 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         let mut file = archive.by_index(i)?;
         let path = file.name();
 
-        // Skip the first-level folder and extract only its contents
-        let parts: Vec<&str> = path.splitn(2, '/').collect();
-        if parts.len() < 2 {
-            continue; // Ignore root-level files or folders
+        // split into <repo>/<wit-world>/<rest of file>
+        let parts: Vec<&str> = path.splitn(3, '/').collect();
+        if parts.len() < 3 {
+            continue;
         }
 
-        let output_path = component_path.join(parts[1]);
+        // only get the wanted world
+        if parts[1] != component_category.wit_world {
+            continue;
+        }
+
+        let output_path = component_path.join(parts[2]);
         if file.is_dir() {
             create_dir_all(&output_path)?;
         } else {
