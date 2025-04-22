@@ -114,7 +114,14 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
                 .context("Output path should be a valid UTF-8 string")?;
             (
                 component_path.to_string(),
-                ComponentType::DataCollection,
+                match manifest.component.category {
+                    edgee_api_client::types::ComponentCreateInputCategory::DataCollection => {
+                        ComponentType::DataCollection
+                    }
+                    edgee_api_client::types::ComponentCreateInputCategory::ConsentManagement => {
+                        ComponentType::ConsentManagement
+                    }
+                },
                 manifest.component.wit_version,
             )
         }
