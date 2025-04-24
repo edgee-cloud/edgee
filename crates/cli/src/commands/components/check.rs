@@ -94,7 +94,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
     ) {
         (Some(filename), Some(component_type), Some(version)) => match component_type.as_str() {
             "data-collection" => (filename, ComponentType::DataCollection, version),
-            "consent-mapping" => (filename, ComponentType::ConsentManagement, version),
+            "consent-management" => (filename, ComponentType::ConsentManagement, version),
             _ => anyhow::bail!(
                 "Invalid component type: {}, expected 'data-collection' or 'consent-mapping'",
                 component_type
