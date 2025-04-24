@@ -115,7 +115,7 @@ pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[
         wit_world: "data-collection",
     },
     CategoryConfig {
-        name: "Consent Mapping",
+        name: "Consent Management",
         value: api_types::ComponentCreateInputCategory::ConsentManagement,
         wit_world: "consent-management",
     },
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn test_category_options() {
         assert_eq!(CATEGORY_OPTIONS.len(), 2); // for now!
-        let expected_categories = ["Data Collection", "Consent Mapping"];
+        let expected_categories = ["Data Collection", "Consent Management"];
         for &expected in &expected_categories {
             assert!(CATEGORY_OPTIONS
                 .iter()
