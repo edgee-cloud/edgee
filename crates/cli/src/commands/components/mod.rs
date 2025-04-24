@@ -31,5 +31,6 @@ pub type Options = Command;
 
 pub async fn run(command: Command) -> anyhow::Result<()> {
     crate::logger::init_cli();
+
     command.run().await
 }

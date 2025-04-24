@@ -87,3 +87,19 @@ pub fn init_cli() {
         .with(fmt_layer)
         .init();
 }
+
+const SENTRY_ENDPOINT: &str = "https://336d24ad33d675d79a3276bc85ccb341@o4508932105240576.ingest.de.sentry.io/4508932107075664";
+
+pub fn init_sentry() -> sentry::ClientInitGuard {
+    let endpoint =
+        std::env::var("EDGEE_SENTRY_ENDPOINT").unwrap_or_else(|_| SENTRY_ENDPOINT.to_string());
+    let opts = sentry::ClientOptions {
+        release: sentry::release_name!(),
+        auto_session_tracking: true,
+        session_mode: sentry::SessionMode::Application,
+        debug: std::env::var("EDGEE_SENTRY_DEBUG")
+            .is_ok_and(|value| value == "1" || value == "true"),
+        ..Default::default()
+    };
+    sentry::init((endpoint, opts))
+}
