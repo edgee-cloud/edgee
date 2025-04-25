@@ -106,7 +106,7 @@ pub async fn get_auth_request(
     let mut store = context.empty_store();
     let (headers, method, url, body, auth_metadata) =
         match crate::data_collection::versions::v1_0_1::execute::get_auth_request(
-            &context, &component, &mut store,
+            context, &component, &mut store,
         )
         .await
         {
