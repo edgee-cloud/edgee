@@ -103,3 +103,15 @@ pub fn init_sentry() -> sentry::ClientInitGuard {
     };
     sentry::init((endpoint, opts))
 }
+
+pub fn report_error(err: anyhow::Error) {
+    sentry_anyhow::capture_anyhow(&err);
+
+    for (idx, err) in err.chain().enumerate() {
+        if idx == 1 {
+            tracing::error!("Caused by:");
+        }
+        let spacing = if idx > 0 { "  " } else { "" };
+        tracing::error!("{spacing}{err}");
+    }
+}

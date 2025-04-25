@@ -15,6 +15,9 @@ struct Options {
 
 fn main() {
     let _sentry = logger::init_sentry();
+    // TODO: Replace with a better way to enable backtrace
+    // Most likely by switch from anyhow to another error crate (like miette), since
+    // there's no other way with anyhow
     std::env::set_var("RUST_LIB_BACKTRACE", "1");
 
     let options = Options::parse();
@@ -25,11 +28,6 @@ fn main() {
 
     let runtime = tokio::runtime::Runtime::new().expect("Could not create async runtime");
     if let Err(err) = runtime.block_on(telemetry::process_cli_command(options.command.run())) {
-        sentry_anyhow::capture_anyhow(&err);
-
-        for (idx, err) in err.chain().enumerate() {
-            let spacing = if idx > 0 { "  " } else { "" };
-            tracing::error!("{spacing}{err}");
-        }
+        logger::report_error(err);
     }
 }
