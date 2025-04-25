@@ -8,7 +8,7 @@ pub mod versions;
 use std::str::FromStr;
 use std::time::Duration;
 
-use crate::config::ComponentsConfiguration;
+use crate::config::{ComponentsConfiguration, DataCollectionComponents};
 use context::EventContext;
 use debug::{debug_and_trace_response, trace_disabled_event, trace_request, DebugParams};
 use http::{header, HeaderMap, HeaderName, HeaderValue};
@@ -54,6 +54,13 @@ pub struct EventResponse {
     pub request: Request,
 }
 
+#[derive(Clone)]
+pub struct AuthResponse {
+    pub component_id: String,
+    pub token: String,
+    pub token_duration: i64,
+}
+
 pub async fn send_json_events(
     component_ctx: &ComponentsContext,
     events_json: &str,
@@ -76,6 +83,96 @@ pub async fn send_json_events(
         "",
     )
     .await
+}
+
+pub async fn is_auth_required(
+    context: &ComponentsContext,
+    component: &DataCollectionComponents,
+) -> anyhow::Result<bool> {
+    let mut store = context.empty_store();
+    Ok(
+        crate::data_collection::versions::v1_0_1::execute::get_auth_required(
+            context, component, &mut store,
+        )
+        .await
+        .unwrap_or(false),
+    )
+}
+
+pub async fn get_auth_request(
+    context: &ComponentsContext,
+    component: &DataCollectionComponents,
+) -> anyhow::Result<JoinHandle<AuthResponse>> {
+    let mut store = context.empty_store();
+    let (headers, method, url, body, auth_metadata) =
+        match crate::data_collection::versions::v1_0_1::execute::get_auth_request(
+            &context, &component, &mut store,
+        )
+        .await
+        {
+            Ok((headers, method, url, body, auth_metadata)) => {
+                (headers, method, url, body, auth_metadata)
+            }
+            Err(err) => {
+                error!("Failed to get auth request. Error: {}", err);
+                return Err(err);
+            }
+        };
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()?;
+
+    let component_id = component.id.clone();
+    let future = tokio::spawn(async move {
+        let res = match method.as_str() {
+            "GET" => client.get(url.clone()).headers(headers).send().await,
+            "PUT" => {
+                client
+                    .put(url.clone())
+                    .headers(headers)
+                    .body(body.clone())
+                    .send()
+                    .await
+            }
+            "POST" => {
+                client
+                    .post(url.clone())
+                    .headers(headers)
+                    .body(body.clone())
+                    .send()
+                    .await
+            }
+            _ => {
+                return AuthResponse {
+                    component_id,
+                    token: String::new(),
+                    token_duration: auth_metadata.token_duration,
+                }
+            }
+        };
+
+        let response_text = match res {
+            Ok(r) => r.text().await.unwrap_or_default(),
+            Err(_) => String::new(),
+        };
+
+        let token = serde_json::from_str::<serde_json::Value>(&response_text)
+            .ok()
+            .and_then(|json| {
+                json.get(&auth_metadata.token_property_name)
+                    .and_then(|v| v.as_str().map(|s| s.to_string()))
+            })
+            .unwrap_or_default();
+
+        AuthResponse {
+            component_id,
+            token,
+            token_duration: auth_metadata.token_duration,
+        }
+    });
+
+    Ok(future)
 }
 
 pub async fn send_events(
