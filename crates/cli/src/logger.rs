@@ -88,7 +88,7 @@ pub fn init_cli() {
         .init();
 }
 
-const SENTRY_ENDPOINT: &str = "https://336d24ad33d675d79a3276bc85ccb341@o4508932105240576.ingest.de.sentry.io/4508932107075664";
+const SENTRY_ENDPOINT: &str = "https://de4323866781f026a004320ac2478e26@o4507468622004224.ingest.de.sentry.io/4509230203600976";
 
 pub fn init_sentry() -> sentry::ClientInitGuard {
     let endpoint =
