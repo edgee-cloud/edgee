@@ -2633,7 +2633,7 @@
         "required": false,
         "schema": {
           "type": "string",
-          "enum": ["analytics", "warehouse", "attribution", "conversion api", "server side"],
+          "enum": ["analytics", "warehouse", "attribution", "conversion api", "server side tagging"],
           "description": "Filter components by sub category."
         }
       }
@@ -3599,7 +3599,7 @@
           "subcategory": {
             "type": "string",
             "description": "Subcategory of the component.",
-            "enum": ["analytics", "warehouse", "attribution", "conversion_api", "consent_mapping", "server_side"]
+            "enum": ["analytics", "warehouse", "attribution", "conversion_api", "consent_mapping", "server_side_tagging"]
           },
           "documentation_link": {
             "type": "string",
@@ -3716,7 +3716,7 @@
           "subcategory": {
             "type": "string",
             "description": "Filter components by sub category.",
-            "enum": ["analytics", "warehouse", "attribution", "conversion api", "server side"]
+            "enum": ["analytics", "warehouse", "attribution", "conversion api", "server side tagging"]
           }
         }
       },
