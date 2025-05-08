@@ -66,10 +66,10 @@ jobs:
           tags: true
 
   homebrew-pull-request:
-    name: Create new PR for Homebrew
+    name: Run workflow in homebrew-edgee repo to create new release PR
     needs: build-release-binaries
     runs-on: ubuntu-latest
     steps:
-      - uses: edgee-cloud/homebrew-edgee@v0.1.1
-        with:
-          ACTION_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: gh workflow run new-release-pr.yml -R edgee-cloud/homebrew-edgee
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
