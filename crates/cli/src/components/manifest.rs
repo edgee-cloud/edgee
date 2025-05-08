@@ -62,7 +62,7 @@ pub enum SubCategory {
     Attribution,
     ConversionApi,
     ConsentMapping,
-    ServerSide,
+    ServerSideTagging,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

@@ -143,8 +143,8 @@ pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
         value: api_types::ComponentCreateInputSubcategory::ConsentMapping,
     },
     SubCategoryConfig {
-        name: "Server Side",
-        value: api_types::ComponentCreateInputSubcategory::ServerSide,
+        name: "Server Side Tagging",
+        value: api_types::ComponentCreateInputSubcategory::ServerSideTagging,
     },
 ];
 
