@@ -73,6 +73,8 @@ pub struct Setting {
     #[serde(default)]
     pub required: bool,
     pub description: Option<String>,
+    #[serde(default)]
+    pub secret: bool,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
