@@ -3567,6 +3567,14 @@
             "description": "The type of the configuration field.",
             "enum": ["string", "bool", "number"]
           },
+          "options": {
+            "type": "array",
+            "description": "The options of the configuration field (only for string type).",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
           "required": {
             "type": "boolean",
             "description": "Whether the configuration field is required."
