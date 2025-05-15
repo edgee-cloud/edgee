@@ -159,7 +159,7 @@ pub fn options(allow_methods: &str) -> anyhow::Result<Response> {
         .header(header::ACCESS_CONTROL_ALLOW_METHODS, allow_methods)
         .header(
             header::ACCESS_CONTROL_ALLOW_HEADERS,
-            "Content-Type, Edgee-Debug, Authorization",
+            "Content-Type, Edgee-Debug, Authorization, X-Edgee-Client-Error",
         )
         .header(header::ACCESS_CONTROL_MAX_AGE, "3600")
         .body(empty())
@@ -197,6 +197,7 @@ pub fn sdk(ctx: IncomingContext) -> anyhow::Result<Response> {
         ctx.request.get_path().as_str(),
         ctx.request.get_host().as_str(),
         config::get().compute.autocapture.clone(),
+        config::get().compute.cookie_name.clone().as_str(),
     ) {
         inlined_sdk = inlined_sdk.replace("{{side}}", "c");
         Ok(http::Response::builder()
