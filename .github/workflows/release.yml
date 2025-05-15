@@ -64,12 +64,3 @@ jobs:
         with:
           file: edgee.${{ matrix.platform.target }}${{ matrix.platform.bin_suffix || '' }}
           tags: true
-
-  homebrew-pull-request:
-    name: Run workflow in homebrew-edgee repo to create new release PR
-    needs: build-release-binaries
-    runs-on: ubuntu-latest
-    steps:
-      - run: gh workflow run new-release-pr.yml -R edgee-cloud/homebrew-edgee
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
