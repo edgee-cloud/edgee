@@ -2740,10 +2740,6 @@
             "readOnly": true,
             "enum": ["perso", "pro"]
           },
-          "current_billing_plan": {
-            "type": "string",
-            "description": "The current billing plan of the organization."
-          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -2762,7 +2758,6 @@
           "id",
           "name",
           "slug",
-          "current_billing_plan",
           "created_at",
           "updated_at"
         ]
