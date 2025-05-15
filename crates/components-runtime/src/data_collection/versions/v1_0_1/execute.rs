@@ -11,7 +11,8 @@ use wasmtime::Store;
 
 pub struct AuthMetadata {
     pub token_duration: i64,
-    pub token_property_name: String,
+    pub response_token_property_name: Option<String>,
+    pub component_token_setting_name: String,
 }
 
 pub async fn get_edgee_request(
@@ -103,7 +104,7 @@ pub async fn get_auth_request(
     component_ctx: &ComponentsContext,
     cfg: &DataCollectionComponents,
     store: &mut Store<HostState>,
-) -> Result<(HeaderMap, String, String, String, AuthMetadata), anyhow::Error> {
+) -> Result<Option<(HeaderMap, String, String, String, AuthMetadata)>, anyhow::Error> {
     let instance = match component_ctx
         .get_data_collection_1_0_1_instance(&cfg.id, store)
         .await
@@ -129,8 +130,7 @@ pub async fn get_auth_request(
     {
         Ok(Ok(Some(req))) => req,
         Ok(Ok(None)) => {
-            error!("No auth request returned");
-            return Err(anyhow::anyhow!("No auth request returned"));
+            return Ok(None);
         }
         Ok(Err(err)) => {
             error!("auth error: {err}");
@@ -155,40 +155,15 @@ pub async fn get_auth_request(
     }
     .to_string();
 
-    Ok((
+    Ok(Some((
         headers,
         method,
         auth_request.url,
         auth_request.body,
         AuthMetadata {
             token_duration: auth_request.token_duration,
-            token_property_name: auth_request.token_response_property,
+            response_token_property_name: auth_request.response_token_property_name,
+            component_token_setting_name: auth_request.component_token_setting_name,
         },
-    ))
-}
-
-pub async fn get_auth_required(
-    component_ctx: &ComponentsContext,
-    cfg: &DataCollectionComponents,
-    store: &mut Store<HostState>,
-) -> Result<bool, anyhow::Error> {
-    let instance = match component_ctx
-        .get_data_collection_1_0_1_instance(&cfg.id, store)
-        .await
-    {
-        Ok(instance) => instance,
-        Err(err) => {
-            error!("Failed to get data collection instance. Error: {}", err);
-            return Err(err);
-        }
-    };
-    let component = instance.edgee_components1_0_1_data_collection();
-    let auth_required = match component.call_require_auth(store).await {
-        Ok(auth_required) => auth_required,
-        Err(err) => {
-            error!("auth error: {err}");
-            return Err(anyhow::anyhow!(err));
-        }
-    };
-    Ok(auth_required)
+    )))
 }

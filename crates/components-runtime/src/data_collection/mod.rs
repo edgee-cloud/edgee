@@ -57,8 +57,9 @@ pub struct EventResponse {
 #[derive(Clone)]
 pub struct AuthResponse {
     pub component_id: String,
-    pub token: String,
+    pub serialized_token_content: String,
     pub token_duration: i64,
+    pub component_token_setting_name: String,
 }
 
 pub async fn send_json_events(
@@ -85,24 +86,10 @@ pub async fn send_json_events(
     .await
 }
 
-pub async fn is_auth_required(
-    context: &ComponentsContext,
-    component: &DataCollectionComponents,
-) -> anyhow::Result<bool> {
-    let mut store = context.empty_store();
-    Ok(
-        crate::data_collection::versions::v1_0_1::execute::get_auth_required(
-            context, component, &mut store,
-        )
-        .await
-        .unwrap_or(false),
-    )
-}
-
 pub async fn get_auth_request(
     context: &ComponentsContext,
     component: &DataCollectionComponents,
-) -> anyhow::Result<JoinHandle<AuthResponse>> {
+) -> anyhow::Result<Option<JoinHandle<AuthResponse>>> {
     let mut store = context.empty_store();
     let (headers, method, url, body, auth_metadata) =
         match crate::data_collection::versions::v1_0_1::execute::get_auth_request(
@@ -110,8 +97,11 @@ pub async fn get_auth_request(
         )
         .await
         {
-            Ok((headers, method, url, body, auth_metadata)) => {
+            Ok(Some((headers, method, url, body, auth_metadata))) => {
                 (headers, method, url, body, auth_metadata)
+            }
+            Ok(None) => {
+                return Ok(None);
             }
             Err(err) => {
                 error!("Failed to get auth request. Error: {}", err);
@@ -146,7 +136,8 @@ pub async fn get_auth_request(
             _ => {
                 return AuthResponse {
                     component_id,
-                    token: String::new(),
+                    serialized_token_content: String::new(),
+                    component_token_setting_name: auth_metadata.component_token_setting_name,
                     token_duration: auth_metadata.token_duration,
                 }
             }
@@ -157,22 +148,30 @@ pub async fn get_auth_request(
             Err(_) => String::new(),
         };
 
-        let token = serde_json::from_str::<serde_json::Value>(&response_text)
+        let serialized_token_content = serde_json::from_str::<serde_json::Value>(&response_text)
             .ok()
             .and_then(|json| {
-                json.get(&auth_metadata.token_property_name)
-                    .and_then(|v| v.as_str().map(|s| s.to_string()))
+                if auth_metadata.response_token_property_name.is_none() {
+                    return Some(response_text);
+                } else {
+                    auth_metadata
+                        .response_token_property_name
+                        .as_ref()
+                        .and_then(|property_name| json.get(property_name))
+                        .and_then(|v| v.as_str().map(|s| s.to_string()))
+                }
             })
             .unwrap_or_default();
 
         AuthResponse {
             component_id,
-            token,
+            serialized_token_content,
+            component_token_setting_name: auth_metadata.component_token_setting_name,
             token_duration: auth_metadata.token_duration,
         }
     });
 
-    Ok(future)
+    Ok(Some(future))
 }
 
 pub async fn send_events(
