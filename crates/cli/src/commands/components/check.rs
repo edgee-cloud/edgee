@@ -44,14 +44,17 @@ pub async fn check_component(
             },
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
         },
-        ComponentType::ConsentManagement => ComponentsConfiguration {
-            consent_management: vec![ConsentManagementComponents {
-                id: component_path.to_string(),
-                file: component_path.to_string(),
-                wit_version: edgee_components_runtime::consent_management::versions::ConsentManagementWitVersion::V1_0_0,
+        ComponentType::ConsentManagement => match component_wit_version {
+            "1.0.0" => ComponentsConfiguration {
+                consent_management: vec![ConsentManagementComponents {
+                    id: component_path.to_string(),
+                    file: component_path.to_string(),
+                    wit_version: edgee_components_runtime::consent_management::versions::ConsentManagementWitVersion::V1_0_0,
+                    ..Default::default()
+                }],
                 ..Default::default()
-            }],
-            ..Default::default()
+            },
+            _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
         },
     };
 
