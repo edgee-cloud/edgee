@@ -46,8 +46,9 @@ pub async fn check_component(
         },
         ComponentType::ConsentManagement => ComponentsConfiguration {
             consent_management: vec![ConsentManagementComponents {
-                name: component_path.to_string(),
-                component: component_path.to_string(),
+                id: component_path.to_string(),
+                file: component_path.to_string(),
+                wit_version: edgee_components_runtime::consent_management::versions::ConsentManagementWitVersion::V1_0_0,
                 ..Default::default()
             }],
             ..Default::default()
