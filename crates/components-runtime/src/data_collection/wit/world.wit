@@ -3,3 +3,7 @@ package edgee:native;
 world data-collection-v100 {
   export edgee:components/data-collection;
 }
+
+world data-collection-v101 {
+  export edgee:components/data-collection@1.0.1;
+}
