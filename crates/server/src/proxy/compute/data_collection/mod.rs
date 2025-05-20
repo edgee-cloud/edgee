@@ -147,7 +147,7 @@ pub async fn process_from_html(
     let api_url = std::env::var("DATA_COLLECTION_API_URL").unwrap_or_default();
     if !api_key.is_empty() && !api_url.is_empty() {
         let events_json_to_send = events_json.clone();
-        let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
+        let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{api_key}:"));
 
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         let host = request.get_host().to_string();
@@ -155,7 +155,7 @@ pub async fn process_from_html(
             let _ = reqwest::Client::new()
                 .post(api_url)
                 .header("Content-Type", "application/json")
-                .header("Authorization", format!("Basic {}", b64))
+                .header("Authorization", format!("Basic {b64}"))
                 .header("X-Edgee-Debug", debug)
                 .header("X-Edgee-Host", host)
                 .body(events_json_to_send)
@@ -283,7 +283,7 @@ pub async fn process_from_json(
     let api_url = std::env::var("DATA_COLLECTION_API_URL").unwrap_or_default();
     if !api_key.is_empty() && !api_url.is_empty() {
         let events_json_to_send = events_json.clone();
-        let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{}:", api_key));
+        let b64 = GeneralPurpose::new(&STANDARD, PAD).encode(format!("{api_key}:"));
 
         // now, we can send the payload to the edgee data-collection-api without waiting for the response
         let host = request.get_host().to_string();
@@ -291,7 +291,7 @@ pub async fn process_from_json(
             let _ = reqwest::Client::new()
                 .post(api_url)
                 .header("Content-Type", "application/json")
-                .header("Authorization", format!("Basic {}", b64))
+                .header("Authorization", format!("Basic {b64}"))
                 .header("X-Edgee-Debug", debug)
                 .header("X-Edgee-Host", host)
                 .body(events_json_to_send)
@@ -1223,7 +1223,7 @@ fn add_more_info_from_request(request: &RequestHandle, mut payload: Payload) -> 
 /// with the user ID, anonymous ID, and properties if they exist in the cookie.
 fn add_user_context_from_cookie(request: &RequestHandle, mut payload: Payload) -> Payload {
     let edgee_user_cookie = edgee_cookie::get_user_cookie(request);
-    if edgee_user_cookie.is_some() {
+    if let Some(edgee_user_cookie) = edgee_user_cookie {
         let user = payload
             .data_collection
             .as_mut()
@@ -1234,7 +1234,6 @@ fn add_user_context_from_cookie(request: &RequestHandle, mut payload: Payload) -
             .user
             .as_mut()
             .unwrap();
-        let edgee_user_cookie = edgee_user_cookie.unwrap();
         if let Some(user_id) = edgee_user_cookie.user_id {
             // replace the user_id with the one from the cookien only if it's not already set
             if user.user_id.is_none() {
@@ -1297,7 +1296,7 @@ fn process_sec_ch_ua(header: &str, full: bool) -> String {
         }
 
         // Add the key and version to the output string
-        write!(output, "{};{}", key, version_str).unwrap(); // Using write! macro to append formatted string
+        write!(output, "{key};{version_str}").unwrap(); // Using write! macro to append formatted string
 
         // Add a separator between key-value pairs, except for the last pair
         if i < matches.len() - 1 {

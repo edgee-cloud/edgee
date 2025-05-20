@@ -223,7 +223,7 @@ pub fn trace_disabled_event(trace: bool, event: &str) {
     }
 
     println!("--------------------------------------------");
-    println!(" Event {} is disabled for this component", event);
+    println!(" Event {event} is disabled for this component");
     println!("--------------------------------------------\n");
 }
 
@@ -246,18 +246,17 @@ pub fn trace_request(
     println!("  REQUEST  ");
     println!("-----------\n");
     println!(
-        "Config:   Consent: {}, Anonymization: {}",
-        outgoing_consent, anonymization_str
+        "Config:   Consent: {outgoing_consent}, Anonymization: {anonymization_str}"
     );
-    println!("Method:   {}", method);
-    println!("Url:      {}", url);
+    println!("Method:   {method}");
+    println!("Url:      {url}");
     if !headers.is_empty() {
         print!("Headers:  ");
         for (i, (key, value)) in headers.iter().enumerate() {
             if i == 0 {
-                println!("{}: {:?}", key, value);
+                println!("{key}: {value:?}");
             } else {
-                println!("          {}: {:?}", key, value);
+                println!("          {key}: {value:?}");
             }
         }
     } else {
@@ -268,7 +267,7 @@ pub fn trace_request(
         println!("Body:");
         let formatter = PrettyFormatter::from_str(body);
         let result = formatter.pretty();
-        println!("{}", result);
+        println!("{result}");
     } else {
         println!("Body:     None");
     }
@@ -295,7 +294,7 @@ pub async fn debug_and_trace_response(
                 println!("Body:");
                 let formatter = PrettyFormatter::from_str(body.as_str());
                 let result = formatter.pretty();
-                println!("{}", result);
+                println!("{result}");
             }
         }
         if !error.is_empty() {
@@ -309,7 +308,7 @@ pub async fn debug_and_trace_response(
         let api_url = std::env::var("EDGEE_API_URL").unwrap_or_default();
 
         if !api_super_token.is_empty() && !api_url.is_empty() && !params.project_id.is_empty() {
-            let api_endpoint = format!("{}/v1/debug/data-collection", api_url);
+            let api_endpoint = format!("{api_url}/v1/debug/data-collection");
             let debug_entry = DebugPayload::new(params, &error);
             let client = reqwest::Client::builder()
                 .timeout(Duration::from_secs(5))
@@ -317,7 +316,7 @@ pub async fn debug_and_trace_response(
             let _r = client
                 .post(api_endpoint.as_str())
                 .header("Content-Type", "application/json")
-                .header("Authorization", format!("Bearer {}", api_super_token))
+                .header("Authorization", format!("Bearer {api_super_token}"))
                 .body(serde_json::to_string(&debug_entry).unwrap())
                 .send()
                 .await;

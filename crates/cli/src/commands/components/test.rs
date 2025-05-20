@@ -68,7 +68,7 @@ impl IntoCurl for EdgeeRequest {
     fn to_curl(&self) -> String {
         let mut curl = format!("curl -X {} {}", self.method.to_curl(), self.url);
         for (key, value) in &self.headers {
-            curl.push_str(&format!(" -H '{}: {}'", key, value));
+            curl.push_str(&format!(" -H '{key}: {value}'"));
         }
         if !self.body.is_empty() {
             curl.push_str(&format!(" -d '{}'", self.body));
@@ -85,7 +85,7 @@ fn parse_settings(settings_str: &str) -> Result<HashMap<String, String>, String>
         if parts.len() == 2 {
             settings_map.insert(parts[0].to_string(), parts[1].to_string());
         } else {
-            return Err(format!("Invalid setting: {}\nPlease use a comma-separated list of settings such as `-s 'key1=value,key2=value2'`", setting));
+            return Err(format!("Invalid setting: {setting}\nPlease use a comma-separated list of settings such as `-s 'key1=value,key2=value2'`"));
         }
     }
 

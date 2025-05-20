@@ -38,10 +38,10 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     println!("  Name:  {}", user.name);
     println!("  Email: {}", user.email);
     if let Some(url) = &creds.url {
-        println!("  Url:   {}", url);
+        println!("  Url:   {url}");
     }
     if let Some(profile) = opts.profile {
-        println!("  Profile: {}", profile);
+        println!("  Profile: {profile}");
     }
 
     Ok(())
