@@ -82,7 +82,7 @@ impl StaticConfiguration {
         }
 
         if !duplicates.is_empty() {
-            Err(format!("duplicate domains found: {:?}", duplicates))
+            Err(format!("duplicate domains found: {duplicates:?}"))
         } else {
             Ok(())
         }

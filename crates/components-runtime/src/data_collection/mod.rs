@@ -454,7 +454,7 @@ fn format_ch_ua_header(string: &str) -> String {
     // Process each pair
     for pair in pairs {
         if let Some((brand, version)) = parse_brand_version(pair) {
-            ch_ua_list.push(format!("\"{}\";v=\"{}\"", brand, version));
+            ch_ua_list.push(format!("\"{brand}\";v=\"{version}\""));
         }
     }
 

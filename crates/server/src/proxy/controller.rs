@@ -30,8 +30,8 @@ pub async fn edgee_client_event(ctx: IncomingContext) -> anyhow::Result<Response
     let mut data_collection_events: String = String::new();
     if !body.is_empty() {
         let events = compute::json_handler(&body, request, &mut response, false).await;
-        if events.is_some() {
-            data_collection_events = events.unwrap();
+        if let Some(events) = events {
+            data_collection_events = events;
         }
     }
 
@@ -135,8 +135,7 @@ pub async fn edgee_client_event_from_third_party_sdk(
         return Ok(build_response(
             response,
             Bytes::from(format!(
-                r#"{{"e":"{}", "u":"{}"}}"#,
-                cookie_encrypted, cookie_encrypted_u
+                r#"{{"e":"{cookie_encrypted}", "u":"{cookie_encrypted_u}"}}"#
             )),
         ));
     }

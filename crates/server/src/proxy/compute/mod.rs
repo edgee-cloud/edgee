@@ -52,8 +52,8 @@ pub async fn html_handler(
                 set_edgee_header(response, "compute-aborted(no-cookie)");
             } else {
                 let events = process_from_html(&document, request, response).await;
-                if events.is_some() {
-                    document.data_collection_events = events.unwrap();
+                if let Some(events) = events {
+                    document.data_collection_events = events;
                 }
             }
         }
@@ -188,7 +188,7 @@ mod tests {
             "<html>
             <head>
                 <title>ABC > DEF</title>
-                <!-- <script type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/sdk.js\"/> -->                
+                <!-- <script type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/sdk.js\"/> -->
             </head>
             <body></body>
         </html>",

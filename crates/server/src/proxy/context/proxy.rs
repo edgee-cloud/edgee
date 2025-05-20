@@ -31,7 +31,7 @@ impl<'a> ProxyContext<'a> {
 
         if let Some(forwarded_for) = incoming_headers.get_mut(FORWARDED_FOR) {
             let existing_value = forwarded_for.to_str().unwrap();
-            let new_value = format!("{}, {}", existing_value, client_ip);
+            let new_value = format!("{existing_value}, {client_ip}");
             *forwarded_for =
                 HeaderValue::from_str(&new_value).expect("header value should be valid");
         } else {
