@@ -113,6 +113,17 @@ pub async fn send_events(
             let trace =
                 trace_component.is_some() && trace_component.as_ref().unwrap() == cfg.id.as_str();
 
+            if cfg.event_filtering_rules.iter().any(|rule| {
+                rule.conditions.iter().any(|condition| {
+                    event.evaluate_filter(&condition.field, &condition.operator, &condition.value)
+                })
+            }) {
+                trace_disabled_event(trace, "event_filtered");
+                continue;
+            }
+
+            event.apply_data_manipulation_rules(&cfg.data_manipulation_rules);
+
             // if event_type is not enabled in config.config.get(component_id).unwrap(), skip the event
             match event.event_type {
                 EventType::Page => {
@@ -795,6 +806,8 @@ mod tests {
                     },
                 },
                 wit_version: versions::DataCollectionWitVersion::V1_0_0,
+                event_filtering_rules: vec![],
+                data_manipulation_rules: vec![],
             });
         component_config
     }
