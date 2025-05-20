@@ -245,9 +245,7 @@ pub fn trace_request(
     println!("-----------");
     println!("  REQUEST  ");
     println!("-----------\n");
-    println!(
-        "Config:   Consent: {outgoing_consent}, Anonymization: {anonymization_str}"
-    );
+    println!("Config:   Consent: {outgoing_consent}, Anonymization: {anonymization_str}");
     println!("Method:   {method}");
     println!("Url:      {url}");
     if !headers.is_empty() {
