@@ -89,7 +89,7 @@ zip = "3.0.0"
 cargo-llvm-cov = "0.6.15"
 pretty_assertions = "1.4.1"
 
-edgee-sdk = "1.7.1"
+edgee-sdk = "1.7.2"
 edgee-api-client = { version = "1.2.5", path = "crates/api-client" }
 edgee-server = { version = "1.2.5", path = "crates/server" }
 edgee-components-runtime = { version = "1.2.5", path = "crates/components-runtime" }
