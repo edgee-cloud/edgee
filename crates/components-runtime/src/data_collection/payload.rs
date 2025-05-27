@@ -4,6 +4,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt;
+use tracing::error;
 
 use crate::config::ComponentDataManipulationRule;
 use crate::config::ComponentEventFilteringRuleCondition;
@@ -373,7 +374,10 @@ pub fn evaluate_boolean_filter(field_value: bool, operator: &str, condition_valu
     match operator {
         "eq" => field_value == condition_value,
         "neq" => field_value != condition_value,
-        _ => false,
+        _ => {
+            error!("Invalid operator: {}", operator);
+            false
+        }
     }
 }
 
@@ -385,7 +389,10 @@ pub fn evaluate_string_filter(field_value: &str, operator: &str, condition_value
         "nin" => !condition_value.split(',').any(|v| v.trim() == field_value),
         "is_null" => field_value.is_empty(),
         "is_not_null" => !field_value.is_empty(),
-        _ => false,
+        _ => {
+            error!("Invalid operator: {}", operator);
+            false
+        }
     }
 }
 
@@ -397,7 +404,10 @@ pub fn evaluate_number_filter(field_value: &f64, operator: &str, condition_value
         "lt" => field_value < condition_value,
         "gte" => field_value >= condition_value,
         "lte" => field_value <= condition_value,
-        _ => false,
+        _ => {
+            error!("Invalid operator: {}", operator);
+            false
+        }
     }
 }
 
