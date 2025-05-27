@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 use crate::config::ComponentDataManipulationRule;
+use crate::config::ComponentEventFilteringRuleCondition;
 use crate::config::DataCollectionComponents;
 
 pub type Dict = HashMap<String, serde_json::Value>;
@@ -108,7 +109,11 @@ impl Event {
 
         all
     }
-    pub fn evaluate_filter(&self, query: &str, operator: &str, value: &str) -> bool {
+    pub fn should_filter_out(&self, condition: &ComponentEventFilteringRuleCondition) -> bool {
+        let query = condition.field.as_str();
+        let operator = condition.operator.as_str();
+        let value = condition.value.as_str();
+
         let re = Regex::new(r"data\.(page|track|user)\.properties\.([a-zA-Z0-9_]+)").unwrap();
         if let Some(captures) = re.captures(query) {
             let data_type = captures.get(1).unwrap().as_str();
