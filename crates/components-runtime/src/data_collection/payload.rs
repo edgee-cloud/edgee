@@ -422,6 +422,16 @@ pub enum EventType {
     Track,
 }
 
+impl EventType {
+    pub fn to_string(&self) -> String {
+        match self {
+            EventType::Page => "page".to_string(),
+            EventType::User => "user".to_string(),
+            EventType::Track => "track".to_string(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Data {

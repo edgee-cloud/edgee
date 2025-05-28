@@ -114,9 +114,13 @@ pub async fn send_events(
                 trace_component.is_some() && trace_component.as_ref().unwrap() == cfg.id.as_str();
 
             if cfg.event_filtering_rules.iter().any(|rule| {
-                rule.conditions
+                rule.event_types
                     .iter()
-                    .any(|condition| event.should_filter_out(condition))
+                    .any(|event_type| event_type == &event.event_type.to_string())
+                    && rule
+                        .conditions
+                        .iter()
+                        .any(|condition| event.should_filter_out(condition))
             }) {
                 trace_disabled_event(trace, "event_filtered");
                 continue;
