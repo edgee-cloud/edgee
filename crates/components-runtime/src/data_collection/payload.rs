@@ -422,12 +422,12 @@ pub enum EventType {
     Track,
 }
 
-impl EventType {
-    pub fn to_string(&self) -> String {
+impl fmt::Display for EventType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            EventType::Page => "page".to_string(),
-            EventType::User => "user".to_string(),
-            EventType::Track => "track".to_string(),
+            EventType::Page => write!(f, "page"),
+            EventType::User => write!(f, "user"),
+            EventType::Track => write!(f, "track"),
         }
     }
 }
