@@ -64,12 +64,3 @@ jobs:
         with:
           file: edgee.${{ matrix.platform.target }}${{ matrix.platform.bin_suffix || '' }}
           tags: true
-
-  homebrew-pull-request:
-    name: Create new PR for Homebrew
-    needs: build-release-binaries
-    runs-on: ubuntu-latest
-    steps:
-      - uses: edgee-cloud/homebrew-edgee@v0.1.1
-        with:
-          ACTION_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

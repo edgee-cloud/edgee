@@ -60,6 +60,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             settings: indexmap::indexmap! {
                 "example".to_string() => Setting {
                     description: Some("Here is a string".to_string()),
+                    options: None,
                     required: true,
                     title: "ExampleConfigField".to_string(),
                     type_: edgee_api_client::types::ConfigurationFieldType::String,

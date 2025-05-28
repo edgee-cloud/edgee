@@ -2633,7 +2633,7 @@
         "required": false,
         "schema": {
           "type": "string",
-          "enum": ["analytics", "warehouse", "attribution", "conversion api"],
+          "enum": ["analytics", "warehouse", "attribution", "conversion api", "server side tagging"],
           "description": "Filter components by sub category."
         }
       }
@@ -2740,10 +2740,6 @@
             "readOnly": true,
             "enum": ["perso", "pro"]
           },
-          "current_billing_plan": {
-            "type": "string",
-            "description": "The current billing plan of the organization."
-          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -2762,7 +2758,6 @@
           "id",
           "name",
           "slug",
-          "current_billing_plan",
           "created_at",
           "updated_at"
         ]
@@ -3567,6 +3562,14 @@
             "description": "The type of the configuration field.",
             "enum": ["string", "bool", "number"]
           },
+          "options": {
+            "type": "array",
+            "description": "The options of the configuration field (only for string type).",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
           "required": {
             "type": "boolean",
             "description": "Whether the configuration field is required."
@@ -3599,7 +3602,7 @@
           "subcategory": {
             "type": "string",
             "description": "Subcategory of the component.",
-            "enum": ["analytics", "warehouse", "attribution", "conversion_api", "consent_mapping"]
+            "enum": ["analytics", "warehouse", "attribution", "conversion_api", "consent_mapping", "server_side_tagging"]
           },
           "documentation_link": {
             "type": "string",
@@ -3716,7 +3719,7 @@
           "subcategory": {
             "type": "string",
             "description": "Filter components by sub category.",
-            "enum": ["analytics", "warehouse", "attribution", "conversion api"]
+            "enum": ["analytics", "warehouse", "attribution", "conversion api", "server side tagging"]
           }
         }
       },

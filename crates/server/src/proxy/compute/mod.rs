@@ -52,8 +52,8 @@ pub async fn html_handler(
                 set_edgee_header(response, "compute-aborted(no-cookie)");
             } else {
                 let events = process_from_html(&document, request, response).await;
-                if events.is_some() {
-                    document.data_collection_events = events.unwrap();
+                if let Some(events) = events {
+                    document.data_collection_events = events;
                 }
             }
         }
@@ -132,7 +132,7 @@ fn do_process_payload(request: &RequestHandle, response: &mut Parts) -> Result<b
         .unwrap_or("".to_string());
     if !set_fetch_dest.is_empty() {
         let forbidden_fetch_dest = [
-            "audio", "font", "image", "manifest", "script", "style", "video",
+            "audio", "font", "image", "manifest", "script", "style", "video", "empty",
         ];
         if forbidden_fetch_dest.contains(&set_fetch_dest.as_str()) {
             Err("compute-aborted(fetch-dest)")?;
@@ -188,7 +188,7 @@ mod tests {
             "<html>
             <head>
                 <title>ABC > DEF</title>
-                <!-- <script type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/sdk.js\"/> -->                
+                <!-- <script type=\"javascript\" id=\"__EDGEE_SDK__\" src=\"/_edgee/sdk.js\"/> -->
             </head>
             <body></body>
         </html>",

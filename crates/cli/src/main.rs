@@ -13,13 +13,21 @@ struct Options {
     command: commands::Command,
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() {
+    let _sentry = logger::init_sentry();
+    // TODO: Replace with a better way to enable backtrace
+    // Most likely by switch from anyhow to another error crate (like miette), since
+    // there's no other way with anyhow
+    std::env::set_var("RUST_LIB_BACKTRACE", "1");
+
     let options = Options::parse();
 
     if let Err(err) = crate::telemetry::setup() {
         tracing::debug!("Telemetry error: {err}");
     }
 
-    telemetry::process_cli_command(options.command.run()).await
+    let runtime = tokio::runtime::Runtime::new().expect("Could not create async runtime");
+    if let Err(err) = runtime.block_on(telemetry::process_cli_command(options.command.run())) {
+        logger::report_error(err);
+    }
 }
