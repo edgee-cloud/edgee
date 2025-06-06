@@ -26,9 +26,9 @@ setup_command! {
     #[arg(long = "settings-file")]
     settings_file: Option<String>,
 
-    /// File containing the event
-    #[arg(long = "event-file")]
-    event_file: Option<String>,
+    /// File containing an array of events to test
+    #[arg(long = "events-file")]
+    events_file: Option<String>,
 
     /// Data collection options
     ///
@@ -146,7 +146,7 @@ async fn test_data_collection_component(opts: Options, manifest: &Manifest) -> a
     let user_event_json = r#"[{"uuid":"eb0f001a-cd2b-42c4-9c71-7b1c2bcda445","timestamp":"2025-02-03T16:07:04.878715197Z","type":"user","data":{"user_id":"123456","anonymous_id":"anon-123","edgee_id":"69659401-40cf-4ac8-8ffc-630a10fe06dc","properties":{"age":42,"verified":true,"name":"John Doe","email":"me@example.com"}},"context":{"page":{"keywords":["demo","tag manager"],"title":"Page with Edgee components","url":"https://demo.edgee.app/analytics-with-edgee.html","path":"/analytics-with-edgee.html","referrer":"https://demo.edgee.dev/"},"user":{"user_id":"123456","anonymous_id":"anon-123","edgee_id":"69659401-40cf-4ac8-8ffc-630a10fe06dc","properties":{"email":"me@example.com","age":42,"name":"John Doe","verified":true}},"client":{"ip":"127.0.0.1","locale":"en-us","accept_language":"en-US,en;q=0.5","timezone":"Europe/Paris","user_agent":"Mozilla/5.0 (X11; Linux x86_64; rv:134.0) Gecko/20100101 Firefox/134.0","screen_width":1440,"screen_height":960,"screen_density":2.0},"session":{"session_id":"1738598699","session_count":7,"session_start":false,"first_seen":"2024-12-12T16:30:03.693248190Z","last_seen":"2025-02-03T16:07:04.878137016Z"}},"from":"client","consent":"granted"}]"#;
     // read the event file if provided
 
-    let custom_event_data = match opts.event_file {
+    let custom_event_data = match opts.events_file {
         Some(file) => {
             if !std::path::Path::new(&file).exists() {
                 return Err(anyhow::anyhow!("Event file not found: {}", file));
