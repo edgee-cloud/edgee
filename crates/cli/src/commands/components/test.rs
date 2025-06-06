@@ -71,9 +71,6 @@ impl IntoCurl for HttpMethod {
 impl IntoCurl for EdgeeRequest {
     fn to_curl(&self) -> String {
         let mut curl = format!("curl -X {} {}", self.method.to_curl(), self.url);
-        for (key, value) in &self.headers {
-            curl.push_str(&format!(" -H '{key}: {value}'"));
-        }
         if !self.body.is_empty() {
             curl.push_str(&format!(" -d '{}'", self.body));
         }
@@ -307,6 +304,7 @@ async fn test_data_collection_component(opts: Options, manifest: &Manifest) -> a
         println!("\n{} {{", "EdgeeRequest".green());
         println!("\t{}: {:#?}", "Method".green(), request.method);
         println!("\t{}: {}", "URL".green(), request.url.green());
+
         let pretty_headers: HashMap<String, String> = headers
             .iter()
             .map(|(k, v)| (k.to_string(), v.to_str().unwrap().to_string()))
@@ -337,7 +335,11 @@ async fn test_data_collection_component(opts: Options, manifest: &Manifest) -> a
         println!("}}");
 
         if opts.curl {
-            println!("\n{}: {}", "cURL".green(), &request.to_curl());
+            print!("{} ", &request.to_curl());
+            for (key, value) in headers.iter() {
+                print!("-H \"{}\":\"{}\" ", key, value.to_str()?);
+            }
+            println!();
         }
 
         if opts.make_http_request {
