@@ -174,6 +174,7 @@ pub fn parse_html(html: &str, host: &str) -> Document {
                                 sdk_url,
                                 host,
                                 config::get().compute.autocapture.clone(),
+                                config::get().compute.cookie_name.clone().as_str(),
                             ) {
                                 set_document_field!(builder, inlined_sdk, inlined_sdk);
                             }

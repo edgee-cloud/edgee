@@ -101,7 +101,7 @@ fn is_cacheable_by_shared_cache(headers: &HashMap<String, String>) -> bool {
 }
 
 fn extract_max_age(cache_control: &str, directive: &str) -> Option<i64> {
-    let pattern = format!("{}=", directive);
+    let pattern = format!("{directive}=");
     cache_control.split(',').find_map(|part| {
         let trimmed = part.trim();
         if trimmed.starts_with(&pattern) {

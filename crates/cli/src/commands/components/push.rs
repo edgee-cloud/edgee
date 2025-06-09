@@ -488,6 +488,7 @@ fn convert_manifest_config_fields(manifest: &Manifest) -> Vec<api_types::Configu
             type_: field.type_,
             required: field.required,
             description: field.description.clone(),
+            options: field.options.clone(),
         })
         .collect()
 }

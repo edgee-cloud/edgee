@@ -30,8 +30,8 @@ pub async fn edgee_client_event(ctx: IncomingContext) -> anyhow::Result<Response
     let mut data_collection_events: String = String::new();
     if !body.is_empty() {
         let events = compute::json_handler(&body, request, &mut response, false).await;
-        if events.is_some() {
-            data_collection_events = events.unwrap();
+        if let Some(events) = events {
+            data_collection_events = events;
         }
     }
 
@@ -135,8 +135,7 @@ pub async fn edgee_client_event_from_third_party_sdk(
         return Ok(build_response(
             response,
             Bytes::from(format!(
-                r#"{{"e":"{}", "u":"{}"}}"#,
-                cookie_encrypted, cookie_encrypted_u
+                r#"{{"e":"{cookie_encrypted}", "u":"{cookie_encrypted_u}"}}"#
             )),
         ));
     }
@@ -159,7 +158,7 @@ pub fn options(allow_methods: &str) -> anyhow::Result<Response> {
         .header(header::ACCESS_CONTROL_ALLOW_METHODS, allow_methods)
         .header(
             header::ACCESS_CONTROL_ALLOW_HEADERS,
-            "Content-Type, Edgee-Debug, Authorization",
+            "Content-Type, Edgee-Debug, Authorization, X-Edgee-Client-Error",
         )
         .header(header::ACCESS_CONTROL_MAX_AGE, "3600")
         .body(empty())
@@ -197,6 +196,7 @@ pub fn sdk(ctx: IncomingContext) -> anyhow::Result<Response> {
         ctx.request.get_path().as_str(),
         ctx.request.get_host().as_str(),
         config::get().compute.autocapture.clone(),
+        config::get().compute.cookie_name.clone().as_str(),
     ) {
         inlined_sdk = inlined_sdk.replace("{{side}}", "c");
         Ok(http::Response::builder()

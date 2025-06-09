@@ -10,7 +10,7 @@ use tower_http::decompression::DecompressionBody;
 #[pin_project::pin_project(project = ProxyBodyProj)]
 pub enum ProxyBody {
     Uncompressed(#[pin] Full<Bytes>),
-    Compressed(#[pin] DecompressionBody<Full<Bytes>>),
+    Compressed(#[pin] Box<DecompressionBody<Full<Bytes>>>),
 }
 
 impl ProxyBody {
@@ -41,7 +41,7 @@ impl ProxyBody {
 
         let (_, body) = decompression.call(moke_req).await?.into_parts();
 
-        Ok(Self::Compressed(body))
+        Ok(Self::Compressed(Box::new(body)))
     }
 
     #[allow(unused)]

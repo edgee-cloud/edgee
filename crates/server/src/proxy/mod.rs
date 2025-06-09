@@ -269,7 +269,7 @@ fn inject_sdk(body: &mut String, hostname: &str) {
                 // add sdk to the head
                 element!("head", |el| {
                     el.append(
-                        &format!(r#"<script id="__EDGEE_SDK__" async src="https://{}/_edgee/sdk.js"></script>"#, hostname),
+                        &format!(r#"<script id="__EDGEE_SDK__" async src="https://{hostname}/_edgee/sdk.js"></script>"#),
                         ContentType::Html,
                     );
                     Ok(())
@@ -311,19 +311,19 @@ fn set_duration_headers(
     if is_debug_mode {
         response.headers.insert(
             HeaderName::from_str(EDGEE_FULL_DURATION_HEADER).unwrap(),
-            HeaderValue::from_str(format!("{}ms", full_duration).as_str()).unwrap(),
+            HeaderValue::from_str(format!("{full_duration}ms").as_str()).unwrap(),
         );
     }
     if let Some(duration) = compute_duration {
         response.headers.insert(
             HeaderName::from_str(EDGEE_COMPUTE_DURATION_HEADER).unwrap(),
-            HeaderValue::from_str(format!("{}ms", duration).as_str()).unwrap(),
+            HeaderValue::from_str(format!("{duration}ms").as_str()).unwrap(),
         );
         if is_debug_mode {
             let proxy_duration = full_duration - duration;
             response.headers.insert(
                 HeaderName::from_str(EDGEE_PROXY_DURATION_HEADER).unwrap(),
-                HeaderValue::from_str(format!("{}ms", proxy_duration).as_str()).unwrap(),
+                HeaderValue::from_str(format!("{proxy_duration}ms").as_str()).unwrap(),
             );
         }
     }

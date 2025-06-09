@@ -87,3 +87,31 @@ pub fn init_cli() {
         .with(fmt_layer)
         .init();
 }
+
+const SENTRY_ENDPOINT: &str = "https://de4323866781f026a004320ac2478e26@o4507468622004224.ingest.de.sentry.io/4509230203600976";
+
+pub fn init_sentry() -> sentry::ClientInitGuard {
+    let endpoint =
+        std::env::var("EDGEE_SENTRY_ENDPOINT").unwrap_or_else(|_| SENTRY_ENDPOINT.to_string());
+    let opts = sentry::ClientOptions {
+        release: sentry::release_name!(),
+        auto_session_tracking: true,
+        session_mode: sentry::SessionMode::Application,
+        debug: std::env::var("EDGEE_SENTRY_DEBUG")
+            .is_ok_and(|value| value == "1" || value == "true"),
+        ..Default::default()
+    };
+    sentry::init((endpoint, opts))
+}
+
+pub fn report_error(err: anyhow::Error) {
+    sentry_anyhow::capture_anyhow(&err);
+
+    for (idx, err) in err.chain().enumerate() {
+        if idx == 1 {
+            tracing::error!("Caused by:");
+        }
+        let spacing = if idx > 0 { "  " } else { "" };
+        tracing::error!("{spacing}{err}");
+    }
+}

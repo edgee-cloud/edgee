@@ -37,12 +37,12 @@ fn read_config(path: Option<&Path>) -> Result<StaticConfiguration, String> {
         }
         (true, false) => {
             let config_file = std::fs::read_to_string(toml_path).expect("should read edgee.toml");
-            toml::from_str(&config_file).map_err(|e| format!("should parse valid toml file: {}", e))
+            toml::from_str(&config_file).map_err(|e| format!("should parse valid toml file: {e}"))
         }
         (false, true) => {
             let config_file = std::fs::read_to_string(yaml_path).expect("should read edgee.yaml");
             serde_yml::from_str(&config_file)
-                .map_err(|e| format!("should parse valid yaml file: {}", e))
+                .map_err(|e| format!("should parse valid yaml file: {e}"))
         }
     }
 }

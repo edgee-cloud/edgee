@@ -1,9 +1,13 @@
 use chrono::{DateTime, Utc};
+use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt;
+use tracing::error;
 
+use crate::config::ComponentDataManipulationRule;
+use crate::config::ComponentEventFilteringRuleCondition;
 use crate::config::DataCollectionComponents;
 
 pub type Dict = HashMap<String, serde_json::Value>;
@@ -106,6 +110,305 @@ impl Event {
 
         all
     }
+    pub fn should_filter_out(&self, condition: &ComponentEventFilteringRuleCondition) -> bool {
+        let query = condition.field.as_str();
+        let operator = condition.operator.as_str();
+        let value = condition.value.as_str();
+
+        let re = Regex::new(r"data\.(page|track|user)\.properties\.([a-zA-Z0-9_]+)").unwrap();
+        if let Some(captures) = re.captures(query) {
+            let data_type = captures.get(1).unwrap().as_str();
+            let custom_field = captures.get(2).unwrap().as_str();
+
+            match data_type {
+                "page" => {
+                    if let Data::Page(data) = &self.data {
+                        if let Some(found_customer_property_value) =
+                            data.properties.get(custom_field)
+                        {
+                            return evaluate_string_filter(
+                                found_customer_property_value.to_string().as_str(),
+                                operator,
+                                value,
+                            );
+                        }
+                    }
+                }
+                "track" => {
+                    if let Data::Track(data) = &self.data {
+                        if let Some(found_customer_property_value) =
+                            data.properties.get(custom_field)
+                        {
+                            return evaluate_string_filter(
+                                found_customer_property_value.to_string().as_str(),
+                                operator,
+                                value,
+                            );
+                        }
+                    }
+                }
+                "user" => {
+                    if let Data::User(data) = &self.data {
+                        if let Some(found_customer_property_value) =
+                            data.properties.get(custom_field)
+                        {
+                            return evaluate_string_filter(
+                                found_customer_property_value.to_string().as_str(),
+                                operator,
+                                value,
+                            );
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        match query {
+            "uuid" => evaluate_string_filter(&self.uuid, operator, value),
+            "timestamp" => {
+                let timestamp_f64 = self.timestamp.timestamp() as f64;
+                let value_f64 = value.parse::<f64>().unwrap_or_default();
+                evaluate_number_filter(&timestamp_f64, operator, &value_f64)
+            }
+            "timestamp-millis" => {
+                let timestamp_f64 = self.timestamp.timestamp_millis() as f64;
+                let value_f64 = value.parse::<f64>().unwrap_or_default();
+                evaluate_number_filter(&timestamp_f64, operator, &value_f64)
+            }
+            "timestamp-micros" => {
+                let timestamp_f64 = self.timestamp.timestamp_micros() as f64;
+                let value_f64 = value.parse::<f64>().unwrap_or_default();
+                evaluate_number_filter(&timestamp_f64, operator, &value_f64)
+            }
+            "event-type" => {
+                let event_type_str = match self.event_type {
+                    EventType::Page => "page",
+                    EventType::User => "user",
+                    EventType::Track => "track",
+                };
+                evaluate_string_filter(event_type_str, operator, value)
+            }
+            "consent" => {
+                let consent_str = self.consent.as_ref().map_or("", |c| match c {
+                    Consent::Granted => "granted",
+                    Consent::Denied => "denied",
+                    Consent::Pending => "pending",
+                });
+                evaluate_string_filter(consent_str, operator, value)
+            }
+            "context.client.ip" => evaluate_string_filter(&self.context.client.ip, operator, value),
+            "context.client.locale" => {
+                evaluate_string_filter(&self.context.client.locale, operator, value)
+            }
+            "context.client.timezone" => {
+                evaluate_string_filter(&self.context.client.timezone, operator, value)
+            }
+            "context.client.user-agent" => {
+                evaluate_string_filter(&self.context.client.user_agent, operator, value)
+            }
+            "context.client.os-name" => {
+                evaluate_string_filter(&self.context.client.os_name, operator, value)
+            }
+            "context.client.os-version" => {
+                evaluate_string_filter(&self.context.client.os_version, operator, value)
+            }
+            "context.client.country-code" => {
+                evaluate_string_filter(&self.context.client.country_code, operator, value)
+            }
+            "context.client.country-name" => {
+                evaluate_string_filter(&self.context.client.country_name, operator, value)
+            }
+            "context.client.city" => {
+                evaluate_string_filter(&self.context.client.city, operator, value)
+            }
+            "context.session.session_id" => {
+                evaluate_string_filter(&self.context.session.session_id, operator, value)
+            }
+            "context.session.session-count" => {
+                let count_f64 = self.context.session.session_count as f64;
+                let value_f64 = value.parse::<f64>().unwrap_or_default();
+                evaluate_number_filter(&count_f64, operator, &value_f64)
+            }
+            "context.session.session-start" => evaluate_boolean_filter(
+                self.context.session.session_start,
+                operator,
+                value == "true",
+            ),
+            "data.page.name" => {
+                if let Data::Page(ref data) = self.data {
+                    evaluate_string_filter(&data.name, operator, value)
+                } else {
+                    false
+                }
+            }
+            "data.page.category" => {
+                if let Data::Page(ref data) = self.data {
+                    evaluate_string_filter(&data.category, operator, value)
+                } else {
+                    false
+                }
+            }
+            "data.page.title" => {
+                if let Data::Page(ref data) = self.data {
+                    evaluate_string_filter(&data.title, operator, value)
+                } else {
+                    false
+                }
+            }
+            "data.page.url" => {
+                if let Data::Page(ref data) = self.data {
+                    evaluate_string_filter(&data.url, operator, value)
+                } else {
+                    false
+                }
+            }
+            "data.page.path" => {
+                if let Data::Page(ref data) = self.data {
+                    evaluate_string_filter(&data.path, operator, value)
+                } else {
+                    false
+                }
+            }
+            "data.page.search" => {
+                if let Data::Page(ref data) = self.data {
+                    evaluate_string_filter(&data.search, operator, value)
+                } else {
+                    false
+                }
+            }
+            "data.page.referrer" => {
+                if let Data::Page(ref data) = self.data {
+                    evaluate_string_filter(&data.referrer, operator, value)
+                } else {
+                    false
+                }
+            }
+            "data.track.name" => {
+                if let Data::Track(ref data) = self.data {
+                    evaluate_string_filter(&data.name, operator, value)
+                } else {
+                    false
+                }
+            }
+            "data.user.user-id" => {
+                if let Data::User(ref data) = self.data {
+                    evaluate_string_filter(&data.user_id, operator, value)
+                } else {
+                    false
+                }
+            }
+            "data.user.anonymous-id" => {
+                if let Data::User(ref data) = self.data {
+                    evaluate_string_filter(&data.anonymous_id, operator, value)
+                } else {
+                    false
+                }
+            }
+            "data.user.edgee-id" => {
+                if let Data::User(ref data) = self.data {
+                    evaluate_string_filter(&data.edgee_id, operator, value)
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
+    pub fn apply_data_manipulation_rules(&mut self, rules: &[ComponentDataManipulationRule]) {
+        rules.iter().for_each(|rule| {
+            rule.event_types
+                .iter()
+                .for_each(|event_type| match event_type.as_str() {
+                    "page" => {
+                        if let Data::Page(ref mut data) = self.data {
+                            rule.manipulations.iter().for_each(|manipulation| {
+                                let value = data.properties.get(&manipulation.from_property);
+                                if let Some(value) = value {
+                                    data.properties
+                                        .insert(manipulation.to_property.clone(), value.clone());
+                                    data.properties.remove(&manipulation.from_property);
+                                }
+                            });
+                        }
+                    }
+                    "track" => {
+                        if let Data::Track(ref mut data) = self.data {
+                            rule.manipulations.iter().for_each(|manipulation| {
+                                if manipulation.manipulation_type == "replace-event-name" {
+                                    if data.name == manipulation.from_property {
+                                        data.name = manipulation.to_property.clone();
+                                    }
+                                } else {
+                                    let value = data.properties.get(&manipulation.from_property);
+                                    if let Some(value) = value {
+                                        data.properties.insert(
+                                            manipulation.to_property.clone(),
+                                            value.clone(),
+                                        );
+                                        data.properties.remove(&manipulation.from_property);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    "user" => {
+                        if let Data::User(ref mut data) = self.data {
+                            rule.manipulations.iter().for_each(|manipulation| {
+                                let value = data.properties.get(&manipulation.from_property);
+                                if let Some(value) = value {
+                                    data.properties
+                                        .insert(manipulation.to_property.clone(), value.clone());
+                                    data.properties.remove(&manipulation.from_property);
+                                }
+                            });
+                        }
+                    }
+                    _ => {}
+                });
+        });
+    }
+}
+
+pub fn evaluate_boolean_filter(field_value: bool, operator: &str, condition_value: bool) -> bool {
+    match operator {
+        "eq" => field_value == condition_value,
+        "neq" => field_value != condition_value,
+        _ => {
+            error!("Invalid operator: {}", operator);
+            false
+        }
+    }
+}
+
+pub fn evaluate_string_filter(field_value: &str, operator: &str, condition_value: &str) -> bool {
+    match operator {
+        "eq" => field_value == condition_value,
+        "neq" => field_value != condition_value,
+        "in" => condition_value.split(',').any(|v| v.trim() == field_value),
+        "nin" => !condition_value.split(',').any(|v| v.trim() == field_value),
+        "is_null" => field_value.is_empty(),
+        "is_not_null" => !field_value.is_empty(),
+        _ => {
+            error!("Invalid operator: {}", operator);
+            false
+        }
+    }
+}
+
+pub fn evaluate_number_filter(field_value: &f64, operator: &str, condition_value: &f64) -> bool {
+    match operator {
+        "eq" => field_value == condition_value,
+        "neq" => field_value != condition_value,
+        "gt" => field_value > condition_value,
+        "lt" => field_value < condition_value,
+        "gte" => field_value >= condition_value,
+        "lte" => field_value <= condition_value,
+        _ => {
+            error!("Invalid operator: {}", operator);
+            false
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
@@ -117,6 +420,16 @@ pub enum EventType {
     User,
     #[serde(rename = "track")]
     Track,
+}
+
+impl fmt::Display for EventType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            EventType::Page => write!(f, "page"),
+            EventType::User => write!(f, "user"),
+            EventType::Track => write!(f, "track"),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
