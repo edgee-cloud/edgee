@@ -443,9 +443,18 @@ pub fn insert_expected_headers(
     headers.insert(header::ACCEPT, HeaderValue::from_str("*/*")?);
 
     // Insert sec-fetch-dest, sec-fetch-mode and sec-fetch-site headers
-    headers.insert(HeaderName::from_str("sec-fetch-dest")?, HeaderValue::from_str("empty")?);
-    headers.insert(HeaderName::from_str("sec-fetch-mode")?, HeaderValue::from_str("no-cors")?);
-    headers.insert(HeaderName::from_str("sec-fetch-site")?, HeaderValue::from_str("cross-site")?);
+    headers.insert(
+        HeaderName::from_str("sec-fetch-dest")?,
+        HeaderValue::from_str("empty")?,
+    );
+    headers.insert(
+        HeaderName::from_str("sec-fetch-mode")?,
+        HeaderValue::from_str("no-cors")?,
+    );
+    headers.insert(
+        HeaderName::from_str("sec-fetch-site")?,
+        HeaderValue::from_str("cross-site")?,
+    );
 
     // Insert headers from the real client headers
     for (key, value) in client_headers.iter() {
@@ -485,13 +494,34 @@ mod tests {
     #[test]
     fn test_get_origin_from_url() {
         // Valid cases
-        assert_eq!(get_origin_from_url("https://www.example.com/test").unwrap(), "https://www.example.com");
-        assert_eq!(get_origin_from_url("https://de.example.com").unwrap(), "https://de.example.com");
-        assert_eq!(get_origin_from_url("https://www.example.com/test?utm_source=test").unwrap(), "https://www.example.com");
-        assert_eq!(get_origin_from_url("https://www.example.com:8080").unwrap(), "https://www.example.com");
-        assert_eq!(get_origin_from_url("https://www.example.com:8080/test?query=test").unwrap(), "https://www.example.com");
-        assert_eq!(get_origin_from_url("https://www.example.com:8080?query=test").unwrap(), "https://www.example.com");
-        assert_eq!(get_origin_from_url("https://www.example.com:8080/test?query=test").unwrap(), "https://www.example.com");
+        assert_eq!(
+            get_origin_from_url("https://www.example.com/test").unwrap(),
+            "https://www.example.com"
+        );
+        assert_eq!(
+            get_origin_from_url("https://de.example.com").unwrap(),
+            "https://de.example.com"
+        );
+        assert_eq!(
+            get_origin_from_url("https://www.example.com/test?utm_source=test").unwrap(),
+            "https://www.example.com"
+        );
+        assert_eq!(
+            get_origin_from_url("https://www.example.com:8080").unwrap(),
+            "https://www.example.com"
+        );
+        assert_eq!(
+            get_origin_from_url("https://www.example.com:8080/test?query=test").unwrap(),
+            "https://www.example.com"
+        );
+        assert_eq!(
+            get_origin_from_url("https://www.example.com:8080?query=test").unwrap(),
+            "https://www.example.com"
+        );
+        assert_eq!(
+            get_origin_from_url("https://www.example.com:8080/test?query=test").unwrap(),
+            "https://www.example.com"
+        );
 
         // Edge cases
         assert!(get_origin_from_url("").is_err());
@@ -552,7 +582,10 @@ mod tests {
         let event = create_test_event();
 
         let mut client_headers: HashMap<String, String> = HashMap::new();
-        client_headers.insert("sec-ch-ua".to_string(), "\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\"".to_string());
+        client_headers.insert(
+            "sec-ch-ua".to_string(),
+            "\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\"".to_string(),
+        );
         client_headers.insert("sec-ch-ua-mobile".to_string(), "?0".to_string());
         client_headers.insert("sec-ch-ua-platform".to_string(), "\"Windows\"".to_string());
 
