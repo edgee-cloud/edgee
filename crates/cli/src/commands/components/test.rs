@@ -297,7 +297,7 @@ async fn test_data_collection_component(opts: Options, manifest: &Manifest) -> a
         }
 
         if request.forward_client_headers {
-            let _ = data_collection::insert_expected_headers(&mut headers, &event);
+            let _ = data_collection::insert_expected_headers(&mut headers, &event, &HashMap::new());
         }
 
         tracing::info!("Output from Wasm:");
