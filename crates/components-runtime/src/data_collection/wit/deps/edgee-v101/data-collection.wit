@@ -114,7 +114,8 @@ interface data-collection {
         url: string,
         headers: dict,
         token-duration: s64,
-        token-response-property: string,
+        response-token-property-name: option<string>, // Which property to cache and send in the db
+        component-token-setting-name: string, // What the token settings is called in the component
         body: string,
     }
 
@@ -123,6 +124,4 @@ interface data-collection {
     user: func(e: event, settings:dict) -> result<edgee-request, string>;
     @since(version = 1.0.1)
     authenticate: func(settings: dict) -> result<option<auth-request>, string>;
-    @since(version = 1.0.1)
-    require-auth: func() -> bool;
 }
