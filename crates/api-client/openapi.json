@@ -3577,6 +3577,10 @@
           "description": {
             "type": "string",
             "description": "The description of the configuration field."
+          },
+          "secret": {
+            "type": "boolean",
+            "description": "Whether the configuration field is a secret."
           }
         },
         "required": ["name", "title", "type", "required"]

@@ -7,6 +7,7 @@ pub mod versions;
 
 use std::str::FromStr;
 use std::time::Duration;
+use url::Url;
 
 use crate::config::{ComponentsConfiguration, DataCollectionComponents};
 use context::EventContext;
@@ -82,6 +83,7 @@ pub async fn send_json_events(
         debug,
         "",
         "",
+        &HashMap::new(),
     )
     .await
 }
@@ -174,6 +176,7 @@ pub async fn get_auth_request(
     Ok(Some(future))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn send_events(
     component_ctx: &ComponentsContext,
     events: &mut [Event],
@@ -182,6 +185,7 @@ pub async fn send_events(
     debug: bool,
     project_id: &str,
     proxy_host: &str,
+    client_headers: &HashMap<String, String>,
 ) -> anyhow::Result<Vec<JoinHandle<EventResponse>>> {
     if events.is_empty() {
         return Ok(vec![]);
@@ -289,6 +293,7 @@ pub async fn send_events(
                         component_ctx,
                         cfg,
                         &mut store,
+                        &client_headers.clone(),
                     )
                     .await
                     {
@@ -497,7 +502,11 @@ fn handle_consent_and_anonymization(
     }
 }
 
-pub fn insert_expected_headers(headers: &mut HeaderMap, event: &Event) -> anyhow::Result<()> {
+pub fn insert_expected_headers(
+    headers: &mut HeaderMap,
+    event: &Event,
+    client_headers: &HashMap<String, String>,
+) -> anyhow::Result<()> {
     // Insert client ip in the x-forwarded-for header
     if !event.context.client.ip.is_empty() {
         headers.insert(
@@ -535,80 +544,56 @@ pub fn insert_expected_headers(headers: &mut HeaderMap, event: &Event) -> anyhow
         );
     }
 
-    // Insert sec-ch-ua headers
-    // sec-ch-ua
-    if !event.context.client.user_agent_version_list.is_empty() {
-        let ch_ua_value = format_ch_ua_header(&event.context.client.user_agent_version_list);
-        headers.insert(
-            HeaderName::from_str("sec-ch-ua")?,
-            HeaderValue::from_str(ch_ua_value.as_str())?,
-        );
+    // Insert origin in the origin header
+    if let Ok(origin) = get_origin_from_url(&event.context.page.url) {
+        if let Ok(value) = HeaderValue::from_str(&origin) {
+            headers.insert(header::ORIGIN, value);
+        }
     }
-    // sec-ch-ua-mobile
-    if !event.context.client.user_agent_mobile.is_empty() {
-        let mobile_value = format!("?{}", event.context.client.user_agent_mobile.clone());
-        headers.insert(
-            HeaderName::from_str("sec-ch-ua-mobile")?,
-            HeaderValue::from_str(mobile_value.as_str())?,
-        );
-    }
-    // sec-ch-ua-platform
-    if !event.context.client.os_name.is_empty() {
-        let platform_value = format!("\"{}\"", event.context.client.os_name.clone());
-        headers.insert(
-            HeaderName::from_str("sec-ch-ua-platform")?,
-            HeaderValue::from_str(platform_value.as_str())?,
-        );
+
+    // Insert Accept header
+    headers.insert(header::ACCEPT, HeaderValue::from_str("*/*")?);
+
+    // Insert sec-fetch-dest, sec-fetch-mode and sec-fetch-site headers
+    headers.insert(
+        HeaderName::from_str("sec-fetch-dest")?,
+        HeaderValue::from_str("empty")?,
+    );
+    headers.insert(
+        HeaderName::from_str("sec-fetch-mode")?,
+        HeaderValue::from_str("no-cors")?,
+    );
+    headers.insert(
+        HeaderName::from_str("sec-fetch-site")?,
+        HeaderValue::from_str("cross-site")?,
+    );
+
+    // Insert headers from the real client headers
+    for (key, value) in client_headers.iter() {
+        headers.insert(HeaderName::from_str(key)?, HeaderValue::from_str(value)?);
     }
 
     Ok(())
 }
 
-fn format_ch_ua_header(string: &str) -> String {
-    if string.is_empty() {
-        return String::new();
-    }
-
-    let mut ch_ua_list = vec![];
-
-    // Split into individual brand-version pairs
-    let pairs = if string.contains('|') {
-        string.split('|').collect::<Vec<_>>()
-    } else {
-        vec![string]
-    };
-
-    // Process each pair
-    for pair in pairs {
-        if let Some((brand, version)) = parse_brand_version(pair) {
-            ch_ua_list.push(format!("\"{brand}\";v=\"{version}\""));
-        }
-    }
-
-    ch_ua_list.join(", ")
-}
-
-// Helper function to parse a single brand-version pair
-fn parse_brand_version(pair: &str) -> Option<(String, &str)> {
-    if !pair.contains(';') {
-        return None;
-    }
-
-    let parts: Vec<&str> = pair.split(';').collect();
-    if parts.len() < 2 {
-        return None;
-    }
-
-    // brand is everything except the last part
-    let brand = parts[0..parts.len() - 1].join(";");
-    // version is the last part
-    let version = parts[parts.len() - 1];
-
-    if brand.is_empty() || version.is_empty() {
-        return None;
-    }
-
-    Some((brand, version))
+/// Extracts the origin from a URL string.
+///
+/// The origin consists of the scheme and host components of the URL.
+/// For example, given "https://www.example.com/test", this function returns "https://www.example.com".
+///
+/// # Arguments
+///
+/// * `url` - A string slice containing the URL to parse
+///
+/// # Returns
+///
+/// * `Result<String, anyhow::Error>` - The origin string on success, or an error if URL parsing fails
+///
+pub fn get_origin_from_url(url: &str) -> Result<String, anyhow::Error> {
+    let url = Url::parse(url)?;
+    let host = url.host().unwrap().to_string();
+    let scheme = url.scheme();
+    Ok(format!("{}://{}", scheme, host))
 }
 
 #[cfg(test)]
@@ -619,34 +604,42 @@ mod tests {
     use http::HeaderValue;
 
     #[test]
-    fn test_format_ch_ua_header() {
+    fn test_get_origin_from_url() {
         // Valid cases
         assert_eq!(
-            format_ch_ua_header("Chromium;128"),
-            "\"Chromium\";v=\"128\""
+            get_origin_from_url("https://www.example.com/test").unwrap(),
+            "https://www.example.com"
         );
         assert_eq!(
-            format_ch_ua_header("Chromium;128|Google Chrome;128"),
-            "\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\""
+            get_origin_from_url("https://de.example.com").unwrap(),
+            "https://de.example.com"
         );
         assert_eq!(
-            format_ch_ua_header("Not;A=Brand;24"),
-            "\"Not;A=Brand\";v=\"24\""
+            get_origin_from_url("https://www.example.com/test?utm_source=test").unwrap(),
+            "https://www.example.com"
         );
         assert_eq!(
-            format_ch_ua_header("Chromium;128|Google Chrome;128|Not;A=Brand;24"),
-            "\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\", \"Not;A=Brand\";v=\"24\""
+            get_origin_from_url("https://www.example.com:8080").unwrap(),
+            "https://www.example.com"
         );
         assert_eq!(
-            format_ch_ua_header("Chromium;128|Google Chrome;128|Not_A Brand;24|Opera;128"),
-            "\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\", \"Not_A Brand\";v=\"24\", \"Opera\";v=\"128\""
+            get_origin_from_url("https://www.example.com:8080/test?query=test").unwrap(),
+            "https://www.example.com"
+        );
+        assert_eq!(
+            get_origin_from_url("https://www.example.com:8080?query=test").unwrap(),
+            "https://www.example.com"
+        );
+        assert_eq!(
+            get_origin_from_url("https://www.example.com:8080/test?query=test").unwrap(),
+            "https://www.example.com"
         );
 
         // Edge cases
-        assert_eq!(format_ch_ua_header(""), "");
-        assert_eq!(format_ch_ua_header("Invalid"), "");
-        assert_eq!(format_ch_ua_header("No Version;"), "");
-        assert_eq!(format_ch_ua_header(";No Brand"), "");
+        assert!(get_origin_from_url("").is_err());
+        assert!(get_origin_from_url("Invalid").is_err());
+        assert!(get_origin_from_url("No Version;").is_err());
+        assert!(get_origin_from_url(";No Brand").is_err());
     }
 
     fn create_test_event() -> Event {
@@ -700,7 +693,15 @@ mod tests {
         let mut headers = HeaderMap::new();
         let event = create_test_event();
 
-        let result = insert_expected_headers(&mut headers, &event);
+        let mut client_headers: HashMap<String, String> = HashMap::new();
+        client_headers.insert(
+            "sec-ch-ua".to_string(),
+            "\"Chromium\";v=\"128\", \"Google Chrome\";v=\"128\"".to_string(),
+        );
+        client_headers.insert("sec-ch-ua-mobile".to_string(), "?0".to_string());
+        client_headers.insert("sec-ch-ua-platform".to_string(), "\"Windows\"".to_string());
+
+        let result = insert_expected_headers(&mut headers, &event, &client_headers);
 
         assert!(result.is_ok());
         assert_eq!(
@@ -743,10 +744,10 @@ mod tests {
         let event = create_empty_test_event();
 
         // Call the function
-        let result = insert_expected_headers(&mut headers, &event);
+        let result = insert_expected_headers(&mut headers, &event, &HashMap::new());
 
         assert!(result.is_ok());
-        assert_eq!(headers.keys().len(), 0);
+        assert_eq!(headers.keys().len(), 4);
     }
 
     #[test]
