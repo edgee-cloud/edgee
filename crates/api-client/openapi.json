@@ -3583,7 +3583,7 @@
             "description": "Whether the configuration field is a secret."
           }
         },
-        "required": ["name", "title", "type", "required", "secret"]
+        "required": ["name", "title", "type", "required"]
       },
       "ComponentCreateInput": {
         "type": "object",

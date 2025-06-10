@@ -75,7 +75,7 @@ pub struct Setting {
     pub description: Option<String>,
     pub options: Option<Vec<String>>,
     #[serde(default)]
-    pub secret: bool,
+    pub secret: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
