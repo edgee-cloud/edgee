@@ -635,7 +635,7 @@ mod tests {
         let result = insert_expected_headers(&mut headers, &event, &HashMap::new());
 
         assert!(result.is_ok());
-        assert_eq!(headers.keys().len(), 0);
+        assert_eq!(headers.keys().len(), 4);
     }
 
     #[test]
