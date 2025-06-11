@@ -77,7 +77,7 @@ pub enum SubCategory {
     ConsentMapping,
     Cmp,
     NativeCookies,
-    Id,
+    UniqueId,
     AbTesting,
     WebPerformance,
 }
