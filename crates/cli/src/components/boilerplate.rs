@@ -108,13 +108,11 @@ cli = \"https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.0.tar.gz\
     },
 ];
 
-pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[
-    CategoryConfig {
-        name: "Data Collection",
-        value: api_types::ComponentCreateInputCategory::DataCollection,
-        wit_world: "data-collection",
-    },
-];
+pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[CategoryConfig {
+    name: "Data Collection",
+    value: api_types::ComponentCreateInputCategory::DataCollection,
+    wit_world: "data-collection",
+}];
 
 pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
     SubCategoryConfig {
@@ -202,12 +200,7 @@ mod tests {
 
     #[test]
     fn test_subcategory_options() {
-        let expected_subcategories = [
-            "Analytics",
-            "Attribution",
-            "Warehouse",
-            "Conversion API",
-        ];
+        let expected_subcategories = ["Analytics", "Attribution", "Warehouse", "Conversion API"];
         for &expected in &expected_subcategories {
             assert!(SUBCATEGORY_OPTIONS
                 .iter()
