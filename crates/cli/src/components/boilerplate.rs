@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_category_options() {
-        assert_eq!(CATEGORY_OPTIONS.len(), 2); // for now!
+        assert_eq!(CATEGORY_OPTIONS.len(), 1); // for now!
         let expected_categories = ["Data Collection"];
         for &expected in &expected_categories {
             assert!(CATEGORY_OPTIONS
