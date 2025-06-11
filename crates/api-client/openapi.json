@@ -2633,7 +2633,7 @@
         "required": false,
         "schema": {
           "type": "string",
-          "enum": ["analytics", "warehouse", "attribution", "conversion_api", "wasm_function", "server_side_tagging", "endpoint", "kv_store", "bot_protection", "rate_limiting", "anti_fraud", "consent_mapping", "cmp", "native_cookies", "id", "ab_testing", "web_performance"],
+          "enum": ["analytics", "warehouse", "attribution", "conversion_api", "wasm_function", "server_side_tagging", "endpoint", "kv_store", "bot_protection", "rate_limiting", "anti_fraud", "consent_mapping", "cmp", "native_cookies", "unique_id", "ab_testing", "web_performance"],
           "description": "Filter components by sub category."
         }
       }
@@ -3606,7 +3606,7 @@
           "subcategory": {
             "type": "string",
             "description": "Subcategory of the component.",
-            "enum": ["analytics", "warehouse", "attribution", "conversion_api", "wasm_function", "server_side_tagging", "endpoint", "kv_store", "bot_protection", "rate_limiting", "anti_fraud", "consent_mapping", "cmp", "native_cookies", "id", "ab_testing", "web_performance"]
+            "enum": ["analytics", "warehouse", "attribution", "conversion_api", "wasm_function", "server_side_tagging", "endpoint", "kv_store", "bot_protection", "rate_limiting", "anti_fraud", "consent_mapping", "cmp", "native_cookies", "unique_id", "ab_testing", "web_performance"]
           },
           "documentation_link": {
             "type": "string",
@@ -3723,7 +3723,7 @@
           "subcategory": {
             "type": "string",
             "description": "Filter components by sub category.",
-            "enum": ["analytics", "warehouse", "attribution", "conversion_api", "wasm_function", "server_side_tagging", "endpoint", "kv_store", "bot_protection", "rate_limiting", "anti_fraud", "consent_mapping", "cmp", "native_cookies", "id", "ab_testing", "web_performance"]
+            "enum": ["analytics", "warehouse", "attribution", "conversion_api", "wasm_function", "server_side_tagging", "endpoint", "kv_store", "bot_protection", "rate_limiting", "anti_fraud", "consent_mapping", "cmp", "native_cookies", "unique_id", "ab_testing", "web_performance"]
           }
         }
       },
