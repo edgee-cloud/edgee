@@ -431,7 +431,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
             test_data_collection_component(opts, &manifest).await?;
         }
         _ => anyhow::bail!(
-            "Invalid component type: {}, expected 'data-collection' or 'consent-mapping'",
+            "Invalid component type: {}, expected 'data-collection'",
             manifest.component.category
         ),
     }

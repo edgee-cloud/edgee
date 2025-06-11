@@ -89,7 +89,7 @@ pub async fn run(opts: Options) -> Result<()> {
                 super::check::ComponentType::DataCollection
             }
             _ => anyhow::bail!(
-                "Invalid component type: {}, expected 'data-collection' or 'consent-mapping'",
+                "Invalid component type: {}, expected 'data-collection'",
                 manifest.component.category
             ),
         },
