@@ -64,3 +64,16 @@ jobs:
         with:
           file: edgee.${{ matrix.platform.target }}${{ matrix.platform.bin_suffix || '' }}
           tags: true
+
+      - name: Install Sentry CLI
+        uses: matbour/setup-sentry-cli@v2
+        with:
+          version: latest
+          token: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          organization: ${{ vars.SENTRY_ORG }}
+          project: ${{ vars.SENTRY_PROJECT }}
+
+      - name: Upload Debug Information Files to Sentry
+        run: |
+          sentry-cli debug-files bundle-sources target/${{ matrix.platform.target }}/debug/edgee
+          sentry-cli debug-files upload target/${{ matrix.platform.target }}/debug/edgee.src.zip target/${{ matrix.platform.target }}/debug/edgee
