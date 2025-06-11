@@ -11,7 +11,6 @@ setup_command! {
 
 pub enum ComponentType {
     DataCollection,
-    ConsentManagement,
 }
 
 pub async fn check_component(
@@ -20,7 +19,7 @@ pub async fn check_component(
     component_wit_version: &str,
 ) -> anyhow::Result<()> {
     use edgee_components_runtime::config::{
-        ComponentsConfiguration, ConsentManagementComponents, DataCollectionComponents,
+        ComponentsConfiguration, DataCollectionComponents,
     };
     use edgee_components_runtime::context::ComponentsContext;
 
@@ -44,18 +43,6 @@ pub async fn check_component(
             },
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
         },
-        ComponentType::ConsentManagement => match component_wit_version {
-            "1.0.0" => ComponentsConfiguration {
-                consent_management: vec![ConsentManagementComponents {
-                    id: component_path.to_string(),
-                    file: component_path.to_string(),
-                    wit_version: edgee_components_runtime::consent_management::versions::ConsentManagementWitVersion::V1_0_0,
-                    ..Default::default()
-                }],
-                ..Default::default()
-            },
-            _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
-        },
     };
 
     let context = ComponentsContext::new(&config)
@@ -68,14 +55,6 @@ pub async fn check_component(
             "1.0.0" => {
                 let _ = context
                     .get_data_collection_1_0_0_instance(component_path, &mut store)
-                    .await?;
-            }
-            _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
-        },
-        ComponentType::ConsentManagement => match component_wit_version {
-            "1.0.0" => {
-                let _ = context
-                    .get_consent_management_1_0_0_instance(component_path, &mut store)
                     .await?;
             }
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
@@ -98,7 +77,6 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
     ) {
         (Some(filename), Some(component_type), Some(version)) => match component_type.as_str() {
             "data-collection" => (filename, ComponentType::DataCollection, version),
-            "consent-management" => (filename, ComponentType::ConsentManagement, version),
             _ => anyhow::bail!(
                 "Invalid component type: {}, expected 'data-collection' or 'consent-mapping'",
                 component_type
@@ -122,9 +100,10 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
                     edgee_api_client::types::ComponentCreateInputCategory::DataCollection => {
                         ComponentType::DataCollection
                     }
-                    edgee_api_client::types::ComponentCreateInputCategory::ConsentManagement => {
-                        ComponentType::ConsentManagement
-                    }
+                    _ => anyhow::bail!(
+                        "Invalid component type: {}, expected 'data-collection' or 'consent-mapping'",
+                        manifest.component.category
+                    ),
                 },
                 manifest.component.wit_version,
             )

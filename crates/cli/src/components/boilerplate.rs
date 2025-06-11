@@ -114,11 +114,6 @@ pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[
         value: api_types::ComponentCreateInputCategory::DataCollection,
         wit_world: "data-collection",
     },
-    CategoryConfig {
-        name: "Consent Management",
-        value: api_types::ComponentCreateInputCategory::ConsentManagement,
-        wit_world: "consent-management",
-    },
 ];
 
 pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
@@ -137,14 +132,6 @@ pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
     SubCategoryConfig {
         name: "Conversion API",
         value: api_types::ComponentCreateInputSubcategory::ConversionApi,
-    },
-    SubCategoryConfig {
-        name: "Consent Mapping",
-        value: api_types::ComponentCreateInputSubcategory::ConsentMapping,
-    },
-    SubCategoryConfig {
-        name: "Server Side Tagging",
-        value: api_types::ComponentCreateInputSubcategory::ServerSideTagging,
     },
 ];
 
@@ -205,7 +192,7 @@ mod tests {
     #[test]
     fn test_category_options() {
         assert_eq!(CATEGORY_OPTIONS.len(), 2); // for now!
-        let expected_categories = ["Data Collection", "Consent Management"];
+        let expected_categories = ["Data Collection"];
         for &expected in &expected_categories {
             assert!(CATEGORY_OPTIONS
                 .iter()
@@ -220,7 +207,6 @@ mod tests {
             "Attribution",
             "Warehouse",
             "Conversion API",
-            "Consent Mapping",
         ];
         for &expected in &expected_subcategories {
             assert!(SUBCATEGORY_OPTIONS

@@ -88,9 +88,10 @@ pub async fn run(opts: Options) -> Result<()> {
             api_types::ComponentCreateInputCategory::DataCollection => {
                 super::check::ComponentType::DataCollection
             }
-            api_types::ComponentCreateInputCategory::ConsentManagement => {
-                super::check::ComponentType::ConsentManagement
-            }
+            _ => anyhow::bail!(
+                "Invalid component type: {}, expected 'data-collection' or 'consent-mapping'",
+                manifest.component.category
+            ),
         },
         output_path.to_str().unwrap(),
         &manifest.component.wit_version,

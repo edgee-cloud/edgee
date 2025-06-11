@@ -48,7 +48,13 @@ pub struct Component {
 )]
 pub enum Category {
     DataCollection,
+    CustomLogic,
+    Gateway,
+    Api,
+    Security,
     ConsentManagement,
+    Identity,
+    Stitching,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -61,8 +67,19 @@ pub enum SubCategory {
     Warehouse,
     Attribution,
     ConversionApi,
-    ConsentMapping,
+    WasmFunction,
     ServerSideTagging,
+    Endpoint,
+    KvStore,
+    BotProtection,
+    RateLimiting,
+    AntiFraud,
+    ConsentMapping,
+    Cmp,
+    NativeCookies,
+    Id,
+    AbTesting,
+    WebPerformance,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
