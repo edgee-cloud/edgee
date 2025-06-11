@@ -2623,7 +2623,7 @@
         "required": false,
         "schema": {
           "type": "string",
-          "enum": ["data_collection"],
+          "enum": ["data_collection", "custom_logic", "gateway", "api", "security", "consent_management", "identity", "stitching"],
           "description": "Filter components by category."
         }
       },
@@ -2633,7 +2633,7 @@
         "required": false,
         "schema": {
           "type": "string",
-          "enum": ["analytics", "warehouse", "attribution", "conversion api", "server side tagging"],
+          "enum": ["analytics", "warehouse", "attribution", "conversion_api", "wasm_function", "server_side_tagging", "endpoint", "kv_store", "bot_protection", "rate_limiting", "anti_fraud", "consent_mapping", "cmp", "native_cookies", "id", "ab_testing", "web_performance"],
           "description": "Filter components by sub category."
         }
       }
@@ -3601,12 +3601,12 @@
           "category": {
             "type": "string",
             "description": "Category of the component.",
-            "enum": ["data_collection", "consent_management"]
+            "enum": ["data_collection", "custom_logic", "gateway", "api", "security", "consent_management", "identity", "stitching"]
           },
           "subcategory": {
             "type": "string",
             "description": "Subcategory of the component.",
-            "enum": ["analytics", "warehouse", "attribution", "conversion_api", "consent_mapping", "server_side_tagging"]
+            "enum": ["analytics", "warehouse", "attribution", "conversion_api", "wasm_function", "server_side_tagging", "endpoint", "kv_store", "bot_protection", "rate_limiting", "anti_fraud", "consent_mapping", "cmp", "native_cookies", "id", "ab_testing", "web_performance"]
           },
           "documentation_link": {
             "type": "string",
@@ -3718,12 +3718,12 @@
           "category": {
             "type": "string",
             "description": "Filter components by category.",
-            "enum": ["data_collection"]
+            "enum": ["data_collection", "custom_logic", "gateway", "api", "security", "consent_management", "identity", "stitching"]
           },
           "subcategory": {
             "type": "string",
             "description": "Filter components by sub category.",
-            "enum": ["analytics", "warehouse", "attribution", "conversion api", "server side tagging"]
+            "enum": ["analytics", "warehouse", "attribution", "conversion_api", "wasm_function", "server_side_tagging", "endpoint", "kv_store", "bot_protection", "rate_limiting", "anti_fraud", "consent_mapping", "cmp", "native_cookies", "id", "ab_testing", "web_performance"]
           }
         }
       },

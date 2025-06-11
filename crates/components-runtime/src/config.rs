@@ -1,7 +1,4 @@
-use crate::{
-    consent_management::versions::ConsentManagementWitVersion,
-    data_collection::versions::DataCollectionWitVersion,
-};
+use crate::data_collection::versions::DataCollectionWitVersion;
 use std::{collections::HashMap, path::PathBuf};
 
 use serde::Deserialize;
@@ -11,8 +8,6 @@ pub struct ComponentsConfiguration {
     #[serde(default)]
     pub data_collection: Vec<DataCollectionComponents>,
     // NOTE: add other version here
-    #[serde(default)]
-    pub consent_management: Vec<ConsentManagementComponents>,
     pub cache: Option<PathBuf>,
 }
 
@@ -56,18 +51,6 @@ impl Default for DataCollectionComponentSettings {
             additional_settings: HashMap::new(),
         }
     }
-}
-
-#[derive(Deserialize, Debug, Default, Clone)]
-pub struct ConsentManagementComponents {
-    pub name: String,
-    pub component: String,
-    #[serde(default)]
-    pub config: ConsentManagementComponentConfig,
-    pub file: String,
-    pub slug: String,
-    pub id: String, // could be a slug (edgee/amplitude) or an alias (amplitude)
-    pub wit_version: ConsentManagementWitVersion,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -114,19 +97,6 @@ impl Default for ComponentDataManipulationRule {
             name: "".to_string(),
             event_types: vec![],
             manipulations: vec![],
-        }
-    }
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct ConsentManagementComponentConfig {
-    pub cookie_name: String,
-}
-
-impl Default for ConsentManagementComponentConfig {
-    fn default() -> Self {
-        ConsentManagementComponentConfig {
-            cookie_name: "".to_string(),
         }
     }
 }
