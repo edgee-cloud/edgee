@@ -75,5 +75,5 @@ jobs:
 
       - name: Upload Debug Information Files to Sentry
         run: |
-          sentry-cli debug-files bundle-sources target/${{ matrix.platform.target }}/debug/edgee
-          sentry-cli debug-files upload target/${{ matrix.platform.target }}/debug/edgee.src.zip target/${{ matrix.platform.target }}/debug/edgee
+          sentry-cli debug-files bundle-sources target/${{ matrix.platform.target }}/release/edgee
+          sentry-cli debug-files upload target/${{ matrix.platform.target }}/release/edgee.src.zip target/${{ matrix.platform.target }}/release/edgee
