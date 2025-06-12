@@ -26,6 +26,7 @@ url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["v4", "serde"] }
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
+wasmtime-wasi-http.workspace = true
 
 [dev-dependencies]
 cargo-llvm-cov.workspace = true
