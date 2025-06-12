@@ -48,9 +48,9 @@ pub struct Component {
 )]
 pub enum Category {
     DataCollection,
-    CustomLogic,
-    Gateway,
-    Api,
+    EdgeFunction,
+    SdkGateway,
+    Endpoint,
     Security,
     ConsentManagement,
     Identity,
@@ -69,7 +69,7 @@ pub enum SubCategory {
     ConversionApi,
     WasmFunction,
     ServerSideTagging,
-    Endpoint,
+    Microservice,
     KvStore,
     BotProtection,
     RateLimiting,
