@@ -48,21 +48,28 @@ pub async fn start() -> anyhow::Result<()> {
     if config.http.is_some() {
         tasks.push(tokio::spawn(async {
             if let Err(err) = http().await {
-                error!(?err, "Failed to start HTTP entrypoint");
+                anyhow::bail!("Failed to start HTTP entrypoint: {err}");
             }
+
+            Ok(())
         }));
     }
 
     if config.https.is_some() {
         tasks.push(tokio::spawn(async {
             if let Err(err) = https().await {
-                error!(?err, "Failed to start HTTPS entrypoint");
+                anyhow::bail!("Failed to start HTTPS entrypoint: {err}");
             }
+
+            Ok(())
         }));
     }
 
-    let _ = try_join_all(tasks).await;
-    Ok(())
+    try_join_all(tasks)
+        .await?
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .map(|_| ())
 }
 
 async fn http() -> anyhow::Result<()> {
