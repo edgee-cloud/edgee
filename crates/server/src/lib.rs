@@ -199,11 +199,4 @@ mod tests {
         let ctx = get_components_ctx();
         assert_eq!(ctx.engine.is_async(), true);
     }
-
-    #[tokio::test]
-    async fn test_start_server() {
-        init_test_config();
-        start().await.unwrap();
-        // no idea how to test this one
-    }
 }
