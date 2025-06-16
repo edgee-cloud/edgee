@@ -145,13 +145,15 @@ pub async fn get_auth_request(
             }
         };
 
-        let response_text = match res {
-            Ok(r) => r.text().await.unwrap_or_default(),
-            Err(_) => String::new(),
-        };
+        let res = res.unwrap();
+        let response_text = res.text().await.unwrap_or_default();
+        let json_value = serde_json::from_str::<serde_json::Value>(&response_text).ok();
 
-        let serialized_token_content = serde_json::from_str::<serde_json::Value>(&response_text)
-            .ok()
+        let expires_in = json_value
+            .as_ref()
+            .and_then(|json| json.get("expires_in").and_then(|v| v.as_i64()));
+
+        let serialized_token_content = json_value
             .and_then(|json| {
                 if auth_metadata.response_token_property_name.is_none() {
                     return Some(response_text);
@@ -169,7 +171,7 @@ pub async fn get_auth_request(
             component_id,
             serialized_token_content,
             component_token_setting_name: auth_metadata.component_token_setting_name,
-            token_duration: auth_metadata.token_duration,
+            token_duration: expires_in.unwrap_or(auth_metadata.token_duration),
         }
     });
 
@@ -310,6 +312,7 @@ pub async fn send_events(
                         component_ctx,
                         cfg,
                         &mut store,
+                        &client_headers.clone(),
                     )
                     .await
                     {

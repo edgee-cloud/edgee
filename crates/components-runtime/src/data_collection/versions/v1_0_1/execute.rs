@@ -5,6 +5,7 @@ use crate::data_collection::payload::EventType;
 use crate::data_collection::versions::v1_0_1::data_collection::exports::edgee::components1_0_1::data_collection as DC;
 use crate::{context::ComponentsContext, data_collection::payload};
 use http::{HeaderMap, HeaderName, HeaderValue};
+use std::collections::HashMap;
 use std::str::FromStr;
 use tracing::error;
 use wasmtime::Store;
@@ -20,6 +21,7 @@ pub async fn get_edgee_request(
     component_ctx: &ComponentsContext,
     cfg: &DataCollectionComponents,
     store: &mut Store<HostState>,
+    client_headers: &HashMap<String, String>,
 ) -> Result<(HeaderMap, String, String, String), anyhow::Error> {
     let instance = match component_ctx
         .get_data_collection_1_0_1_instance(&cfg.id, store)
@@ -86,7 +88,7 @@ pub async fn get_edgee_request(
     }
 
     if request.forward_client_headers {
-        let _ = insert_expected_headers(&mut headers, event);
+        let _ = insert_expected_headers(&mut headers, event, client_headers);
     }
 
     let method = match request.method {
