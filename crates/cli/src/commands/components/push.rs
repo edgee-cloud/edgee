@@ -88,6 +88,9 @@ pub async fn run(opts: Options) -> Result<()> {
             api_types::ComponentCreateInputCategory::DataCollection => {
                 super::check::ComponentType::DataCollection
             }
+            api_types::ComponentCreateInputCategory::EdgeFunction => {
+                super::check::ComponentType::EdgeFunction
+            }
             _ => anyhow::bail!(
                 "Invalid component type: {}, expected 'data-collection'",
                 manifest.component.category

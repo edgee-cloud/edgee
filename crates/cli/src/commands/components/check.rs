@@ -1,4 +1,5 @@
 use colored::Colorize;
+use edgee_components_runtime::config::EdgeFunctionComponents;
 
 setup_command! {
     #[arg(long = "filename")]
@@ -11,6 +12,7 @@ setup_command! {
 
 pub enum ComponentType {
     DataCollection,
+    EdgeFunction,
 }
 
 pub async fn check_component(
@@ -18,9 +20,7 @@ pub async fn check_component(
     component_path: &str,
     component_wit_version: &str,
 ) -> anyhow::Result<()> {
-    use edgee_components_runtime::config::{
-        ComponentsConfiguration, DataCollectionComponents,
-    };
+    use edgee_components_runtime::config::{ComponentsConfiguration, DataCollectionComponents};
     use edgee_components_runtime::context::ComponentsContext;
 
     if !std::fs::exists(component_path)? {
@@ -52,6 +52,18 @@ pub async fn check_component(
             },
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
         },
+        ComponentType::EdgeFunction => match component_wit_version {
+            "1.0.0" => ComponentsConfiguration {
+                edge_function: vec![EdgeFunctionComponents{
+                    id: component_path.to_string(),
+                    file: component_path.to_string(),
+                    wit_version: edgee_components_runtime::edge_function::versions::EdgeFunctionWitVersion::V1_0_0,
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
+            _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
+        }
     };
 
     let context = ComponentsContext::new(&config)
@@ -69,6 +81,14 @@ pub async fn check_component(
             "1.0.1" => {
                 let _ = context
                     .get_data_collection_1_0_1_instance(component_path, &mut store)
+                    .await?;
+            }
+            _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
+        },
+        ComponentType::EdgeFunction => match component_wit_version {
+            "1.0.0" => {
+                let _ = context
+                    .get_edge_function_1_0_0_instance(component_path, &mut store)
                     .await?;
             }
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
@@ -91,6 +111,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
     ) {
         (Some(filename), Some(component_type), Some(version)) => match component_type.as_str() {
             "data-collection" => (filename, ComponentType::DataCollection, version),
+            "edge-function" => (filename, ComponentType::EdgeFunction, version),
             _ => anyhow::bail!(
                 "Invalid component type: {}, expected 'data-collection'",
                 component_type
