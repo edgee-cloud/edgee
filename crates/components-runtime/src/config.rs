@@ -61,11 +61,11 @@ impl Default for DataCollectionComponentSettings {
 
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct EdgeFunctionComponents {
-    pub name: String,
-    pub component: String,
-    pub file: String,
+    #[serde(skip_deserializing)]
     pub slug: String,
     pub id: String, // could be a slug (edgee/amplitude) or an alias (amplitude)
+    pub file: String,
+    #[serde(default)]
     pub wit_version: EdgeFunctionWitVersion,
 }
 
