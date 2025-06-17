@@ -165,7 +165,10 @@ pub async fn get_auth_request(
                         .and_then(|v| v.as_str().map(|s| s.to_string()))
                 }
             })
-            .unwrap_or_default();
+            .unwrap_or_else(|| {
+                error!("Failed to find token property");
+                String::new()
+            });
 
         AuthResponse {
             component_id,
