@@ -108,18 +108,11 @@ cli = \"https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.0.tar.gz\
     },
 ];
 
-pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[
-    CategoryConfig {
-        name: "Data Collection",
-        value: api_types::ComponentCreateInputCategory::DataCollection,
-        wit_world: "data-collection",
-    },
-    CategoryConfig {
-        name: "Consent Management",
-        value: api_types::ComponentCreateInputCategory::ConsentManagement,
-        wit_world: "consent-management",
-    },
-];
+pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[CategoryConfig {
+    name: "Data Collection",
+    value: api_types::ComponentCreateInputCategory::DataCollection,
+    wit_world: "data-collection",
+}];
 
 pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
     SubCategoryConfig {
@@ -137,14 +130,6 @@ pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
     SubCategoryConfig {
         name: "Conversion API",
         value: api_types::ComponentCreateInputSubcategory::ConversionApi,
-    },
-    SubCategoryConfig {
-        name: "Consent Mapping",
-        value: api_types::ComponentCreateInputSubcategory::ConsentMapping,
-    },
-    SubCategoryConfig {
-        name: "Server Side Tagging",
-        value: api_types::ComponentCreateInputSubcategory::ServerSideTagging,
     },
 ];
 
@@ -204,8 +189,8 @@ mod tests {
 
     #[test]
     fn test_category_options() {
-        assert_eq!(CATEGORY_OPTIONS.len(), 2); // for now!
-        let expected_categories = ["Data Collection", "Consent Management"];
+        assert_eq!(CATEGORY_OPTIONS.len(), 1); // for now!
+        let expected_categories = ["Data Collection"];
         for &expected in &expected_categories {
             assert!(CATEGORY_OPTIONS
                 .iter()
@@ -215,13 +200,7 @@ mod tests {
 
     #[test]
     fn test_subcategory_options() {
-        let expected_subcategories = [
-            "Analytics",
-            "Attribution",
-            "Warehouse",
-            "Conversion API",
-            "Consent Mapping",
-        ];
+        let expected_subcategories = ["Analytics", "Attribution", "Warehouse", "Conversion API"];
         for &expected in &expected_subcategories {
             assert!(SUBCATEGORY_OPTIONS
                 .iter()

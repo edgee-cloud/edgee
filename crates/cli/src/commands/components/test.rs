@@ -1,7 +1,7 @@
 use colored::Colorize;
 use colored_json::prelude::*;
 use edgee_components_runtime::config::{
-    ComponentsConfiguration, ConsentManagementComponents, DataCollectionComponents,
+    ComponentsConfiguration, DataCollectionComponents,
 };
 use edgee_components_runtime::context::ComponentsContext;
 use std::collections::HashMap;
@@ -10,7 +10,6 @@ use edgee_components_runtime::data_collection;
 use std::str::FromStr;
 use edgee_components_runtime::data_collection::versions::v1_0_0::data_collection::exports::edgee::components::data_collection::EdgeeRequest;
 use edgee_components_runtime::data_collection::versions::v1_0_0::data_collection::exports::edgee::components::data_collection::HttpMethod;
-use edgee_components_runtime::consent_management::versions::v1_0_0::consent_management::exports::edgee::components::consent_management::Consent;
 use edgee_components_runtime::data_collection::payload::{Event, EventType};
 use http::{HeaderMap, HeaderName, HeaderValue};
 
@@ -47,10 +46,6 @@ setup_command! {
     /// Will automatically make an HTTP request for your EdgeeRequest
     #[arg(long = "make-http-request", default_value = "false")]
     make_http_request: bool,
-
-    // Consent Management options
-    #[arg(long="cookies", value_parser = parse_settings)]
-    cookies: Option<HashMap<String, String>>,
 }
 
 trait IntoCurl {
@@ -425,88 +420,6 @@ async fn run_request(request: EdgeeRequest) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn test_consent_management_component(
-    opts: Options,
-    manifest: &Manifest,
-) -> anyhow::Result<()> {
-    let component_path = manifest
-        .component
-        .build
-        .output_path
-        .clone()
-        .into_os_string()
-        .into_string()
-        .map_err(|_| anyhow::anyhow!("Invalid path"))?;
-
-    if !std::path::Path::new(&component_path).exists() {
-        return Err(anyhow::anyhow!("Output path not found in manifest file.",));
-    }
-
-    let config = ComponentsConfiguration {
-        consent_management: vec![ConsentManagementComponents {
-            id: component_path.to_string(),
-            file: component_path.to_string(),
-            wit_version: match manifest.component.wit_version.as_str() {
-                "1.0.0" => {
-                    edgee_components_runtime::consent_management::versions::ConsentManagementWitVersion::V1_0_0
-                },
-                _ => {
-                    return Err(anyhow::anyhow!(
-                        "Unsupported wit version: {}",
-                        manifest.component.wit_version
-                    ));
-                }
-            },
-            ..Default::default()
-        }],
-        ..Default::default()
-    };
-
-    let context = ComponentsContext::new(&config)
-        .map_err(|e| anyhow::anyhow!("Something went wrong when trying to load the Wasm file. Please re-build and try again. {e}"))?;
-
-    let mut store = context.empty_store_with_stdout();
-
-    let instance = context
-        .get_consent_management_1_0_0_instance(&component_path, &mut store)
-        .await?;
-    let component = instance.edgee_components_consent_management();
-
-    let settings: Vec<(String, String)> = opts
-        .settings
-        .unwrap_or_default()
-        .iter()
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
-
-    let cookies: Vec<(String, String)> = opts
-        .cookies
-        .unwrap_or_default()
-        .iter()
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
-
-    let consent = component.call_map(&mut store, &cookies, &settings).await?;
-
-    match consent {
-        Some(consent) => {
-            println!(
-                "{}: {}",
-                "Consent".green(),
-                match consent {
-                    Consent::Granted => "Granted".green(),
-                    Consent::Denied => "Denied".red(),
-                    Consent::Pending => "Pending".yellow(),
-                }
-            );
-        }
-        None => {
-            println!("{}: {}", "Consent".green(), "Unknown".yellow());
-        }
-    }
-    Ok(())
-}
-
 pub async fn run(opts: Options) -> anyhow::Result<()> {
     let manifest_path =
         manifest::find_manifest_path().ok_or_else(|| anyhow::anyhow!("Manifest not found"))?;
@@ -514,12 +427,13 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     let manifest = Manifest::load(&manifest_path)?;
 
     match manifest.component.category {
-        edgee_api_client::types::ComponentCreateInputCategory::ConsentManagement => {
-            test_consent_management_component(opts, &manifest).await?;
-        }
         edgee_api_client::types::ComponentCreateInputCategory::DataCollection => {
             test_data_collection_component(opts, &manifest).await?;
         }
+        _ => anyhow::bail!(
+            "Invalid component type: {}, expected 'data-collection'",
+            manifest.component.category
+        ),
     }
 
     Ok(())
