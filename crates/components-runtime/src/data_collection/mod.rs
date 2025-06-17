@@ -156,7 +156,7 @@ pub async fn get_auth_request(
         let serialized_token_content = json_value
             .and_then(|json| {
                 if auth_metadata.response_token_property_name.is_none() {
-                    return Some(response_text);
+                    Some(response_text)
                 } else {
                     auth_metadata
                         .response_token_property_name
