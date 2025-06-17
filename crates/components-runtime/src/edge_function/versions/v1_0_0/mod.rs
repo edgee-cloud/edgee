@@ -53,4 +53,20 @@ impl ComponentsContext {
 
         instance_pre.unwrap().instantiate_async(store).await
     }
+
+    pub fn add_edge_function_1_0_0_instance(
+        &mut self,
+        component_config: EdgeFunctionComponents,
+        instance_pre: EdgeFunctionV100Pre<HostState>,
+    ) {
+        if !self
+            .components
+            .edge_function_1_0_0
+            .contains_key(&component_config.id)
+        {
+            self.components
+                .edge_function_1_0_0
+                .insert(component_config.id.clone(), instance_pre);
+        }
+    }
 }
