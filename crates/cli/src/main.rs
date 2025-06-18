@@ -6,6 +6,8 @@ mod config;
 mod logger;
 mod telemetry;
 
+use std::process::ExitCode;
+
 #[derive(Debug, Parser)]
 #[command(about, author, version)]
 struct Options {
@@ -13,7 +15,7 @@ struct Options {
     command: commands::Command,
 }
 
-fn main() {
+fn main() -> ExitCode {
     let _sentry = logger::init_sentry();
     // TODO: Replace with a better way to enable backtrace
     // Most likely by switch from anyhow to another error crate (like miette), since
@@ -29,5 +31,8 @@ fn main() {
     let runtime = tokio::runtime::Runtime::new().expect("Could not create async runtime");
     if let Err(err) = runtime.block_on(telemetry::process_cli_command(options.command.run())) {
         logger::report_error(err);
+        return ExitCode::FAILURE;
     }
+
+    ExitCode::SUCCESS
 }
