@@ -2,3 +2,8 @@
 url = "https://github.com/edgee-cloud/edgee-data-collection-wit/archive/refs/tags/v1.0.0.tar.gz"
 sha256 = "b488ffc018dbaa0709e2015da0c15ac0ed96942abe06d536079f10c50515743f"
 sha512 = "0f921b95cf1d3ac55044d111434ac7b9448d47bb22c1a34e5eb5740ab979606724b7b15b95bd74a9bb4ed86669ce4e621ace4440da2024e2ff84bd7be1633a18"
+
+[edgee-v101]
+url = "https://github.com/edgee-cloud/edgee-data-collection-wit/archive/refs/tags/v1.0.1.tar.gz"
+sha256 = "5cc925047ce9246c3172d3f658ef9251d3003b458889905312dfe1956026dbbf"
+sha512 = "0265e135d887d840de90cf1a8e3e65b85d5ecd7422a08413266f34ddcca559eb9ba7a5108143470755925afee24baf40b08a59f79eaf07e131cbb8acb268ca78"

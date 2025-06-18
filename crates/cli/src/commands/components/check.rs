@@ -41,6 +41,15 @@ pub async fn check_component(
                 }],
                 ..Default::default()
             },
+            "1.0.1" => ComponentsConfiguration {
+                data_collection: vec![DataCollectionComponents {
+                    id: component_path.to_string(),
+                    file: component_path.to_string(),
+                    wit_version: edgee_components_runtime::data_collection::versions::DataCollectionWitVersion::V1_0_1,
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
         },
     };
@@ -55,6 +64,11 @@ pub async fn check_component(
             "1.0.0" => {
                 let _ = context
                     .get_data_collection_1_0_0_instance(component_path, &mut store)
+                    .await?;
+            }
+            "1.0.1" => {
+                let _ = context
+                    .get_data_collection_1_0_1_instance(component_path, &mut store)
                     .await?;
             }
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),

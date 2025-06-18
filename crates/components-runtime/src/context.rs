@@ -6,6 +6,8 @@ use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiView};
 use crate::config::ComponentsConfiguration;
 use crate::data_collection::versions::v1_0_0::data_collection::DataCollectionV100Pre;
 use crate::data_collection::versions::v1_0_0::pre_instanciate_data_collection_component_1_0_0;
+use crate::data_collection::versions::v1_0_1::data_collection::DataCollectionV101Pre;
+use crate::data_collection::versions::v1_0_1::pre_instanciate_data_collection_component_1_0_1;
 use crate::data_collection::versions::DataCollectionWitVersion;
 
 pub struct ComponentsContext {
@@ -15,6 +17,7 @@ pub struct ComponentsContext {
 
 pub struct Components {
     pub data_collection_1_0_0: HashMap<String, DataCollectionV100Pre<HostState>>,
+    pub data_collection_1_0_1: HashMap<String, DataCollectionV101Pre<HostState>>,
 }
 
 impl ComponentsContext {
@@ -45,8 +48,19 @@ impl ComponentsContext {
             })
             .collect::<anyhow::Result<_>>()?;
 
+        let data_collection_1_0_1_components = config
+            .data_collection
+            .iter()
+            .filter(|entry| entry.wit_version == DataCollectionWitVersion::V1_0_1)
+            .map(|entry| {
+                let instance_pre = pre_instanciate_data_collection_component_1_0_1(&engine, entry)?;
+                Ok((entry.id.clone(), instance_pre))
+            })
+            .collect::<anyhow::Result<_>>()?;
+
         let components = Components {
             data_collection_1_0_0: data_collection_1_0_0_components,
+            data_collection_1_0_1: data_collection_1_0_1_components,
         };
 
         Ok(Self { engine, components })

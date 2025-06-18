@@ -9,7 +9,7 @@ use std::str::FromStr;
 use std::time::Duration;
 use url::Url;
 
-use crate::config::ComponentsConfiguration;
+use crate::config::{ComponentsConfiguration, DataCollectionComponents};
 use context::EventContext;
 use debug::{debug_and_trace_response, trace_disabled_event, trace_request, DebugParams};
 use http::{header, HeaderMap, HeaderName, HeaderValue};
@@ -55,6 +55,14 @@ pub struct EventResponse {
     pub request: Request,
 }
 
+#[derive(Clone)]
+pub struct AuthResponse {
+    pub component_id: String,
+    pub serialized_token_content: String,
+    pub token_duration: i64,
+    pub component_token_setting_name: String,
+}
+
 pub async fn send_json_events(
     component_ctx: &ComponentsContext,
     events_json: &str,
@@ -78,6 +86,99 @@ pub async fn send_json_events(
         &HashMap::new(),
     )
     .await
+}
+
+pub async fn get_auth_request(
+    context: &ComponentsContext,
+    component: &DataCollectionComponents,
+) -> anyhow::Result<Option<JoinHandle<AuthResponse>>> {
+    let mut store = context.empty_store();
+    let (headers, method, url, body, auth_metadata) =
+        match crate::data_collection::versions::v1_0_1::execute::get_auth_request(
+            context, component, &mut store,
+        )
+        .await
+        {
+            Ok(Some((headers, method, url, body, auth_metadata))) => {
+                (headers, method, url, body, auth_metadata)
+            }
+            Ok(None) => {
+                return Ok(None);
+            }
+            Err(err) => {
+                error!("Failed to get auth request. Error: {}", err);
+                return Err(err);
+            }
+        };
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()?;
+
+    let component_id = component.id.clone();
+    let future = tokio::spawn(async move {
+        let res = match method.as_str() {
+            "GET" => client.get(url.clone()).headers(headers).send().await,
+            "PUT" => {
+                client
+                    .put(url.clone())
+                    .headers(headers)
+                    .body(body.clone())
+                    .send()
+                    .await
+            }
+            "POST" => {
+                client
+                    .post(url.clone())
+                    .headers(headers)
+                    .body(body.clone())
+                    .send()
+                    .await
+            }
+            _ => {
+                return AuthResponse {
+                    component_id,
+                    serialized_token_content: String::new(),
+                    component_token_setting_name: auth_metadata.component_token_setting_name,
+                    token_duration: auth_metadata.token_duration,
+                }
+            }
+        };
+
+        let res = res.unwrap();
+        let response_text = res.text().await.unwrap_or_default();
+        let json_value = serde_json::from_str::<serde_json::Value>(&response_text).ok();
+
+        let expires_in = json_value
+            .as_ref()
+            .and_then(|json| json.get("expires_in").and_then(|v| v.as_i64()));
+
+        let serialized_token_content = json_value
+            .and_then(|json| {
+                if auth_metadata.response_token_property_name.is_none() {
+                    Some(response_text)
+                } else {
+                    auth_metadata
+                        .response_token_property_name
+                        .as_ref()
+                        .and_then(|property_name| json.get(property_name))
+                        .and_then(|v| v.as_str().map(|s| s.to_string()))
+                }
+            })
+            .unwrap_or_else(|| {
+                error!("Failed to find token property");
+                String::new()
+            });
+
+        AuthResponse {
+            component_id,
+            serialized_token_content,
+            component_token_setting_name: auth_metadata.component_token_setting_name,
+            token_duration: expires_in.unwrap_or(auth_metadata.token_duration),
+        }
+    });
+
+    Ok(Some(future))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -193,6 +294,23 @@ pub async fn send_events(
             let (headers, method, url, body) = match cfg.wit_version {
                 versions::DataCollectionWitVersion::V1_0_0 => {
                     match crate::data_collection::versions::v1_0_0::execute::get_edgee_request(
+                        &event,
+                        component_ctx,
+                        cfg,
+                        &mut store,
+                        &client_headers.clone(),
+                    )
+                    .await
+                    {
+                        Ok((headers, method, url, body)) => (headers, method, url, body),
+                        Err(err) => {
+                            error!("Failed to get edgee request. Error: {}", err);
+                            continue;
+                        }
+                    }
+                }
+                versions::DataCollectionWitVersion::V1_0_1 => {
+                    match crate::data_collection::versions::v1_0_1::execute::get_edgee_request(
                         &event,
                         component_ctx,
                         cfg,
