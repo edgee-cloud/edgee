@@ -67,6 +67,8 @@ pub struct EdgeFunctionComponents {
     pub file: String,
     #[serde(default)]
     pub wit_version: EdgeFunctionWitVersion,
+    #[serde(default)]
+    pub settings: HashMap<String, String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
