@@ -1,8 +1,6 @@
 use colored::Colorize;
 use colored_json::prelude::*;
-use edgee_components_runtime::config::{
-    ComponentsConfiguration, DataCollectionComponents,
-};
+use edgee_components_runtime::config::{ComponentsConfiguration, DataCollectionComponents};
 use edgee_components_runtime::context::ComponentsContext;
 use std::collections::HashMap;
 
@@ -274,7 +272,12 @@ async fn test_data_collection_component(opts: Options, manifest: &Manifest) -> a
         let request = match request {
             Ok(Ok(request)) => request,
             Err(e) => return Err(anyhow::anyhow!("Failed to call component: {}", e)),
-            _ => unreachable!(),
+            Ok(Err(e)) => {
+                return Err(anyhow::anyhow!(
+                    "Failed to call component: {}",
+                    e.to_string()
+                ))
+            }
         };
 
         if opts.display_input {
