@@ -166,8 +166,8 @@ pub async fn run(opts: Options) -> Result<()> {
         Ok(res) => {
             tracing::info!(
                 "Component {} found!",
-                match res.latest_version {
-                    Some(ref version) => {
+                match &res.latest_version {
+                    Some(version) => {
                         format!("{}/{}@{}", organization.slug, component_slug, version).green()
                     }
                     None => format!("{}/{}", organization.slug, component_slug).green(),
