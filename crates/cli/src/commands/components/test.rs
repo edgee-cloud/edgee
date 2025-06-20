@@ -271,8 +271,8 @@ async fn test_data_collection_component(opts: Options, manifest: &Manifest) -> a
 
         let request = match request {
             Ok(Ok(request)) => request,
-            Err(e) => return Err(anyhow::anyhow!("Failed to call component: {}", e)),
-            Ok(Err(e)) => return Err(anyhow::anyhow!("Failed to call component: {}", e)),
+            Err(e) => return Err(anyhow::anyhow!("Failed to call component: {e}")),
+            Ok(Err(e)) => return Err(anyhow::anyhow!("Failed to call component: {e}")),
         };
 
         if opts.display_input {
