@@ -62,6 +62,8 @@ impl Default for DataCollectionComponentSettings {
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct EdgeFunctionComponents {
     #[serde(skip_deserializing)]
+    pub project_component_id: String,
+    #[serde(skip_deserializing)]
     pub slug: String,
     pub id: String, // could be a slug (edgee/amplitude) or an alias (amplitude)
     pub file: String,
