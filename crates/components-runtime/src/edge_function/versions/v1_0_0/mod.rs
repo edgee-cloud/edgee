@@ -30,7 +30,7 @@ pub fn pre_instanciate_edge_function_component_1_0_0(
     let span = tracing::info_span!("component-context", component = %component_config.id, category = "consent-management");
     let _span = span.enter();
 
-    tracing::debug!("Start pre-instantiate consent management component");
+    tracing::debug!("Start pre-instantiate edge-function component");
     let component = Component::from_file(engine, &component_config.file)?;
     let instance_pre = linker.instantiate_pre(&component)?;
     let instance_pre = EdgeFunctionV100Pre::new(instance_pre)?;
