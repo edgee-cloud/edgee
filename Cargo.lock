@@ -1658,6 +1658,7 @@ version = "1.2.10"
 dependencies = [
  "anyhow",
  "bon",
+ "chrono",
  "clap",
  "clap_complete",
  "colored",
