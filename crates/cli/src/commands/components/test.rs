@@ -87,7 +87,10 @@ fn parse_settings(settings_str: &str) -> Result<HashMap<String, String>, String>
     Ok(settings_map)
 }
 
-async fn test_data_collection_component(opts: Options, manifest: &Manifest) -> anyhow::Result<()> {
+async fn test_data_collection_component_1_0_0(
+    opts: Options,
+    manifest: &Manifest,
+) -> anyhow::Result<()> {
     let component_path = manifest
         .component
         .build
@@ -428,7 +431,17 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     match manifest.component.category {
         edgee_api_client::types::ComponentCreateInputCategory::DataCollection => {
-            test_data_collection_component(opts, &manifest).await?;
+            match manifest.component.wit_version.as_str() {
+                "1.0.0" => {
+                    test_data_collection_component_1_0_0(opts, &manifest).await?;
+                }
+                _ => {
+                    return Err(anyhow::anyhow!(
+                        "Unsupported wit version {} for data-collection component",
+                        manifest.component.wit_version
+                    ));
+                }
+            }
         }
         _ => anyhow::bail!(
             "Invalid component type: {}, expected 'data-collection'",
