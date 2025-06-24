@@ -34,7 +34,7 @@ pub fn pre_instanciate_edge_function_component_1_0_0(
     let component = Component::from_file(engine, &component_config.file)?;
     let instance_pre = linker.instantiate_pre(&component)?;
     let instance_pre = EdgeFunctionV100Pre::new(instance_pre)?;
-    tracing::debug!("Finished pre-instantiate consent management component");
+    tracing::debug!("Finished pre-instantiate edge-function component");
 
     Ok(instance_pre)
 }
