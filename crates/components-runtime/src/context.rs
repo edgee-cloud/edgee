@@ -1,14 +1,18 @@
 use std::collections::HashMap;
 
-use wasmtime::{Engine, Store};
-use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiView};
-
 use crate::config::ComponentsConfiguration;
 use crate::data_collection::versions::v1_0_0::data_collection::DataCollectionV100Pre;
 use crate::data_collection::versions::v1_0_0::pre_instanciate_data_collection_component_1_0_0;
 use crate::data_collection::versions::v1_0_1::data_collection::DataCollectionV101Pre;
 use crate::data_collection::versions::v1_0_1::pre_instanciate_data_collection_component_1_0_1;
 use crate::data_collection::versions::DataCollectionWitVersion;
+use wasmtime::{Engine, Store};
+use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiView};
+use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
+
+use crate::edge_function::versions::v1_0_0::edge_function::EdgeFunctionV100Pre;
+use crate::edge_function::versions::v1_0_0::pre_instanciate_edge_function_component_1_0_0;
+use crate::edge_function::versions::EdgeFunctionWitVersion;
 
 pub struct ComponentsContext {
     pub engine: Engine,
@@ -18,6 +22,7 @@ pub struct ComponentsContext {
 pub struct Components {
     pub data_collection_1_0_0: HashMap<String, DataCollectionV100Pre<HostState>>,
     pub data_collection_1_0_1: HashMap<String, DataCollectionV101Pre<HostState>>,
+    pub edge_function_1_0_0: HashMap<String, EdgeFunctionV100Pre<HostState>>,
 }
 
 impl ComponentsContext {
@@ -58,9 +63,20 @@ impl ComponentsContext {
             })
             .collect::<anyhow::Result<_>>()?;
 
+        let edge_function_1_0_0_components = config
+            .edge_function
+            .iter()
+            .filter(|entry| entry.wit_version == EdgeFunctionWitVersion::V1_0_0)
+            .map(|entry| {
+                let instance_pre = pre_instanciate_edge_function_component_1_0_0(&engine, entry)?;
+                Ok((entry.id.clone(), instance_pre))
+            })
+            .collect::<anyhow::Result<_>>()?;
+
         let components = Components {
             data_collection_1_0_0: data_collection_1_0_0_components,
             data_collection_1_0_1: data_collection_1_0_1_components,
+            edge_function_1_0_0: edge_function_1_0_0_components,
         };
 
         Ok(Self { engine, components })
@@ -78,6 +94,7 @@ impl ComponentsContext {
 pub struct HostState {
     ctx: WasiCtx,
     table: ResourceTable,
+    http: WasiHttpCtx,
 }
 
 impl HostState {
@@ -91,7 +108,14 @@ impl HostState {
 
     fn new_with_ctx(ctx: WasiCtx) -> Self {
         let table = ResourceTable::new();
-        Self { ctx, table }
+        let http = WasiHttpCtx::new();
+        Self { ctx, table, http }
+    }
+}
+
+impl WasiHttpView for HostState {
+    fn ctx(&mut self) -> &mut WasiHttpCtx {
+        &mut self.http
     }
 }
 

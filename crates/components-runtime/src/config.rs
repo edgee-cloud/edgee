@@ -1,4 +1,7 @@
-use crate::data_collection::versions::DataCollectionWitVersion;
+use crate::{
+    data_collection::versions::DataCollectionWitVersion,
+    edge_function::versions::EdgeFunctionWitVersion,
+};
 use std::{collections::HashMap, path::PathBuf};
 
 use serde::Deserialize;
@@ -8,6 +11,9 @@ pub struct ComponentsConfiguration {
     #[serde(default)]
     pub data_collection: Vec<DataCollectionComponents>,
     // NOTE: add other version here
+    #[serde(default)]
+    pub edge_function: Vec<EdgeFunctionComponents>,
+
     pub cache: Option<PathBuf>,
 }
 
@@ -51,6 +57,20 @@ impl Default for DataCollectionComponentSettings {
             additional_settings: HashMap::new(),
         }
     }
+}
+
+#[derive(Deserialize, Debug, Default, Clone)]
+pub struct EdgeFunctionComponents {
+    #[serde(skip_deserializing)]
+    pub project_component_id: String,
+    #[serde(skip_deserializing)]
+    pub slug: String,
+    pub id: String, // could be a slug (edgee/amplitude) or an alias (amplitude)
+    pub file: String,
+    #[serde(default)]
+    pub wit_version: EdgeFunctionWitVersion,
+    #[serde(default)]
+    pub settings: HashMap<String, String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
