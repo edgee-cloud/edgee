@@ -73,7 +73,7 @@ fn build_response(
 }
 async fn component_call(
     component_context: ComponentsContext,
-    opts: super::Options,
+    _opts: super::Options,
     req: Request<hyper::body::Incoming>,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
@@ -93,7 +93,7 @@ async fn component_call(
         .unwrap();
 
     // call the WASI HTTP handler
-    let task = tokio::task::spawn(async move {
+    tokio::task::spawn(async move {
         match component
             .wasi_http_incoming_handler()
             .call_handle(store, wasi_req, out)
@@ -145,7 +145,6 @@ async fn component_call(
             http::StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to receive response from WASI HTTP handler".to_string()
         )
-,
     }
 }
 
