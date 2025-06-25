@@ -76,6 +76,7 @@ async fn component_call(
     _opts: super::Options,
     req: Request<hyper::body::Incoming>,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
+    println!("Received request: {:?}", req);
     let (sender, receiver) = tokio::sync::oneshot::channel();
     let mut store = component_context.empty_store_with_stdout();
     let data = store.data_mut();
