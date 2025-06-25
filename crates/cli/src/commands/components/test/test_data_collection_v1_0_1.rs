@@ -50,36 +50,88 @@ impl IntoCurl for AuthRequest {
     }
 }
 
-trait ToString {
-    fn to_string(&self) -> String;
+trait Displayable {
+    fn display(&self);
 }
 
-impl ToString for EdgeeRequest {
-    fn to_string(&self) -> String {
-        let body_str = match serde_json::from_str::<serde_json::Value>(&self.body) {
-            Ok(value) => serde_json::to_string_pretty(&value).unwrap_or_else(|_| self.body.clone()),
-            Err(_) => self.body.clone(),
-        };
+impl Displayable for EdgeeRequest {
+    fn display(&self) {
+        println!("\n{} {{", "EdgeeRequest".green());
+        println!("\t{}: {:#?}", "Method".green(), self.method);
+        println!("\t{}: {}", "URL".green(), self.url.green());
 
-        format!(
-            "EdgeeRequest {{ method: {}, url: {}, headers: {:?}, body: {} }}",
-            self.method.to_curl(),
-            self.url,
-            self.headers,
-            body_str
-        )
+        println!(
+            "\t{}: {}",
+            "Headers".green(),
+            serde_json::to_string_pretty(&self.headers)
+                .unwrap()
+                .to_colored_json_auto()
+                .unwrap()
+                .replace("\n", "\n\t")
+        );
+        println!(
+            "\t{}: {}",
+            "Forward Client Headers".green(),
+            self.forward_client_headers
+        );
+        if let Ok(pretty_json) = serde_json::from_str::<serde_json::Value>(&self.body) {
+            println!(
+                "\t{}: {}",
+                "Body".green(),
+                serde_json::to_string_pretty(&pretty_json)
+                    .unwrap()
+                    .to_colored_json_auto()
+                    .unwrap()
+                    .replace("\n", "\n\t")
+            );
+        } else {
+            println!("\t{}: {:#?}", "Body".green(), self.body);
+        }
+        println!("}}");
     }
 }
 
-impl ToString for AuthRequest {
-    fn to_string(&self) -> String {
-        format!(
-            "AuthRequest {{ \n method: {},\n url: {},\n headers: {:?},\n body: {} \n}}",
-            self.method.to_curl(),
-            self.url,
-            self.headers,
-            self.body
-        )
+impl Displayable for AuthRequest {
+    fn display(&self) {
+        println!("\n{} {{", "AuthRequest".green());
+        println!("\t{}: {:#?}", "Method".green(), self.method);
+        println!("\t{}: {}", "URL".green(), self.url.green());
+
+        println!(
+            "\t{}: {}",
+            "Headers".green(),
+            serde_json::to_string_pretty(&self.headers)
+                .unwrap()
+                .to_colored_json_auto()
+                .unwrap()
+                .replace("\n", "\n\t")
+        );
+        if let Ok(pretty_json) = serde_json::from_str::<serde_json::Value>(&self.body) {
+            println!(
+                "\t{}: {}",
+                "Body".green(),
+                serde_json::to_string_pretty(&pretty_json)
+                    .unwrap()
+                    .to_colored_json_auto()
+                    .unwrap()
+                    .replace("\n", "\n\t")
+            );
+        } else {
+            println!("\t{}: {:#?}", "Body".green(), self.body);
+        }
+        println!(
+            "\t{}: {}",
+            "Response Token Property Name".green(),
+            self.response_token_property_name
+                .as_deref()
+                .unwrap_or("None")
+        );
+        println!(
+            "\t{}: {}",
+            "Component Token Setting Name".green(),
+            self.component_token_setting_name
+        );
+        println!("}}");
     }
 }
 
@@ -425,7 +477,8 @@ pub async fn test_data_collection_component_1_0_1(
     if let Some(auth_request) = auth_request {
         tracing::info!("Auth request:");
         tracing::info!("Output from Wasm:");
-        println!("{}", auth_request.to_string());
+        auth_request.display();
+
         if opts.curl {
             print!("{} ", auth_request.to_curl());
             for (key, value) in auth_request.headers.iter() {
@@ -496,7 +549,7 @@ pub async fn test_data_collection_component_1_0_1(
         }
 
         tracing::info!("Output from Wasm:");
-        println!("{}", request.to_string());
+        request.display();
 
         if opts.curl {
             print!("{} ", &request.to_curl());
