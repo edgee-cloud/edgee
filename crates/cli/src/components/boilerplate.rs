@@ -23,6 +23,7 @@ pub struct CategoryConfig {
     pub name: &'static str,
     pub value: api_types::ComponentCreateInputCategory,
     pub wit_world: &'static str,
+    pub latest_wit_world_version: &'static str,
 }
 
 impl fmt::Display for CategoryConfig {
@@ -113,11 +114,13 @@ pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[
         name: "Data Collection",
         value: api_types::ComponentCreateInputCategory::DataCollection,
         wit_world: "data-collection",
+        latest_wit_world_version: "1.0.1",
     },
     CategoryConfig {
         name: "Edge Function",
         value: api_types::ComponentCreateInputCategory::EdgeFunction,
         wit_world: "edge-function",
+        latest_wit_world_version: "1.0.0",
     },
 ];
 

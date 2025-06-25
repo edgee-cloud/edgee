@@ -51,7 +51,7 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             name: component_name.clone(),
             slug: Some(slug::slugify(&component_name)),
             version: "0.1.0".to_string(),
-            wit_version: "0.5.0".to_string(),
+            wit_version: component_category.latest_wit_world_version.to_string(),
             category: component_category.value,
             subcategory: component_subcategory.value,
             description: Some("Description of\nthe component".to_string()),
