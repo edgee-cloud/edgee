@@ -271,7 +271,15 @@ pub async fn send_events(
 
             if anonymization {
                 event.context.client.ip = ctx.get_ip_anonymized().clone();
-                // todo: anonymize other data, utm, referrer, etc.
+                event.context.page.search = "".to_string();
+                event.context.page.referrer = "".to_string();
+                event.context.campaign.medium = "".to_string();
+                event.context.campaign.name = "".to_string();
+                event.context.campaign.source = "".to_string();
+                event.context.campaign.content = "".to_string();
+                event.context.campaign.creative_format = "".to_string();
+                event.context.campaign.marketing_tactic = "".to_string();
+                event.context.campaign.term = "".to_string();
             } else {
                 event.context.client.ip = ctx.get_ip().clone();
             }
