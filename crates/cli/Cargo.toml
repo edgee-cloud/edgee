@@ -20,6 +20,11 @@ colored_json.workspace = true
 cookie.workspace = true
 dirs.workspace = true
 http.workspace = true
+http-body-util.workspace = true
+hyper = { workspace = true, features = ["server"] }
+hyper-rustls = { workspace = true, features = ["ring", "http2"] }
+hyper-util = { workspace = true, features = ["server", "service", "tokio", "http1", "http2"] }
+ipnetwork.workspace = true
 indexmap.workspace = true
 inquire = { workspace = true, features = ["editor"] }
 miette = { workspace = true, features = ["fancy"] }
@@ -45,6 +50,7 @@ unicase.workspace = true
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["v4"] }
 wit-deps.workspace = true
+wasmtime-wasi-http.workspace = true
 zip.workspace = true
 
 edgee-api-client.workspace = true

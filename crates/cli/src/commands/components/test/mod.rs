@@ -5,9 +5,9 @@ use crate::components::manifest::Manifest;
 
 mod test_data_collection_v1_0_0;
 mod test_data_collection_v1_0_1;
+mod test_edge_function_v1_0_0;
 
-setup_command! {
-    /// Comma-separated key=value pairs for settings
+setup_command! { /// Comma-separated key=value pairs for settings
     #[arg(long="settings", value_parser = parse_settings)]
     settings: Option<HashMap<String, String>>,
 
@@ -73,6 +73,20 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                         opts, &manifest,
                     )
                     .await?;
+                }
+                _ => {
+                    return Err(anyhow::anyhow!(
+                        "Unsupported wit version {} for data-collection component",
+                        manifest.component.wit_version
+                    ));
+                }
+            }
+        }
+        edgee_api_client::types::ComponentCreateInputCategory::EdgeFunction => {
+            match manifest.component.wit_version.as_str() {
+                "1.0.0" => {
+                    test_edge_function_v1_0_0::test_edge_function_component(opts, &manifest)
+                        .await?;
                 }
                 _ => {
                     return Err(anyhow::anyhow!(
