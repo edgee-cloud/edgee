@@ -2,7 +2,10 @@ use colored::Colorize;
 use url::Url;
 
 use crate::components::{
-    boilerplate::{CATEGORY_OPTIONS, LANGUAGE_OPTIONS, SUBCATEGORY_OPTIONS},
+    boilerplate::{
+        CATEGORY_OPTIONS, DATA_COLLECTION_SUBCATEGORY_OPTIONS, EDGE_FUNCTION_SUBCATEGORY_OPTIONS,
+        LANGUAGE_OPTIONS,
+    },
     manifest::{self, Build, Component, Manifest, Setting},
 };
 
@@ -34,8 +37,19 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
         .prompt()?
     };
 
-    let component_subcategory =
-        Select::new("Select a subcategory:", SUBCATEGORY_OPTIONS.to_vec()).prompt()?;
+    let subcategories = match component_category.value {
+        edgee_api_client::types::ComponentCreateInputCategory::DataCollection => {
+            DATA_COLLECTION_SUBCATEGORY_OPTIONS.to_vec()
+        }
+        edgee_api_client::types::ComponentCreateInputCategory::EdgeFunction => {
+            EDGE_FUNCTION_SUBCATEGORY_OPTIONS.to_vec()
+        }
+        _ => {
+            anyhow::bail!("Unsupported category: {}", component_category.name.red());
+        }
+    };
+
+    let component_subcategory = Select::new("Select a subcategory:", subcategories).prompt()?;
 
     tracing::info!(
         "Initiating component {} in {}",
