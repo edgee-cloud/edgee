@@ -108,11 +108,18 @@ cli = \"https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.0.tar.gz\
     },
 ];
 
-pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[CategoryConfig {
-    name: "Data Collection",
-    value: api_types::ComponentCreateInputCategory::DataCollection,
-    wit_world: "data-collection",
-}];
+pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[
+    CategoryConfig {
+        name: "Data Collection",
+        value: api_types::ComponentCreateInputCategory::DataCollection,
+        wit_world: "data-collection",
+    },
+    CategoryConfig {
+        name: "Edge Function",
+        value: api_types::ComponentCreateInputCategory::EdgeFunction,
+        wit_world: "edge-function",
+    },
+];
 
 pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
     SubCategoryConfig {
