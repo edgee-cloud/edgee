@@ -13,7 +13,7 @@ use std::convert::Infallible;
 use std::net::SocketAddr;
 
 use http_body_util::Full;
-use hyper::body::{Body, Bytes};
+use hyper::body::Bytes;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
@@ -51,7 +51,7 @@ pub async fn test_edge_function_component(
         .map_err(|e| anyhow::anyhow!("Something went wrong when trying to load the Wasm file. Please re-build and try again. {e}"))?;
 
     println!("Component loaded successfully: {}", component_path);
-    match http(context).await {
+    match http(context, opts).await {
         Ok(_) => {}
         Err(e) => {
             eprintln!("Error starting HTTP server: {}", e);
@@ -68,11 +68,12 @@ fn build_response(
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     Ok(Response::builder()
         .status(status)
-        .body(Full::new(Bytes::new()))
+        .body(Full::new(Bytes::from(body)))
         .unwrap())
 }
 async fn component_call(
     component_context: ComponentsContext,
+    opts: super::Options,
     req: Request<hyper::body::Incoming>,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
@@ -85,6 +86,7 @@ async fn component_call(
     let out = data.new_response_outparam(sender).unwrap();
 
     // TODO: handle settings
+
     let component = component_context
         .get_edge_function_1_0_0_instance("component", &mut store)
         .await
@@ -147,7 +149,10 @@ async fn component_call(
     }
 }
 
-pub async fn http(component_context: ComponentsContext) -> anyhow::Result<()> {
+pub async fn http(
+    component_context: ComponentsContext,
+    opts: super::Options,
+) -> anyhow::Result<()> {
     let addr = SocketAddr::from(([127, 0, 0, 1], 12345));
     let listener = TcpListener::bind(addr).await?;
 
@@ -159,12 +164,14 @@ pub async fn http(component_context: ComponentsContext) -> anyhow::Result<()> {
 
         // Clone the context for each iteration
         let context = component_context.clone();
+        let opts = opts.clone();
 
         tokio::task::spawn(async move {
             // Create a new service for each connection
             let service = service_fn(move |req| {
                 let context = context.clone();
-                async move { component_call(context, req).await }
+                let opts = opts.clone();
+                async move { component_call(context, opts, req).await }
             });
 
             // Finally, we bind the incoming connection to our `hello` service
