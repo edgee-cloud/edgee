@@ -323,17 +323,7 @@ pub async fn test_data_collection_component_1_0_1(
         data_collection: vec![DataCollectionComponents {
             id: component_path.to_string(),
             file: component_path.to_string(),
-            wit_version: match manifest.component.wit_version.as_str() {
-                "1.0.1" => {
-                    edgee_components_runtime::data_collection::versions::DataCollectionWitVersion::V1_0_1
-                },
-                _ => {
-                    return Err(anyhow::anyhow!(
-                        "Unsupported wit version: {}",
-                        manifest.component.wit_version
-                    ));
-                }
-            },
+            wit_version: edgee_components_runtime::data_collection::versions::DataCollectionWitVersion::V1_0_1,
             ..Default::default()
         }],
         ..Default::default()
