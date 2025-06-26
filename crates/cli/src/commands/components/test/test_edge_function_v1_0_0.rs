@@ -47,11 +47,13 @@ pub async fn test_edge_function_component(
         ..Default::default()
     };
 
+    let port = opts.port.unwrap_or_else(|| 12345);
+
     let context = ComponentsContext::new(&config)
         .map_err(|e| anyhow::anyhow!("Something went wrong when trying to load the Wasm file. Please re-build and try again. {e}"))?;
 
     println!("Component loaded successfully: {}", component_path);
-    match http(context, opts).await {
+    match http(context, port).await {
         Ok(_) => {}
         Err(e) => {
             eprintln!("Error starting HTTP server: {}", e);
@@ -73,7 +75,6 @@ fn build_response(
 }
 async fn component_call(
     component_context: ComponentsContext,
-    _opts: super::Options,
     req: Request<hyper::body::Incoming>,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     println!("Received request: {:?}", req);
@@ -149,11 +150,8 @@ async fn component_call(
     }
 }
 
-pub async fn http(
-    component_context: ComponentsContext,
-    opts: super::Options,
-) -> anyhow::Result<()> {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 12345));
+pub async fn http(component_context: ComponentsContext, port: u16) -> anyhow::Result<()> {
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let listener = TcpListener::bind(addr).await?;
 
     println!("Listening on http://{}", addr);
@@ -164,14 +162,12 @@ pub async fn http(
 
         // Clone the context for each iteration
         let context = component_context.clone();
-        let opts = opts.clone();
 
         tokio::task::spawn(async move {
             // Create a new service for each connection
             let service = service_fn(move |req| {
                 let context = context.clone();
-                let opts = opts.clone();
-                async move { component_call(context, opts, req).await }
+                async move { component_call(context, req).await }
             });
 
             // Finally, we bind the incoming connection to our `hello` service

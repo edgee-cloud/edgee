@@ -36,6 +36,11 @@ setup_command! { /// Comma-separated key=value pairs for settings
     /// Will automatically make an HTTP request for your EdgeeRequest
     #[arg(long = "make-http-request", default_value = "false")]
     make_http_request: bool,
+
+    /// Edge function options
+    /// The port to run the HTTP server on
+    #[arg(long = "port", default_value = "12345")]
+    port: Option<u16>,
 }
 
 fn parse_settings(settings_str: &str) -> Result<HashMap<String, String>, String> {
