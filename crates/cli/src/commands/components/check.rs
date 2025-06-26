@@ -135,6 +135,9 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
                     edgee_api_client::types::ComponentCreateInputCategory::DataCollection => {
                         ComponentType::DataCollection
                     }
+                    edgee_api_client::types::ComponentCreateInputCategory::EdgeFunction => {
+                        ComponentType::EdgeFunction
+                    }
                     _ => anyhow::bail!(
                         "Invalid component type: {}, expected 'data-collection'",
                         manifest.component.category
