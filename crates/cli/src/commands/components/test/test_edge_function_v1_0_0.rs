@@ -49,7 +49,7 @@ pub async fn test_edge_function_component(
         ..Default::default()
     };
 
-    let port = opts.port.unwrap_or(12345);
+    let port = opts.port;
 
     // setting management
     let mut settings_map = HashMap::new();

@@ -39,8 +39,8 @@ setup_command! { /// Comma-separated key=value pairs for settings
 
     /// Edge function options
     /// The port to run the HTTP server on
-    #[arg(long = "port", default_value = "12345")]
-    port: Option<u16>,
+    #[arg(long = "port", default_value = "8080")]
+    port: u16,
 }
 
 fn parse_settings(settings_str: &str) -> Result<HashMap<String, String>, String> {
