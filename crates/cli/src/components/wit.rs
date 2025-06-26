@@ -80,8 +80,10 @@ edgee = \"https://github.com/edgee-cloud/edgee-{world}-wit/archive/refs/tags/v{w
     wit_deps::update_path(&deps_manifest_path, &deps_lock_path, &deps_path).await?;
 
     // Create WIT world file
-    let wit_world = format!(
-        "\
+    let wit_world = match category_config.wit_world {
+        "data-collection" => {
+            format!(
+                "\
 package edgee:native;
 
 world {world} {{
@@ -90,18 +92,42 @@ world {world} {{
   export edgee:components/{world}{version};
 }}
 ",
-        world = category_config.wit_world,
-        extra = language_config
-            .map(|config| config.wit_world_extra)
-            .unwrap_or_default(),
-        version = match (
-            category_config.wit_world,
-            manifest.component.wit_version.as_str()
-        ) {
-            ("data-collection", "1.0.0") => "".to_string(),
-            (_, _) => format!("@{}", manifest.component.wit_version),
+                world = category_config.wit_world,
+                extra = language_config
+                    .map(|config| config.wit_world_extra)
+                    .unwrap_or_default(),
+                version = match (
+                    category_config.wit_world,
+                    manifest.component.wit_version.as_str()
+                ) {
+                    ("data-collection", "1.0.0") => "".to_string(),
+                    (_, _) => format!("@{}", manifest.component.wit_version),
+                }
+            )
         }
-    );
+        "edge-function" => {
+            format!(
+                "\
+package edgee:native;
+world {world} {{
+  {extra}
+   export wasi:http/incoming-handler@0.2.3;
+   import wasi:http/outgoing-handler@0.2.3;
+}}
+",
+                world = category_config.wit_world,
+                extra = language_config
+                    .map(|config| config.wit_world_extra)
+                    .unwrap_or_default(),
+            )
+        }
+        _ => {
+            return Err(anyhow::anyhow!(
+                "Unsupported WIT world: {}",
+                category_config.wit_world
+            ));
+        }
+    };
 
     let wit_world_path = wit_path.join("world.wit");
     let mut wit_world_file = tokio::fs::File::create(&wit_world_path).await?;

@@ -5,9 +5,9 @@ use crate::components::manifest::Manifest;
 
 mod test_data_collection_v1_0_0;
 mod test_data_collection_v1_0_1;
+mod test_edge_function_v1_0_0;
 
-setup_command! {
-    /// Comma-separated key=value pairs for settings
+setup_command! { /// Comma-separated key=value pairs for settings
     #[arg(long="settings", value_parser = parse_settings)]
     settings: Option<HashMap<String, String>>,
 
@@ -36,6 +36,11 @@ setup_command! {
     /// Will automatically make an HTTP request for your EdgeeRequest
     #[arg(long = "make-http-request", default_value = "false")]
     make_http_request: bool,
+
+    /// Edge function options
+    /// The port to run the HTTP server on
+    #[arg(long = "port", default_value = "8080")]
+    port: u16,
 }
 
 fn parse_settings(settings_str: &str) -> Result<HashMap<String, String>, String> {
@@ -73,6 +78,20 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
                         opts, &manifest,
                     )
                     .await?;
+                }
+                _ => {
+                    return Err(anyhow::anyhow!(
+                        "Unsupported wit version {} for data-collection component",
+                        manifest.component.wit_version
+                    ));
+                }
+            }
+        }
+        edgee_api_client::types::ComponentCreateInputCategory::EdgeFunction => {
+            match manifest.component.wit_version.as_str() {
+                "1.0.0" => {
+                    test_edge_function_v1_0_0::test_edge_function_component(opts, &manifest)
+                        .await?;
                 }
                 _ => {
                     return Err(anyhow::anyhow!(

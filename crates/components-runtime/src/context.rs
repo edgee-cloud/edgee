@@ -14,11 +14,13 @@ use crate::edge_function::versions::v1_0_0::edge_function::EdgeFunctionV100Pre;
 use crate::edge_function::versions::v1_0_0::pre_instanciate_edge_function_component_1_0_0;
 use crate::edge_function::versions::EdgeFunctionWitVersion;
 
+#[derive(Clone)]
 pub struct ComponentsContext {
     pub engine: Engine,
     pub components: Components,
 }
 
+#[derive(Clone)]
 pub struct Components {
     pub data_collection_1_0_0: HashMap<String, DataCollectionV100Pre<HostState>>,
     pub data_collection_1_0_1: HashMap<String, DataCollectionV101Pre<HostState>>,

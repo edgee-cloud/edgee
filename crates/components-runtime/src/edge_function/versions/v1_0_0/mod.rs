@@ -13,10 +13,10 @@ pub mod edge_function {
         world: "edge-function-v100",
         path: "src/edge_function/wit",
         async: true,
-        trappable_imports: true,
         with: {
-           "wasi:http/types": wasmtime_wasi_http::bindings::http::types,
+            "wasi:http@0.2.3": wasmtime_wasi_http::bindings::http,
         },
+        trappable_imports: true,
     });
 }
 

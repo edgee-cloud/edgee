@@ -23,6 +23,7 @@ pub struct CategoryConfig {
     pub name: &'static str,
     pub value: api_types::ComponentCreateInputCategory,
     pub wit_world: &'static str,
+    pub latest_wit_world_version: &'static str,
 }
 
 impl fmt::Display for CategoryConfig {
@@ -108,13 +109,22 @@ cli = \"https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.0.tar.gz\
     },
 ];
 
-pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[CategoryConfig {
-    name: "Data Collection",
-    value: api_types::ComponentCreateInputCategory::DataCollection,
-    wit_world: "data-collection",
-}];
+pub static CATEGORY_OPTIONS: &[CategoryConfig] = &[
+    CategoryConfig {
+        name: "Data Collection",
+        value: api_types::ComponentCreateInputCategory::DataCollection,
+        wit_world: "data-collection",
+        latest_wit_world_version: "1.0.1",
+    },
+    CategoryConfig {
+        name: "Edge Function",
+        value: api_types::ComponentCreateInputCategory::EdgeFunction,
+        wit_world: "edge-function",
+        latest_wit_world_version: "1.0.0",
+    },
+];
 
-pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
+pub static DATA_COLLECTION_SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
     SubCategoryConfig {
         name: "Analytics",
         value: api_types::ComponentCreateInputSubcategory::Analytics,
@@ -132,6 +142,11 @@ pub static SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[
         value: api_types::ComponentCreateInputSubcategory::ConversionApi,
     },
 ];
+
+pub static EDGE_FUNCTION_SUBCATEGORY_OPTIONS: &[SubCategoryConfig] = &[SubCategoryConfig {
+    name: "Wasm Function",
+    value: api_types::ComponentCreateInputSubcategory::WasmFunction,
+}];
 
 #[cfg(test)]
 mod tests {
@@ -156,6 +171,7 @@ mod tests {
             name: "Data Collection",
             value: api_types::ComponentCreateInputCategory::DataCollection,
             wit_world: "data-collection",
+            latest_wit_world_version: "1.0.1",
         };
         assert_eq!(format!("{}", config), "Data Collection");
     }
@@ -189,8 +205,8 @@ mod tests {
 
     #[test]
     fn test_category_options() {
-        assert_eq!(CATEGORY_OPTIONS.len(), 1); // for now!
-        let expected_categories = ["Data Collection"];
+        assert_eq!(CATEGORY_OPTIONS.len(), 2); // for now!
+        let expected_categories = ["Data Collection", "Edge Function"];
         for &expected in &expected_categories {
             assert!(CATEGORY_OPTIONS
                 .iter()
@@ -202,7 +218,7 @@ mod tests {
     fn test_subcategory_options() {
         let expected_subcategories = ["Analytics", "Attribution", "Warehouse", "Conversion API"];
         for &expected in &expected_subcategories {
-            assert!(SUBCATEGORY_OPTIONS
+            assert!(DATA_COLLECTION_SUBCATEGORY_OPTIONS
                 .iter()
                 .any(|config| config.name == expected));
         }
