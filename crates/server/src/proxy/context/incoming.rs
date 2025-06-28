@@ -7,12 +7,14 @@ use std::{net::SocketAddr, str::FromStr};
 
 pub struct IncomingContext {
     pub body: Incoming,
+    pub parts: http::request::Parts,
     pub request: RequestHandle,
 }
 
 impl IncomingContext {
     pub fn new(request: http::Request<Incoming>, remote_addr: SocketAddr, proto: &str) -> Self {
         let (parts, body) = request.into_parts();
+        let parts_cloned = parts.clone();
 
         let root_path = PathAndQuery::from_str("/").expect("'/' should be a valid path");
         let path = parts.uri.path_and_query().unwrap_or(&root_path).to_owned();
@@ -61,7 +63,11 @@ impl IncomingContext {
             client_ip,
         };
 
-        Self { body, request: req }
+        Self {
+            body,
+            parts: parts_cloned,
+            request: req,
+        }
     }
 
     pub fn get_request(&self) -> &RequestHandle {

@@ -51,55 +51,11 @@ pub async fn test_edge_function_component(
 
     let port = opts.port;
 
-    // setting management
-    let mut settings_map = HashMap::new();
-
-    // insert user provided settings
-    match (opts.settings, opts.settings_file) {
-        (Some(_), Some(_)) => {
-            return Err(anyhow::anyhow!(
-                "Please provide either settings or settings-file, not both"
-            ));
-        }
-        (None, None) => {}
-        (Some(settings), None) => {
-            for (key, value) in settings {
-                settings_map.insert(key, value);
-            }
-        }
-        (None, Some(settings_file)) => {
-            #[derive(serde::Deserialize)]
-            struct Settings {
-                settings: HashMap<String, String>,
-            }
-
-            let settings_file = std::fs::read_to_string(settings_file)?;
-            let config: Settings = toml::from_str(&settings_file).expect("Failed to parse TOML");
-
-            for (key, value) in config.settings {
-                settings_map.insert(key, value);
-            }
-        }
-    }
-
-    // check that all required settings are provided
-    for (name, setting) in &manifest.component.settings {
-        if setting.required && !settings_map.contains_key(name) {
-            return Err(anyhow::anyhow!("missing required setting {}", name));
-        }
-    }
-
-    for name in settings_map.keys() {
-        if !manifest.component.settings.contains_key(name) {
-            return Err(anyhow::anyhow!("unknown setting {}", name));
-        }
-    }
-
     let context = ComponentsContext::new(&config)
         .map_err(|e| anyhow::anyhow!("Something went wrong when trying to load the Wasm file. Please re-build and try again. {e}"))?;
 
     println!("Component loaded successfully: {}", component_path);
-    match http(context, port, settings_map).await {
+    match http(context, port, config).await {
         Ok(_) => {}
         Err(e) => {
             eprintln!("Error starting HTTP server: {}", e);
@@ -208,7 +164,7 @@ async fn component_call(
 pub async fn http(
     component_context: ComponentsContext,
     port: u16,
-    settings: HashMap<String, String>,
+    config: ComponentsConfiguration,
 ) -> anyhow::Result<()> {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let listener = TcpListener::bind(addr).await?;
@@ -221,14 +177,22 @@ pub async fn http(
 
         // Clone the context for each iteration
         let context = component_context.clone();
-        let settings = settings.clone();
+        let config = config.clone();
 
         tokio::task::spawn(async move {
             // Create a new service for each connection
             let service = service_fn(move |req| {
                 let context = context.clone();
-                let settings = settings.clone();
-                async move { component_call(context, settings, req).await }
+                let config = config.clone();
+                async move {
+                    edgee_components_runtime::edge_function::invoke_fn(
+                        &context,
+                        "component",
+                        &config,
+                        req,
+                    )
+                    .await
+                }
             });
 
             // Finally, we bind the incoming connection to our `hello` service
