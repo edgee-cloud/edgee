@@ -17,14 +17,31 @@ use hyper::body::Incoming;
 use http_body_util::Full;
 use hyper::Response;
 
-fn build_response(
-    status: http::StatusCode,
-    body: String,
-) -> Result<Response<BoxBody<Bytes, Infallible>>, anyhow::Error> {
-    Ok(Response::builder()
-        .status(status)
-        .body(Full::from(Bytes::from(body)).boxed())
-        .unwrap())
+pub struct EdgeFunctionOutput {
+    pub status: http::StatusCode,
+    pub headers: http::HeaderMap,
+    pub body: Vec<u8>,
+}
+
+fn build_response(status: http::StatusCode, body: String) -> EdgeFunctionOutput {
+    EdgeFunctionOutput {
+        status,
+        headers: http::HeaderMap::new(),
+        body: body.into_bytes(),
+    }
+}
+
+impl From<EdgeFunctionOutput> for Response<BoxBody<Bytes, Infallible>> {
+    fn from(output: EdgeFunctionOutput) -> Self {
+        let mut builder = Response::builder().status(output.status);
+        let headers = builder.headers_mut().unwrap();
+        for (name, value) in output.headers.iter() {
+            headers.insert(name, value.clone());
+        }
+        builder
+            .body(Full::from(Bytes::from(output.body)).boxed())
+            .unwrap()
+    }
 }
 
 async fn invoke_fn_internal(
@@ -32,7 +49,7 @@ async fn invoke_fn_internal(
     component_name: &str,
     request: wasmtime::component::Resource<HostIncomingRequest>,
     mut store: Store<crate::context::HostState>,
-) -> Result<Response<BoxBody<Bytes, Infallible>>, anyhow::Error> {
+) -> EdgeFunctionOutput {
     let data = store.data_mut();
     let (sender, receiver) = tokio::sync::oneshot::channel();
     let response = data.new_response_outparam(sender).unwrap();
@@ -78,7 +95,11 @@ async fn invoke_fn_internal(
             builder_headers.insert(header_name, header_value.clone());
             }
             // return the response with the body
-            Ok(builder.body(Full::from(body).boxed()).unwrap())
+            EdgeFunctionOutput {
+                status,
+                headers: builder_headers.clone(),
+                body,
+            }
         }
         Ok(Err(_)) => build_response(
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -101,7 +122,7 @@ pub async fn invoke_fn(
     component_name: &str,
     component_configs: &ComponentsConfiguration,
     mut request: http::Request<Incoming>,
-) -> Result<Response<BoxBody<Bytes, Infallible>>, anyhow::Error> {
+) -> EdgeFunctionOutput {
     let mut store = component_ctx.empty_store_with_stdout();
     let data = store.data_mut();
 

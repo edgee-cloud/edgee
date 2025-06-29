@@ -1,6 +1,4 @@
 use crate::components::manifest::Manifest;
-use http::HeaderValue;
-use wasmtime_wasi_http::WasiHttpView;
 
 use edgee_components_runtime::{
     config::{ComponentsConfiguration, EdgeFunctionComponents},
@@ -8,18 +6,13 @@ use edgee_components_runtime::{
 };
 
 use edgee_components_runtime::context::ComponentsContext;
-use http_body_util::BodyExt;
-
-use std::convert::Infallible;
+use http::Response;
+use http_body_util::{BodyExt, Full};
 use std::net::SocketAddr;
 
-use http_body_util::Full;
-use hyper::body::Bytes;
-use hyper::server::conn::http1;
 use hyper::service::service_fn;
-use hyper::{Request, Response};
+use hyper::{body::Bytes, server::conn::http1};
 use hyper_util::rt::TokioIo;
-use std::collections::HashMap;
 use tokio::net::TcpListener;
 
 pub async fn test_edge_function_component(
@@ -66,101 +59,6 @@ pub async fn test_edge_function_component(
     Ok(())
 }
 
-fn build_response(
-    status: http::StatusCode,
-    body: String,
-) -> Result<Response<Full<Bytes>>, Infallible> {
-    Ok(Response::builder()
-        .status(status)
-        .body(Full::new(Bytes::from(body)))
-        .unwrap())
-}
-async fn component_call(
-    component_context: ComponentsContext,
-    settings: HashMap<String, String>,
-    mut req: Request<hyper::body::Incoming>,
-) -> Result<Response<Full<Bytes>>, Infallible> {
-    let (sender, receiver) = tokio::sync::oneshot::channel();
-    let mut store = component_context.empty_store_with_stdout();
-    let data = store.data_mut();
-
-    let settings = serde_json::to_string(&settings).unwrap_or_default();
-    let Ok(settings_header) = HeaderValue::from_str(&settings) else {
-        return build_response(
-            http::StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to serialize settings".to_string(),
-        );
-    };
-    req.headers_mut()
-        .insert("x-edgee-component-settings", settings_header);
-
-    println!("Received request: {:?}", req);
-    let wasi_req = data
-        .new_incoming_request(wasmtime_wasi_http::bindings::http::types::Scheme::Http, req)
-        .unwrap();
-    let out = data.new_response_outparam(sender).unwrap();
-
-    let component = component_context
-        .get_edge_function_1_0_0_instance("component", &mut store)
-        .await
-        .unwrap();
-
-    // call the WASI HTTP handler
-    tokio::task::spawn(async move {
-        match component
-            .wasi_http_incoming_handler()
-            .call_handle(store, wasi_req, out)
-            .await
-        {
-            Ok(()) => {}
-            Err(e) => {
-                println!("WASI HTTP handler failed: {:?}", e);
-            }
-        }
-    });
-
-    // wait for data to stream from the WASI HTTP handler
-    match receiver.await {
-        // If the client calls `response-outparam::set` then one of these
-        // methods will be called.
-        Ok(Ok(response)) => {
-            let status = response.status();
-            let headers = response.headers().clone();
-            let body = match response.into_body().collect().await {
-                Ok(body) => body.to_bytes().to_vec(),
-                Err(e) => {
-                    println!("Failed to collect response body: {:?}", e);
-                    return build_response(
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
-                        "Failed to collect response body".to_string(),
-                    );
-                }
-            };
-
-            let mut builder = Response::builder().status(status);
-            let builder_headers = builder.headers_mut().unwrap();
-            for (header_name, header_value) in headers.iter() {
-                builder_headers.insert(header_name, header_value.clone());
-            }
-            // return the response with the body
-            Ok(builder.body(body.into()).unwrap())
-        }
-
-        Ok(Err(_)) => build_response(
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to handle response".to_string(),
-        )
-,
-        // Otherwise the `sender` will get dropped along with the `Store`
-        // meaning that the oneshot will get disconnected and here we can
-        // inspect the `task` result to see what happened
-        Err(_) => build_response(
-            http::StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to receive response from WASI HTTP handler".to_string()
-        )
-    }
-}
-
 pub async fn http(
     component_context: ComponentsContext,
     port: u16,
@@ -182,16 +80,28 @@ pub async fn http(
         tokio::task::spawn(async move {
             // Create a new service for each connection
             let service = service_fn(move |req| {
+                println!("Received request: {:?}", req);
                 let context = context.clone();
                 let config = config.clone();
                 async move {
-                    edgee_components_runtime::edge_function::invoke_fn(
+                    let output = edgee_components_runtime::edge_function::invoke_fn(
                         &context,
                         "component",
                         &config,
                         req,
                     )
-                    .await
+                    .await;
+                    let mut response = Response::builder().status(output.status);
+
+                    for (name, value) in output.headers.iter() {
+                        response.headers_mut().unwrap().insert(name, value.clone());
+                    }
+                    let resp: Response<
+                        http_body_util::combinators::BoxBody<Bytes, std::convert::Infallible>,
+                    > = response
+                        .body(Full::from(Bytes::from(output.body)).boxed())
+                        .unwrap();
+                    Ok::<_, std::convert::Infallible>(resp)
                 }
             });
 

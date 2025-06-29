@@ -145,25 +145,27 @@ pub async fn handle_request(
             (Some(path), None) => {
                 if request.get_path() == path {
                     let http_request = Request::from_parts(ctx.parts, ctx.body);
-                    return edgee_components_runtime::edge_function::invoke_fn(
+                    let output = edgee_components_runtime::edge_function::invoke_fn(
                         get_components_ctx(),
                         &function.id,
                         &config::get().components,
                         http_request,
                     )
                     .await;
+                    return Ok(output.into());
                 }
             }
             (None, Some(prefix)) => {
                 if request.get_path().starts_with(prefix) {
                     let http_request = Request::from_parts(ctx.parts, ctx.body);
-                    return edgee_components_runtime::edge_function::invoke_fn(
+                    let output = edgee_components_runtime::edge_function::invoke_fn(
                         get_components_ctx(),
                         &function.id,
                         &config::get().components,
                         http_request,
                     )
                     .await;
+                    return Ok(output.into());
                 }
             }
             _ => {}
