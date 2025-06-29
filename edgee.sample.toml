@@ -33,6 +33,12 @@ file = "local/wasm/segment.wasm"
 settings.segment_project_id = "..."
 settings.segment_write_key = "..."
 
+[[components.edge_function]]
+id = "example-rust-component"
+file = "local/wasm/example-rust-component.wasm"
+wit_version = "1.0.0"
+settings.edgee_path = "/edgee"
+
 [[routing]]
 domain = "demo.edgee.dev"
 

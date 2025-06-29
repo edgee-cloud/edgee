@@ -1728,10 +1728,13 @@ name = "edgee-components-runtime"
 version = "1.2.12"
 dependencies = [
  "anyhow",
+ "bytes",
  "cargo-llvm-cov",
  "chrono",
  "futures",
  "http 1.3.1",
+ "http-body-util",
+ "hyper 1.6.0",
  "json_pretty",
  "pretty_assertions",
  "regex",

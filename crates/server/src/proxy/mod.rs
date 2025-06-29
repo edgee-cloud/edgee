@@ -12,7 +12,7 @@ use lol_html::html_content::ContentType;
 use lol_html::{element, rewrite_str, RewriteStrSettings};
 use tracing::{error, info};
 
-use crate::config;
+use crate::{config, get_components_ctx};
 use context::{
     body::ProxyBody, incoming::IncomingContext, proxy::ProxyContext,
     redirection::RedirectionContext, routing::RoutingContext,
@@ -135,6 +135,39 @@ pub async fn handle_request(
             timer_start.elapsed().as_millis()
         );
         return controller::build_redirection(&redirection_ctx);
+    }
+
+    // edge function
+    for function in &config::get().components.edge_function {
+        let invoke_path = function.settings.get("edgee_path");
+        let invoke_path_prefix = function.settings.get("edgee_path_prefix");
+        match (invoke_path, invoke_path_prefix) {
+            (Some(path), None) => {
+                if request.get_path() == path {
+                    let http_request = Request::from_parts(ctx.parts, ctx.body);
+                    return edgee_components_runtime::edge_function::invoke_fn(
+                        get_components_ctx(),
+                        &function.id,
+                        &config::get().components,
+                        http_request,
+                    )
+                    .await;
+                }
+            }
+            (None, Some(prefix)) => {
+                if request.get_path().starts_with(prefix) {
+                    let http_request = Request::from_parts(ctx.parts, ctx.body);
+                    return edgee_components_runtime::edge_function::invoke_fn(
+                        get_components_ctx(),
+                        &function.id,
+                        &config::get().components,
+                        http_request,
+                    )
+                    .await;
+                }
+            }
+            _ => {}
+        }
     }
 
     // define the backend
