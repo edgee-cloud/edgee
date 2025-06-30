@@ -44,7 +44,7 @@ impl From<EdgeFunctionOutput> for Response<BoxBody<Bytes, Infallible>> {
     }
 }
 
-async fn invoke_fn_internal(
+pub async fn invoke_fn_internal(
     component_ctx: &ComponentsContext,
     component_name: &str,
     request: wasmtime::component::Resource<HostIncomingRequest>,
