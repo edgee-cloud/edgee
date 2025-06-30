@@ -472,7 +472,7 @@ pub async fn test_data_collection_component_1_0_1(
         if opts.curl {
             print!("{} ", auth_request.to_curl());
             for (key, value) in auth_request.headers.iter() {
-                print!("-H \"{}\":\"{}\" ", key, value);
+                print!("-H \"{key}\":\"{value}\" ");
             }
             println!();
         }

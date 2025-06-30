@@ -607,7 +607,7 @@ pub fn get_origin_from_url(url: &str) -> Result<String, anyhow::Error> {
     let url = Url::parse(url)?;
     let host = url.host().unwrap().to_string();
     let scheme = url.scheme();
-    Ok(format!("{}://{}", scheme, host))
+    Ok(format!("{scheme}://{host}"))
 }
 
 #[cfg(test)]

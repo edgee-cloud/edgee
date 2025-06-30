@@ -67,7 +67,7 @@ pub async fn invoke_fn_internal(
         {
             Ok(()) => {}
             Err(e) => {
-                println!("WASI HTTP handler failed: {:?}", e);
+                println!("WASI HTTP handler failed: {e}");
             }
         }
     });
@@ -82,7 +82,7 @@ pub async fn invoke_fn_internal(
             let body = match response.into_body().collect().await {
                 Ok(body) => body.to_bytes().to_vec(),
                 Err(e) => {
-                    println!("Failed to collect response body: {:?}", e);
+                    println!("Failed to collect response body: {e}");
                     return build_response(
                     http::StatusCode::INTERNAL_SERVER_ERROR,
                     "Failed to collect response body".to_string(),
@@ -143,7 +143,7 @@ pub async fn invoke_fn(
     }) else {
         return build_response(
             http::StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Component configuration not found for: {}", component_name),
+            format!("Component configuration not found for {component_name}"),
         );
     };
 
@@ -152,7 +152,7 @@ pub async fn invoke_fn(
     let Ok(settings_header) = http::HeaderValue::from_str(&settings) else {
         return build_response(
             http::StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Component configuration not found for: {}", component_name),
+            "Failed to serialize component settings".to_string(),
         );
     };
     request

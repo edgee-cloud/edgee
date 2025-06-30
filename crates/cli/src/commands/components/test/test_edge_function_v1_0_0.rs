@@ -47,11 +47,10 @@ pub async fn test_edge_function_component(
     let context = ComponentsContext::new(&config)
         .map_err(|e| anyhow::anyhow!("Something went wrong when trying to load the Wasm file. Please re-build and try again. {e}"))?;
 
-    println!("Component loaded successfully: {}", component_path);
     match http(context, port, config).await {
         Ok(_) => {}
         Err(e) => {
-            eprintln!("Error starting HTTP server: {}", e);
+            eprintln!("Error starting HTTP server: {e}");
             return Err(e);
         }
     }
@@ -67,7 +66,7 @@ pub async fn http(
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let listener = TcpListener::bind(addr).await?;
 
-    println!("Listening on http://{}", addr);
+    println!("Listening on http://{addr}");
 
     loop {
         let (stream, _) = listener.accept().await?;
@@ -80,7 +79,7 @@ pub async fn http(
         tokio::task::spawn(async move {
             // Create a new service for each connection
             let service = service_fn(move |req| {
-                println!("Received request: {:?}", req);
+                println!("Received request: {req}");
                 let context = context.clone();
                 let config = config.clone();
                 async move {
@@ -107,7 +106,7 @@ pub async fn http(
 
             // Finally, we bind the incoming connection to our `hello` service
             if let Err(err) = http1::Builder::new().serve_connection(io, service).await {
-                eprintln!("Error serving connection: {:?}", err);
+                eprintln!("Error serving connection: {err}");
             }
         });
     }
