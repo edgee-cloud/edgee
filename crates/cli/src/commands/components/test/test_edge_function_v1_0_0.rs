@@ -79,7 +79,7 @@ pub async fn http(
         tokio::task::spawn(async move {
             // Create a new service for each connection
             let service = service_fn(move |req| {
-                println!("Received request: {req}");
+                println!("Received request: {req:?}");
                 let context = context.clone();
                 let config = config.clone();
                 async move {
