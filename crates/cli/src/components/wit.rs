@@ -111,8 +111,8 @@ world {world} {{
 package edgee:native;
 world {world} {{
   {extra}
-   export wasi:http/incoming-handler@0.2.3;
-   import wasi:http/outgoing-handler@0.2.3;
+   export wasi:http/incoming-handler@0.2.0;
+   import wasi:http/outgoing-handler@0.2.0;
 }}
 ",
                 world = category_config.wit_world,
