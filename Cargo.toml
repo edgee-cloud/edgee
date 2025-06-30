@@ -3,7 +3,7 @@ members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
-version = "1.2.13"
+version = "1.2.14"
 authors = ["Edgee <opensource@edgee.cloud>"]
 license = "Apache-2.0"
 keywords = ["edgee"]
@@ -91,6 +91,6 @@ cargo-llvm-cov = "0.6.15"
 pretty_assertions = "1.4.1"
 
 edgee-sdk = "1.7.3"
-edgee-api-client = { version = "1.2.13", path = "crates/api-client" }
-edgee-server = { version = "1.2.13", path = "crates/server" }
-edgee-components-runtime = { version = "1.2.13", path = "crates/components-runtime" }
+edgee-api-client = { version = "1.2.14", path = "crates/api-client" }
+edgee-server = { version = "1.2.14", path = "crates/server" }
+edgee-components-runtime = { version = "1.2.14", path = "crates/components-runtime" }

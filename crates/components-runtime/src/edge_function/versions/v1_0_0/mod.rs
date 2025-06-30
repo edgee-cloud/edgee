@@ -14,7 +14,7 @@ pub mod edge_function {
         path: "src/edge_function/wit",
         async: true,
         with: {
-            "wasi:http@0.2.3": wasmtime_wasi_http::bindings::http,
+            "wasi:http@0.2.0": wasmtime_wasi_http::bindings::http,
         },
         trappable_imports: true,
     });
