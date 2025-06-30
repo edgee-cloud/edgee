@@ -59,7 +59,7 @@ pub async fn invoke_fn_internal(
         .unwrap();
 
     // call the WASI HTTP handler
-    let task = tokio::task::spawn(async move {
+    let _ = tokio::task::spawn(async move {
         match component
             .wasi_http_incoming_handler()
             .call_handle(store, request, response)
