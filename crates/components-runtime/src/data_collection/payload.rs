@@ -197,9 +197,30 @@ impl Event {
                 });
                 evaluate_string_filter(consent_str, operator, value)
             }
+            // Client fields
             "context.client.ip" => evaluate_string_filter(&self.context.client.ip, operator, value),
+            "context.client.proxy-type" => {
+                let proxy_type_str = self.context.client.proxy_type.as_deref().unwrap_or("");
+                evaluate_string_filter(proxy_type_str, operator, value)
+            }
+            "context.client.proxy-desc" => {
+                let proxy_desc_str = self.context.client.proxy_desc.as_deref().unwrap_or("");
+                evaluate_string_filter(proxy_desc_str, operator, value)
+            }
+            "context.client.as-name" => {
+                let as_name_str = self.context.client.as_name.as_deref().unwrap_or("");
+                evaluate_string_filter(as_name_str, operator, value)
+            }
+            "context.client.as-number" => {
+                let as_number_f64 = self.context.client.as_number.unwrap_or(0) as f64;
+                let value_f64 = value.parse::<f64>().unwrap_or_default();
+                evaluate_number_filter(&as_number_f64, operator, &value_f64)
+            }
             "context.client.locale" => {
                 evaluate_string_filter(&self.context.client.locale, operator, value)
+            }
+            "context.client.accept-language" => {
+                evaluate_string_filter(&self.context.client.accept_language, operator, value)
             }
             "context.client.timezone" => {
                 evaluate_string_filter(&self.context.client.timezone, operator, value)
@@ -207,11 +228,53 @@ impl Event {
             "context.client.user-agent" => {
                 evaluate_string_filter(&self.context.client.user_agent, operator, value)
             }
+            "context.client.user-agent-version-list" => evaluate_string_filter(
+                &self.context.client.user_agent_version_list,
+                operator,
+                value,
+            ),
+            "context.client.user-agent-mobile" => {
+                evaluate_string_filter(&self.context.client.user_agent_mobile, operator, value)
+            }
             "context.client.os-name" => {
                 evaluate_string_filter(&self.context.client.os_name, operator, value)
             }
+            "context.client.user-agent-architecture" => evaluate_string_filter(
+                &self.context.client.user_agent_architecture,
+                operator,
+                value,
+            ),
+            "context.client.user-agent-bitness" => {
+                evaluate_string_filter(&self.context.client.user_agent_bitness, operator, value)
+            }
+            "context.client.user-agent-full-version-list" => evaluate_string_filter(
+                &self.context.client.user_agent_full_version_list,
+                operator,
+                value,
+            ),
+            "context.client.user-agent-model" => {
+                evaluate_string_filter(&self.context.client.user_agent_model, operator, value)
+            }
             "context.client.os-version" => {
                 evaluate_string_filter(&self.context.client.os_version, operator, value)
+            }
+            "context.client.screen-width" => {
+                let width_f64 = self.context.client.screen_width as f64;
+                let value_f64 = value.parse::<f64>().unwrap_or_default();
+                evaluate_number_filter(&width_f64, operator, &value_f64)
+            }
+            "context.client.screen-height" => {
+                let height_f64 = self.context.client.screen_height as f64;
+                let value_f64 = value.parse::<f64>().unwrap_or_default();
+                evaluate_number_filter(&height_f64, operator, &value_f64)
+            }
+            "context.client.screen-density" => {
+                let density_f64 = self.context.client.screen_density as f64;
+                let value_f64 = value.parse::<f64>().unwrap_or_default();
+                evaluate_number_filter(&density_f64, operator, &value_f64)
+            }
+            "context.client.continent" => {
+                evaluate_string_filter(&self.context.client.continent, operator, value)
             }
             "context.client.country-code" => {
                 evaluate_string_filter(&self.context.client.country_code, operator, value)
@@ -219,11 +282,19 @@ impl Event {
             "context.client.country-name" => {
                 evaluate_string_filter(&self.context.client.country_name, operator, value)
             }
+            "context.client.region" => {
+                evaluate_string_filter(&self.context.client.region, operator, value)
+            }
             "context.client.city" => {
                 evaluate_string_filter(&self.context.client.city, operator, value)
             }
-            "context.session.session_id" => {
+
+            // Session fields
+            "context.session.session-id" => {
                 evaluate_string_filter(&self.context.session.session_id, operator, value)
+            }
+            "context.session.previous-session-id" => {
+                evaluate_string_filter(&self.context.session.previous_session_id, operator, value)
             }
             "context.session.session-count" => {
                 let count_f64 = self.context.session.session_count as f64;
@@ -235,6 +306,41 @@ impl Event {
                 operator,
                 value == "true",
             ),
+            "context.session.first-seen" => {
+                let timestamp_f64 = self.context.session.first_seen.timestamp() as f64;
+                let value_f64 = value.parse::<f64>().unwrap_or_default();
+                evaluate_number_filter(&timestamp_f64, operator, &value_f64)
+            }
+            "context.session.last-seen" => {
+                let timestamp_f64 = self.context.session.last_seen.timestamp() as f64;
+                let value_f64 = value.parse::<f64>().unwrap_or_default();
+                evaluate_number_filter(&timestamp_f64, operator, &value_f64)
+            }
+
+            // Campaign fields
+            "context.campaign.name" => {
+                evaluate_string_filter(&self.context.campaign.name, operator, value)
+            }
+            "context.campaign.source" => {
+                evaluate_string_filter(&self.context.campaign.source, operator, value)
+            }
+            "context.campaign.medium" => {
+                evaluate_string_filter(&self.context.campaign.medium, operator, value)
+            }
+            "context.campaign.term" => {
+                evaluate_string_filter(&self.context.campaign.term, operator, value)
+            }
+            "context.campaign.content" => {
+                evaluate_string_filter(&self.context.campaign.content, operator, value)
+            }
+            "context.campaign.creative-format" => {
+                evaluate_string_filter(&self.context.campaign.creative_format, operator, value)
+            }
+            "context.campaign.marketing-tactic" => {
+                evaluate_string_filter(&self.context.campaign.marketing_tactic, operator, value)
+            }
+
+            // Page data fields
             "data.page.name" => {
                 if let Data::Page(ref data) = self.data {
                     evaluate_string_filter(&data.name, operator, value)
@@ -284,6 +390,8 @@ impl Event {
                     false
                 }
             }
+
+            // Track data fields
             "data.track.name" => {
                 if let Data::Track(ref data) = self.data {
                     evaluate_string_filter(&data.name, operator, value)
@@ -291,6 +399,8 @@ impl Event {
                     false
                 }
             }
+
+            // User data fields
             "data.user.user-id" => {
                 if let Data::User(ref data) = self.data {
                     evaluate_string_filter(&data.user_id, operator, value)
