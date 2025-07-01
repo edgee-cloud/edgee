@@ -148,7 +148,7 @@ pub async fn handle_request(
                 if request.get_path() == path {
                     let default_methods = String::from("GET, POST, DELETE, PUT");
                     let active_methods = active_methods.unwrap_or(&default_methods);
-                    if active_methods.contains(&request.get_method().as_str()) {
+                    if active_methods.contains(request.get_method().as_str()) {
                         let http_request = Request::from_parts(ctx.parts, ctx.body);
                         let output = edgee_components_runtime::edge_function::invoke_fn(
                             get_components_ctx(),
@@ -165,7 +165,7 @@ pub async fn handle_request(
                 if request.get_path().starts_with(prefix) {
                     let default_methods = String::from("GET, POST, DELETE, PUT");
                     let active_methods = active_methods.unwrap_or(&default_methods);
-                    if active_methods.contains(&request.get_method().as_str()) {
+                    if active_methods.contains(request.get_method().as_str()) {
                         let http_request = Request::from_parts(ctx.parts, ctx.body);
                         let output = edgee_components_runtime::edge_function::invoke_fn(
                             get_components_ctx(),
