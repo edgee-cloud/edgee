@@ -143,42 +143,26 @@ pub async fn handle_request(
         let invoke_path_prefix = function.settings.get("edgee_path_prefix");
         let active_methods = function.settings.get("edgee_function_active_methods");
 
-        match (invoke_path, invoke_path_prefix) {
-            (Some(path), None) => {
-                if request.get_path() == path {
-                    let default_methods = String::from("GET, POST, DELETE, PUT");
-                    let active_methods = active_methods.unwrap_or(&default_methods);
-                    if active_methods.contains(request.get_method().as_str()) {
-                        let http_request = Request::from_parts(ctx.parts, ctx.body);
-                        let output = edgee_components_runtime::edge_function::invoke_fn(
-                            get_components_ctx(),
-                            &function.id,
-                            &config::get().components,
-                            http_request,
-                        )
-                        .await;
-                        return Ok(output.into());
-                    }
-                }
+        let match_path: bool = match (invoke_path, invoke_path_prefix) {
+            (Some(path), None) => request.get_path() == path,
+            (None, Some(prefix)) => request.get_path().starts_with(prefix),
+            _ => false,
+        };
+
+        if match_path {
+            let default_methods = String::from("GET,POST,PUT,DELETE");
+            let active_methods = active_methods.unwrap_or(&default_methods);
+            if active_methods.contains(request.get_method().as_str()) {
+                let http_request = Request::from_parts(ctx.parts, ctx.body);
+                let output = edgee_components_runtime::edge_function::invoke_fn(
+                    get_components_ctx(),
+                    &function.id,
+                    &config::get().components,
+                    http_request,
+                )
+                .await;
+                return Ok(output.into());
             }
-            (None, Some(prefix)) => {
-                if request.get_path().starts_with(prefix) {
-                    let default_methods = String::from("GET, POST, DELETE, PUT");
-                    let active_methods = active_methods.unwrap_or(&default_methods);
-                    if active_methods.contains(request.get_method().as_str()) {
-                        let http_request = Request::from_parts(ctx.parts, ctx.body);
-                        let output = edgee_components_runtime::edge_function::invoke_fn(
-                            get_components_ctx(),
-                            &function.id,
-                            &config::get().components,
-                            http_request,
-                        )
-                        .await;
-                        return Ok(output.into());
-                    }
-                }
-            }
-            _ => {}
         }
     }
 
