@@ -150,9 +150,8 @@ pub async fn handle_request(
         };
 
         if match_path {
-            let is_method_allowed = active_methods.map_or(true, |methods| {
-                methods.contains(request.get_method().as_str())
-            });
+            let is_method_allowed = active_methods
+                .is_none_or(|methods| methods.contains(request.get_method().as_str()));
 
             if is_method_allowed {
                 let http_request = Request::from_parts(ctx.parts, ctx.body);
