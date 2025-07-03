@@ -150,9 +150,11 @@ pub async fn handle_request(
         };
 
         if match_path {
-            let default_methods = String::from("GET,POST,PUT,DELETE");
-            let active_methods = active_methods.unwrap_or(&default_methods);
-            if active_methods.contains(request.get_method().as_str()) {
+            let is_method_allowed = active_methods.map_or(true, |methods| {
+                methods.contains(request.get_method().as_str())
+            });
+
+            if is_method_allowed {
                 let http_request = Request::from_parts(ctx.parts, ctx.body);
                 let output = edgee_components_runtime::edge_function::invoke_fn(
                     get_components_ctx(),
