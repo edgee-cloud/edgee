@@ -15,6 +15,8 @@ use hyper::{body::Bytes, server::conn::http1};
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
+use std::collections::HashMap;
+
 pub async fn test_edge_function_component(
     opts: super::Options,
     manifest: &Manifest,
@@ -32,11 +34,55 @@ pub async fn test_edge_function_component(
         return Err(anyhow::anyhow!("Output path not found in manifest file.",));
     }
 
+    let mut settings_map = HashMap::new();
+
+    // insert user provided settings
+    match (opts.settings, opts.settings_file) {
+        (Some(_), Some(_)) => {
+            return Err(anyhow::anyhow!(
+                "Please provide either settings or settings-file, not both"
+            ));
+        }
+        (None, None) => {}
+        (Some(settings), None) => {
+            for (key, value) in settings {
+                settings_map.insert(key, value);
+            }
+        }
+        (None, Some(settings_file)) => {
+            #[derive(serde::Deserialize)]
+            struct Settings {
+                settings: HashMap<String, String>,
+            }
+
+            let settings_file = std::fs::read_to_string(settings_file)?;
+            let config: Settings = toml::from_str(&settings_file).expect("Failed to parse TOML");
+
+            for (key, value) in config.settings {
+                settings_map.insert(key, value);
+            }
+        }
+    }
+
+    // check that all required settings are provided
+    for (name, setting) in &manifest.component.settings {
+        if setting.required && !settings_map.contains_key(name) {
+            return Err(anyhow::anyhow!("missing required setting {}", name));
+        }
+    }
+
+    for name in settings_map.keys() {
+        if !manifest.component.settings.contains_key(name) {
+            return Err(anyhow::anyhow!("unknown setting {}", name));
+        }
+    }
+
     let config = ComponentsConfiguration {
         edge_function: vec![EdgeFunctionComponents {
             id: "component".to_string(),
             file: component_path.to_string(),
             wit_version: EdgeFunctionWitVersion::V1_0_0,
+            settings: settings_map,
             ..Default::default()
         }],
         ..Default::default()
