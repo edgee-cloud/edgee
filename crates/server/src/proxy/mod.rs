@@ -425,6 +425,11 @@ fn do_only_proxy(
         return Some("proxy-only(method)");
     }
 
+    // if the response is a client error but 404
+    if response.status.is_client_error() && response.status != http::StatusCode::NOT_FOUND {
+        return Some("proxy-only(4xx)");
+    }
+
     // if response is redirection
     if response.status.is_redirection() {
         return Some("proxy-only(3xx)");
