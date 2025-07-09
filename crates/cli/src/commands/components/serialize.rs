@@ -80,7 +80,7 @@ pub async fn serialize_component(
         },
     };
 
-    let serialized_path = format!("{}.serialized", component_path);
+    let serialized_path = format!("{component_path}.serialized");
     match std::fs::write(&serialized_path, serialized_component) {
         Ok(_) => {
             tracing::info!("Component serialized successfully to {}", serialized_path);
