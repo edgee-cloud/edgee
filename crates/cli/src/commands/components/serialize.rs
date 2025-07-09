@@ -73,9 +73,11 @@ pub async fn serialize_component(
             "1.0.0" => context.serialize_edge_function_1_0_0(component_path)?,
             _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
         },
-        _ => anyhow::bail!(
-            "Serialization is only supported for Edge Function components at the moment"
-        ),
+        ComponentType::DataCollection => match component_wit_version {
+            "1.0.0" => context.serialize_data_collection_1_0_0(component_path)?,
+            "1.0.1" => context.serialize_data_collection_1_0_1(component_path)?,
+            _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
+        },
     };
 
     let serialized_path = format!("{}.serialized", component_path);
