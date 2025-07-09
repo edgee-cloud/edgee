@@ -68,6 +68,8 @@ pub struct EdgeFunctionComponents {
     pub id: String, // could be a slug (edgee/amplitude) or an alias (amplitude)
     pub file: String,
     #[serde(default)]
+    pub serialized_file: Option<String>,
+    #[serde(default)]
     pub wit_version: EdgeFunctionWitVersion,
     #[serde(default)]
     pub settings: HashMap<String, String>,
