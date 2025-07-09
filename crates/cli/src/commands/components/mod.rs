@@ -25,6 +25,9 @@ setup_commands! {
 
     /// Fetch WIT dependencies needed for building
     Wit(fetch_wit),
+
+    /// Serialize component
+    Serialize(serialize),
 }
 
 pub type Options = Command;
