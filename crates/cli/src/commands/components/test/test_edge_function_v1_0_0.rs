@@ -17,6 +17,10 @@ use tokio::net::TcpListener;
 
 use std::collections::HashMap;
 
+use notify;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
 pub async fn test_edge_function_component(
     opts: super::Options,
     manifest: &Manifest,
@@ -88,12 +92,69 @@ pub async fn test_edge_function_component(
         ..Default::default()
     };
 
-    let port = opts.port;
+    let modified_flag = Arc::new(AtomicBool::new(false));
+    // watch the current directory for changes
+    if opts.watch {
+        let exts = match manifest
+            .component
+            .language
+            .clone()
+            .unwrap_or("".to_string())
+            .as_str()
+        {
+            "Rust" => vec!["rs", "html"],
+            "Python" => vec!["py"],
+            "Javascript" => vec!["js"],
+            "Typescript" => vec!["ts"],
+            "Go" => vec!["go"],
+            "C" => vec!["c", "h"],
+            "C#" => vec!["cs"],
+            _ => anyhow::bail!(
+                "Unsupported language {} for edge-function component",
+                manifest
+                    .component
+                    .language
+                    .clone()
+                    .unwrap_or("unknown".to_string())
+            ),
+        };
+        let modified_flag_clone = modified_flag.clone();
 
-    let context = ComponentsContext::new(&config)
-        .map_err(|e| anyhow::anyhow!("Something went wrong when trying to load the Wasm file. Please re-build and try again. {e}"))?;
+        tokio::spawn(async move {
+            use notify::{Event, RecursiveMode, Result, Watcher};
+            use std::{path::Path, sync::mpsc};
+            let (tx, rx) = mpsc::channel();
+            let mut watcher = notify::recommended_watcher(tx).unwrap();
+            watcher
+                .watch(Path::new("."), RecursiveMode::Recursive)
+                .unwrap();
 
-    match http(context, port, config).await {
+            for res in rx {
+                match res {
+                    Ok(event) => match event.kind {
+                        notify::EventKind::Modify(_) => {
+                            println!("File modified: {:?}", event.paths);
+                            for path in event.paths {
+                                if path
+                                    .extension()
+                                    .map_or(false, |ext| exts.contains(&ext.to_str().unwrap()))
+                                {
+                                    modified_flag_clone
+                                        .store(true, std::sync::atomic::Ordering::SeqCst);
+                                    break;
+                                }
+                            }
+                        }
+                        _ => {}
+                    },
+                    Err(e) => println!("watch error: {:?}", e),
+                }
+            }
+        });
+    }
+
+    // Start the HTTP server
+    match http(opts.port, config, modified_flag, manifest).await {
         Ok(_) => {}
         Err(e) => {
             eprintln!("Error starting HTTP server: {e}");
@@ -105,17 +166,32 @@ pub async fn test_edge_function_component(
 }
 
 pub async fn http(
-    component_context: ComponentsContext,
     port: u16,
     config: ComponentsConfiguration,
+    modified_flag: Arc<AtomicBool>,
+    manifest: &Manifest,
 ) -> anyhow::Result<()> {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let listener = TcpListener::bind(addr).await?;
+
+    let mut component_context = ComponentsContext::new(&config)
+        .map_err(|e| anyhow::anyhow!("Something went wrong when trying to load the Wasm file. Please re-build and try again. {e}"))?;
 
     println!("Listening on http://{addr}");
 
     loop {
         let (stream, _) = listener.accept().await?;
+
+        if modified_flag.load(Ordering::SeqCst) {
+            println!("Component modified, rebuilding...");
+            crate::commands::components::build::do_build(&manifest, std::path::Path::new("."))
+                .await?;
+            modified_flag.store(false, std::sync::atomic::Ordering::SeqCst);
+            println!("Rebuilding done, reloading component context...");
+            component_context = ComponentsContext::new(&config)
+                .map_err(|e| anyhow::anyhow!("Something went wrong when trying to load the Wasm file. Please re-build and try again. {e}"))?;
+        }
+
         let io = TokioIo::new(stream);
 
         // Clone the context for each iteration
