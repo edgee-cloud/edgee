@@ -41,7 +41,12 @@ pub fn pre_instanciate_edge_function_component_1_0_0(
                 "Loading edge-function component from serialized file: {}",
                 serialized_file
             );
-            unsafe { Component::deserialize(engine, serialized_file) }.ok()
+            unsafe {
+                // unsafe function to deserialize the component
+                // this should only be used if the serialized file is trusted
+                Component::deserialize(engine, serialized_file)
+            }
+            .ok()
         })
         .map(Ok)
         .unwrap_or_else(|| {

@@ -27,6 +27,8 @@ setup_commands! {
     Wit(fetch_wit),
 
     /// Serialize component
+    /// This serializes the component to a vector of bytes.
+    /// This is a low-level operation and is not needed for most users.
     Serialize(serialize),
 }
 
