@@ -58,12 +58,12 @@ fn start_file_watcher(manifest: &Manifest, modified_flag: Arc<AtomicBool>) -> an
 
         for res in rx {
             match res {
-                Ok(event) => match event.kind {
-                    notify::EventKind::Modify(_) => {
+                Ok(event) => {
+                    if let notify::EventKind::Modify(_) = event.kind {
                         for path in event.paths {
                             if path
                                 .extension()
-                                .map_or(false, |ext| exts.contains(&ext.to_str().unwrap()))
+                                .is_some_and(|ext| exts.contains(&ext.to_str().unwrap()))
                             {
                                 modified_flag_clone
                                     .store(true, std::sync::atomic::Ordering::SeqCst);
@@ -71,9 +71,8 @@ fn start_file_watcher(manifest: &Manifest, modified_flag: Arc<AtomicBool>) -> an
                             }
                         }
                     }
-                    _ => {}
-                },
-                Err(e) => println!("watch error: {:?}", e),
+                }
+                Err(e) => println!("watch error: {e}"),
             }
         }
     });
@@ -187,7 +186,7 @@ pub async fn http(
 
         if modified_flag.load(Ordering::SeqCst) {
             println!("Detected source change, rebuilding component...");
-            crate::commands::components::build::do_build(&manifest, std::path::Path::new("."))
+            crate::commands::components::build::do_build(manifest, std::path::Path::new("."))
                 .await?;
             modified_flag.store(false, std::sync::atomic::Ordering::SeqCst);
             println!("Reloading Wasm component...");
