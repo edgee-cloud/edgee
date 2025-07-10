@@ -42,7 +42,7 @@ setup_command! { /// Comma-separated key=value pairs for settings
     #[arg(long = "port", default_value = "8080")]
     port: u16,
 
-    // watch to rebuild the component when it changes
+    /// When enabled, the component is automatically rebuilt when the source code changes
     #[arg(long = "watch", default_value = "false")]
     watch: bool,
 }

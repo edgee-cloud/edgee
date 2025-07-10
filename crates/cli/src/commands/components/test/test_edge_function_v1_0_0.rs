@@ -21,6 +21,65 @@ use notify;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+fn start_file_watcher(manifest: &Manifest, modified_flag: Arc<AtomicBool>) -> anyhow::Result<()> {
+    let exts = match manifest
+        .component
+        .language
+        .clone()
+        .unwrap_or("".to_string())
+        .as_str()
+    {
+        "Rust" => vec!["rs", "html"],
+        "Python" => vec!["py", "html"],
+        "Javascript" => vec!["js", "mjs", "html"],
+        "Typescript" => vec!["ts", "html"],
+        "Go" => vec!["go", "html"],
+        "C" => vec!["c", "h", "html"],
+        "C#" => vec!["cs", "html"],
+        _ => anyhow::bail!(
+            "Unsupported language {} for edge-function component",
+            manifest
+                .component
+                .language
+                .clone()
+                .unwrap_or("unknown".to_string())
+        ),
+    };
+    let modified_flag_clone = modified_flag.clone();
+
+    tokio::spawn(async move {
+        use notify::{RecursiveMode, Watcher};
+        use std::{path::Path, sync::mpsc};
+        let (tx, rx) = mpsc::channel();
+        let mut watcher = notify::recommended_watcher(tx).unwrap();
+        watcher
+            .watch(Path::new("."), RecursiveMode::Recursive)
+            .unwrap();
+
+        for res in rx {
+            match res {
+                Ok(event) => match event.kind {
+                    notify::EventKind::Modify(_) => {
+                        for path in event.paths {
+                            if path
+                                .extension()
+                                .map_or(false, |ext| exts.contains(&ext.to_str().unwrap()))
+                            {
+                                modified_flag_clone
+                                    .store(true, std::sync::atomic::Ordering::SeqCst);
+                                break;
+                            }
+                        }
+                    }
+                    _ => {}
+                },
+                Err(e) => println!("watch error: {:?}", e),
+            }
+        }
+    });
+    Ok(())
+}
+
 pub async fn test_edge_function_component(
     opts: super::Options,
     manifest: &Manifest,
@@ -93,64 +152,8 @@ pub async fn test_edge_function_component(
     };
 
     let modified_flag = Arc::new(AtomicBool::new(false));
-    // watch the current directory for changes
     if opts.watch {
-        let exts = match manifest
-            .component
-            .language
-            .clone()
-            .unwrap_or("".to_string())
-            .as_str()
-        {
-            "Rust" => vec!["rs", "html"],
-            "Python" => vec!["py"],
-            "Javascript" => vec!["js"],
-            "Typescript" => vec!["ts"],
-            "Go" => vec!["go"],
-            "C" => vec!["c", "h"],
-            "C#" => vec!["cs"],
-            _ => anyhow::bail!(
-                "Unsupported language {} for edge-function component",
-                manifest
-                    .component
-                    .language
-                    .clone()
-                    .unwrap_or("unknown".to_string())
-            ),
-        };
-        let modified_flag_clone = modified_flag.clone();
-
-        tokio::spawn(async move {
-            use notify::{Event, RecursiveMode, Result, Watcher};
-            use std::{path::Path, sync::mpsc};
-            let (tx, rx) = mpsc::channel();
-            let mut watcher = notify::recommended_watcher(tx).unwrap();
-            watcher
-                .watch(Path::new("."), RecursiveMode::Recursive)
-                .unwrap();
-
-            for res in rx {
-                match res {
-                    Ok(event) => match event.kind {
-                        notify::EventKind::Modify(_) => {
-                            println!("File modified: {:?}", event.paths);
-                            for path in event.paths {
-                                if path
-                                    .extension()
-                                    .map_or(false, |ext| exts.contains(&ext.to_str().unwrap()))
-                                {
-                                    modified_flag_clone
-                                        .store(true, std::sync::atomic::Ordering::SeqCst);
-                                    break;
-                                }
-                            }
-                        }
-                        _ => {}
-                    },
-                    Err(e) => println!("watch error: {:?}", e),
-                }
-            }
-        });
+        start_file_watcher(manifest, modified_flag.clone())?;
     }
 
     // Start the HTTP server
@@ -183,11 +186,11 @@ pub async fn http(
         let (stream, _) = listener.accept().await?;
 
         if modified_flag.load(Ordering::SeqCst) {
-            println!("Component modified, rebuilding...");
+            println!("Detected source change, rebuilding component...");
             crate::commands::components::build::do_build(&manifest, std::path::Path::new("."))
                 .await?;
             modified_flag.store(false, std::sync::atomic::Ordering::SeqCst);
-            println!("Rebuilding done, reloading component context...");
+            println!("Reloading Wasm component...");
             component_context = ComponentsContext::new(&config)
                 .map_err(|e| anyhow::anyhow!("Something went wrong when trying to load the Wasm file. Please re-build and try again. {e}"))?;
         }
