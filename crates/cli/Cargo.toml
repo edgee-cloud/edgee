@@ -50,7 +50,6 @@ unicase.workspace = true
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["v4"] }
 wit-deps.workspace = true
-wasmtime-wasi-http.workspace = true
 zip.workspace = true
 
 edgee-api-client.workspace = true

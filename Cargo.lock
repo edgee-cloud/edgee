@@ -1698,7 +1698,6 @@ dependencies = [
  "unicase",
  "url",
  "uuid",
- "wasmtime-wasi-http",
  "wit-deps",
  "zip",
 ]

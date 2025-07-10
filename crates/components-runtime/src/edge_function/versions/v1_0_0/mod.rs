@@ -31,7 +31,36 @@ pub fn pre_instanciate_edge_function_component_1_0_0(
     let _span = span.enter();
 
     tracing::debug!("Start pre-instantiate edge-function component");
-    let component = Component::from_file(engine, &component_config.file)?;
+
+    // try to load from serialized file if available
+    let component = component_config
+        .serialized_file
+        .as_ref()
+        .and_then(|serialized_file| {
+            tracing::debug!(
+                "Loading edge-function component from serialized file: {}",
+                serialized_file
+            );
+            unsafe {
+                // unsafe function to deserialize the component
+                // this should only be used if the serialized file is trusted
+                Component::deserialize(engine, serialized_file)
+            }
+            .ok()
+        })
+        .map(Ok)
+        .unwrap_or_else(|| {
+            tracing::debug!(
+                "Loading edge-function component from file: {}",
+                component_config.file
+            );
+            Component::from_file(engine, &component_config.file)
+        })
+        .map_err(|err| {
+            tracing::error!("Failed to load edge-function component: {}", err);
+            anyhow::anyhow!("Failed to load edge-function component: {}", err)
+        })?;
+
     let instance_pre = linker.instantiate_pre(&component)?;
     let instance_pre = EdgeFunctionV100Pre::new(instance_pre)?;
     tracing::debug!("Finished pre-instantiate edge-function component");
@@ -40,6 +69,15 @@ pub fn pre_instanciate_edge_function_component_1_0_0(
 }
 
 impl ComponentsContext {
+    pub fn serialize_edge_function_1_0_0(&self, id: &str) -> anyhow::Result<Vec<u8>> {
+        let instance_pre = self.components.edge_function_1_0_0.get(id);
+
+        match instance_pre {
+            Some(instance) => Ok(instance.instance_pre().component().serialize()?),
+            None => Err(anyhow::anyhow!("component not found: {}", id)),
+        }
+    }
+
     pub async fn get_edge_function_1_0_0_instance(
         &self,
         id: &str,
