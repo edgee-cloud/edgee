@@ -52,15 +52,6 @@ pub fn pre_instanciate_edge_function_component_1_0_0(
 }
 
 impl ComponentsContext {
-    pub fn serialize_edge_function_1_0_0(&self, id: &str) -> anyhow::Result<Vec<u8>> {
-        let instance_pre = self.components.edge_function_1_0_0.get(id);
-
-        match instance_pre {
-            Some(instance) => Ok(instance.instance_pre().component().serialize()?),
-            None => Err(anyhow::anyhow!("component not found: {}", id)),
-        }
-    }
-
     pub async fn get_edge_function_1_0_0_instance(
         &self,
         id: &str,
