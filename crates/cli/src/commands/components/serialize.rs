@@ -55,7 +55,10 @@ pub async fn serialize_component(
             "1.0.0" => ComponentsConfiguration {
                 edge_function: vec![EdgeFunctionComponents{
                     id: component_path.to_string(),
-                    file: component_path.to_string(),
+                    component_source: edgee_components_runtime::config::ComponentSource {
+                        file: component_path.to_string(),
+                        ..Default::default()
+                    },
                     wit_version: edgee_components_runtime::edge_function::versions::EdgeFunctionWitVersion::V1_0_0,
                     ..Default::default()
                 }],

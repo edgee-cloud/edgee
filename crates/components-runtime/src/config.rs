@@ -59,6 +59,14 @@ impl Default for DataCollectionComponentSettings {
     }
 }
 
+#[derive(Deserialize, Debug, Clone, Default)]
+pub struct ComponentSource {
+    pub binary: Option<Vec<u8>>,
+    pub file: String,
+    pub serialized_file: Option<String>,
+    pub serialized_binary: Option<Vec<u8>>,
+}
+
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct EdgeFunctionComponents {
     #[serde(skip_deserializing)]
@@ -66,9 +74,7 @@ pub struct EdgeFunctionComponents {
     #[serde(skip_deserializing)]
     pub slug: String,
     pub id: String, // could be a slug (edgee/amplitude) or an alias (amplitude)
-    pub file: String,
-    #[serde(default)]
-    pub serialized_file: Option<String>,
+    pub component_source: ComponentSource,
     #[serde(default)]
     pub wit_version: EdgeFunctionWitVersion,
     #[serde(default)]
