@@ -46,7 +46,7 @@ pub(crate) fn instanciate_component(
     // Attempt to create a component from a binary buffer if available
     if let Some(binary) = &component_source.binary {
         tracing::debug!("Creating component from binary buffer");
-        if let Ok(component) = Component::new(engine, &binary) {
+        if let Ok(component) = Component::new(engine, binary) {
             return Ok(component);
         }
     }
