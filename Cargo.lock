@@ -1679,7 +1679,7 @@ dependencies = [
  "slug",
  "tempfile",
  "tokio",
- "toml 0.8.23",
+ "toml 0.9.2",
  "tracing",
  "tracing-subscriber",
  "unicase",
@@ -1706,7 +1706,7 @@ dependencies = [
  "schemars 1.0.4",
  "serde",
  "serde_json",
- "toml 0.8.23",
+ "toml 0.9.2",
 ]
 
 [[package]]
@@ -5454,7 +5454,6 @@ version = "0.8.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc1beb996b9d83529a9e75c17a1686767d148d70663143c7854d8b4a09ced362"
 dependencies = [
- "indexmap 2.10.0",
  "serde",
  "serde_spanned 0.6.9",
  "toml_datetime 0.6.11",
@@ -5467,10 +5466,12 @@ version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed0aee96c12fa71097902e0bb061a5e1ebd766a6636bb605ba401c45c1650eac"
 dependencies = [
+ "indexmap 2.10.0",
  "serde",
  "serde_spanned 1.0.0",
  "toml_datetime 0.7.0",
  "toml_parser",
+ "toml_writer",
  "winnow 0.7.12",
 ]
 
@@ -5533,6 +5534,12 @@ name = "toml_write"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
+
+[[package]]
+name = "toml_writer"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcc842091f2def52017664b53082ecbbeb5c7731092bad69d2c63050401dfd64"
 
 [[package]]
 name = "tower"
