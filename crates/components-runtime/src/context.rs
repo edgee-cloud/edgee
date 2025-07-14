@@ -6,7 +6,7 @@ use crate::data_collection::versions::v1_0_0::pre_instanciate_data_collection_co
 use crate::data_collection::versions::v1_0_1::data_collection::DataCollectionV101Pre;
 use crate::data_collection::versions::v1_0_1::pre_instanciate_data_collection_component_1_0_1;
 use crate::data_collection::versions::DataCollectionWitVersion;
-use wasmtime::{Cache, Engine, Store};
+use wasmtime::{Cache, CacheConfig, Engine, Store};
 use wasmtime_wasi::p2::{IoView, WasiCtx, WasiView};
 use wasmtime_wasi::ResourceTable;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
@@ -37,20 +37,10 @@ impl ComponentsContext {
             .async_support(true);
 
         if let Some(path) = config.cache.as_deref() {
-            Cache::from_file(Some(path))
-                .map(|cache| engine_config.cache(Some(cache)))
-                .map_err(|err| {
-                    tracing::error!("Failed to load cache from file: {}", err);
-                    err
-                })?;
+            Cache::from_file(Some(path)).map(|cache| engine_config.cache(Some(cache)))?;
         } else {
             // try to load the default cache
-            Cache::from_file(None)
-                .map(|cache| engine_config.cache(Some(cache)))
-                .map_err(|err| {
-                    tracing::error!("Failed to load default cache: {}", err);
-                    err
-                })?;
+            Cache::new(CacheConfig::default()).map(|cache| engine_config.cache(Some(cache)))?;
         }
 
         let engine = Engine::new(&engine_config)?;
