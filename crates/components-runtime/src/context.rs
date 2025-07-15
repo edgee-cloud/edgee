@@ -6,7 +6,7 @@ use crate::data_collection::versions::v1_0_0::pre_instanciate_data_collection_co
 use crate::data_collection::versions::v1_0_1::data_collection::DataCollectionV101Pre;
 use crate::data_collection::versions::v1_0_1::pre_instanciate_data_collection_component_1_0_1;
 use crate::data_collection::versions::DataCollectionWitVersion;
-use wasmtime::{Cache, CacheConfig, Engine, Store};
+use wasmtime::{Cache, Engine, Store};
 use wasmtime_wasi::p2::{IoView, WasiCtx, WasiView};
 use wasmtime_wasi::ResourceTable;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
