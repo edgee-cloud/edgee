@@ -26,7 +26,7 @@ pub(crate) fn instanciate_component(
         }
     }
 
-    tracing::debug!("Creating component from file: {}", file);
+    tracing::debug!("Creating component from file: {file}");
     // Fall back to loading the component from a file
-    Component::from_file(engine, &file)
+    Component::from_file(engine, file)
 }
