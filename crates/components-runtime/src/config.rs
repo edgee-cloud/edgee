@@ -61,10 +61,8 @@ impl Default for DataCollectionComponentSettings {
 
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct ComponentSource {
-    pub binary: Option<Vec<u8>>,
     pub file: String,
     pub serialized_file: Option<String>,
-    pub serialized_binary: Option<Vec<u8>>,
 }
 
 #[derive(Deserialize, Debug, Default, Clone)]
