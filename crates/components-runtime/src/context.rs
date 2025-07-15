@@ -36,11 +36,13 @@ impl ComponentsContext {
             .wasm_component_model(true)
             .async_support(true);
 
-        if let Some(path) = config.cache.as_deref() {
-            Cache::from_file(Some(path)).map(|cache| engine_config.cache(Some(cache)))?;
-        } else {
-            // try to load the default cache
-            Cache::new(CacheConfig::default()).map(|cache| engine_config.cache(Some(cache)))?;
+        match Cache::from_file(config.cache.as_deref())
+            .map(|cache| engine_config.cache(Some(cache)))
+        {
+            Ok(_) => {}
+            Err(e) => {
+                tracing::warn!("Failed to load cache: {e}");
+            }
         }
 
         let engine = Engine::new(&engine_config)?;
