@@ -22,7 +22,7 @@ pub fn pre_instanciate_edge_function_component_1_0_0(
     component_config: &EdgeFunctionComponents,
 ) -> anyhow::Result<EdgeFunctionV100Pre<HostState>> {
     let mut linker = Linker::new(engine);
-    wasmtime_wasi::add_to_linker_async(&mut linker)?;
+    wasmtime_wasi::p2::add_to_linker_async(&mut linker)?;
     wasmtime_wasi_http::add_only_http_to_linker_async(&mut linker)?;
     let span = tracing::info_span!("component-context", component = %component_config.id, category = "edge-function");
     let _span = span.enter();
@@ -30,8 +30,11 @@ pub fn pre_instanciate_edge_function_component_1_0_0(
     tracing::debug!("Start pre-instantiate edge-function component");
 
     let start = std::time::Instant::now();
-    let component =
-        crate::helpers::instanciate_component(engine, &component_config.component_source)?;
+    let component = crate::helpers::instanciate_component(
+        engine,
+        &component_config.file,
+        &component_config.serialized_file,
+    )?;
     println!(
         "Component {} loaded successfully is in {} ms",
         component_config.id,

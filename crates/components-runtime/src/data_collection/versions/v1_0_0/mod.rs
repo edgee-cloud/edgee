@@ -24,7 +24,7 @@ pub fn pre_instanciate_data_collection_component_1_0_0(
     component_config: &DataCollectionComponents,
 ) -> anyhow::Result<DataCollectionV100Pre<HostState>> {
     let mut linker = Linker::new(engine);
-    wasmtime_wasi::add_to_linker_async(&mut linker)?;
+    wasmtime_wasi::p2::add_to_linker_async(&mut linker)?;
 
     let span = tracing::info_span!("component-context", component = %component_config.id, category = "data-collection");
     let _span = span.enter();
