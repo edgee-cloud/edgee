@@ -68,6 +68,9 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
 
     let manifest = Manifest::load(&manifest_path)?;
 
+    let root_dir = manifest_path.parent().expect("project root directory");
+    crate::commands::components::build::do_build(&manifest, root_dir).await?;
+
     match manifest.component.category {
         edgee_api_client::types::ComponentCreateInputCategory::DataCollection => {
             match manifest.component.wit_version.as_str() {
