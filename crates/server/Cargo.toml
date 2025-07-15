@@ -29,7 +29,6 @@ hyper-rustls = { workspace = true, features = ["ring", "http2"] }
 hyper-util = { workspace = true, features = ["server", "service", "tokio", "http1", "http2"] }
 ipnetwork.workspace = true
 json_comments.workspace = true
-json_pretty.workspace = true
 lazy_static.workspace = true
 lol_html.workspace = true
 pin-project.workspace = true

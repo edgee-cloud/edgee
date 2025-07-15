@@ -17,7 +17,6 @@ chrono = { workspace = true, features = ["serde"] }
 cookie = { workspace = true, features = ["percent-encode"] }
 dirs.workspace = true
 easy-ext.workspace = true
-futures.workspace = true
 progenitor.workspace = true
 progenitor-client.workspace = true
 reqwest = { workspace = true, features = ["json"] }
