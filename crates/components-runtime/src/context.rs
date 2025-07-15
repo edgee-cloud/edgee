@@ -91,6 +91,42 @@ impl ComponentsContext {
     pub fn empty_store_with_stdout(&self) -> Store<HostState> {
         Store::new(&self.engine, HostState::new_with_stdout())
     }
+
+    pub fn serialize_component(
+        &self,
+        component_path: &str,
+        component_type: &str,
+        component_wit_version: &str,
+    ) -> anyhow::Result<Vec<u8>> {
+        let component = match component_type {
+            "data-collection" => match component_wit_version {
+                "1.0.0" => self
+                    .components
+                    .data_collection_1_0_0
+                    .get(component_path)
+                    .map(|c| c.instance_pre().component())
+                    .ok_or_else(|| anyhow::anyhow!("Component {} not found", component_path))?,
+                "1.0.1" => self
+                    .components
+                    .data_collection_1_0_1
+                    .get(component_path)
+                    .map(|c| c.instance_pre().component())
+                    .ok_or_else(|| anyhow::anyhow!("Component {} not found", component_path))?,
+                _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
+            },
+            "edge-function" => match component_wit_version {
+                "1.0.0" => self
+                    .components
+                    .edge_function_1_0_0
+                    .get(component_path)
+                    .map(|c| c.instance_pre().component())
+                    .ok_or_else(|| anyhow::anyhow!("Component {} not found", component_path))?,
+                _ => anyhow::bail!("Invalid WIT version: {}", component_wit_version),
+            },
+            _ => anyhow::bail!("Invalid component type: {}", component_type),
+        };
+        component.serialize()
+    }
 }
 
 pub struct HostState {

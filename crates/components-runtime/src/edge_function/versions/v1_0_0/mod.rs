@@ -1,8 +1,5 @@
 use crate::{config::EdgeFunctionComponents, context::ComponentsContext};
-use wasmtime::{
-    component::{Component, Linker},
-    Engine, Store,
-};
+use wasmtime::{component::Linker, Engine, Store};
 
 use crate::context::HostState;
 use crate::edge_function::versions::v1_0_0::edge_function::EdgeFunctionV100;
@@ -32,36 +29,22 @@ pub fn pre_instanciate_edge_function_component_1_0_0(
 
     tracing::debug!("Start pre-instantiate edge-function component");
 
-    // try to load from serialized file if available
-    let component = component_config
-        .serialized_file
-        .as_ref()
-        .and_then(|serialized_file| {
-            tracing::debug!(
-                "Loading edge-function component from serialized file: {}",
-                serialized_file
-            );
-            unsafe {
-                // unsafe function to deserialize the component
-                // this should only be used if the serialized file is trusted
-                Component::deserialize(engine, serialized_file)
-            }
-            .ok()
-        })
-        .map(Ok)
-        .unwrap_or_else(|| {
-            tracing::debug!(
-                "Loading edge-function component from file: {}",
-                component_config.file
-            );
-            Component::from_file(engine, &component_config.file)
-        })
-        .map_err(|err| {
-            tracing::error!("Failed to load edge-function component: {}", err);
-            anyhow::anyhow!("Failed to load edge-function component: {}", err)
-        })?;
+    let start = std::time::Instant::now();
+    let component =
+        crate::helpers::instanciate_component(engine, &component_config.component_source)?;
+    println!(
+        "Component {} loaded successfully is in {} ms",
+        component_config.id,
+        start.elapsed().as_millis()
+    );
 
+    let start = std::time::Instant::now();
     let instance_pre = linker.instantiate_pre(&component)?;
+    println!(
+        "Component {} instantiated successfully in {} ms",
+        component_config.id,
+        start.elapsed().as_millis()
+    );
     let instance_pre = EdgeFunctionV100Pre::new(instance_pre)?;
     tracing::debug!("Finished pre-instantiate edge-function component");
 
@@ -69,15 +52,6 @@ pub fn pre_instanciate_edge_function_component_1_0_0(
 }
 
 impl ComponentsContext {
-    pub fn serialize_edge_function_1_0_0(&self, id: &str) -> anyhow::Result<Vec<u8>> {
-        let instance_pre = self.components.edge_function_1_0_0.get(id);
-
-        match instance_pre {
-            Some(instance) => Ok(instance.instance_pre().component().serialize()?),
-            None => Err(anyhow::anyhow!("component not found: {}", id)),
-        }
-    }
-
     pub async fn get_edge_function_1_0_0_instance(
         &self,
         id: &str,
