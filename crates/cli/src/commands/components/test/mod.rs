@@ -41,6 +41,10 @@ setup_command! { /// Comma-separated key=value pairs for settings
     /// The port to run the HTTP server on
     #[arg(long = "port", default_value = "8080")]
     port: u16,
+
+    /// When enabled, the component is automatically rebuilt when the source code changes
+    #[arg(long = "watch", default_value = "false")]
+    watch: bool,
 }
 
 fn parse_settings(settings_str: &str) -> Result<HashMap<String, String>, String> {

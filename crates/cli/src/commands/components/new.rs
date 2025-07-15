@@ -74,7 +74,7 @@ pub async fn run(opts: Options) -> anyhow::Result<()> {
     {
         Some(category) => CATEGORY_OPTIONS
             .iter()
-            .find(|c| c.name.to_lowercase() == category.to_lowercase())
+            .find(|c| c.wit_world.to_lowercase() == category.to_lowercase())
             .cloned()
             .unwrap_or_else(|| {
                 tracing::info!(
