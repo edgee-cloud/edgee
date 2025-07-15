@@ -28,6 +28,7 @@ ipnetwork.workspace = true
 indexmap.workspace = true
 inquire = { workspace = true, features = ["editor"] }
 miette = { workspace = true, features = ["fancy"] }
+notify.workspace = true
 open.workspace = true
 openssl.workspace = true
 os_info.workspace = true

@@ -41,15 +41,6 @@ pub fn pre_instanciate_data_collection_component_1_0_0(
 }
 
 impl ComponentsContext {
-    pub fn serialize_data_collection_1_0_0(&self, id: &str) -> anyhow::Result<Vec<u8>> {
-        let instance_pre = self.components.data_collection_1_0_0.get(id);
-
-        match instance_pre {
-            Some(instance) => Ok(instance.instance_pre().component().serialize()?),
-            None => Err(anyhow::anyhow!("component not found: {}", id)),
-        }
-    }
-
     pub fn pre_instanciate_data_collection_1_0_0_component(
         &self,
         component_config: DataCollectionComponents,
