@@ -142,10 +142,7 @@ pub async fn test_edge_function_component(
     let config = ComponentsConfiguration {
         edge_function: vec![EdgeFunctionComponents {
             id: "component".to_string(),
-            component_source: edgee_components_runtime::config::ComponentSource {
-                file: component_path,
-                ..Default::default()
-            },
+            file: component_path,
             wit_version: EdgeFunctionWitVersion::V1_0_0,
             settings: settings_map,
             ..Default::default()

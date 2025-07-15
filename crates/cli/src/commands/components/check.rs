@@ -1,5 +1,5 @@
 use colored::Colorize;
-use edgee_components_runtime::config::{ComponentSource, EdgeFunctionComponents};
+use edgee_components_runtime::config::EdgeFunctionComponents;
 
 setup_command! {
     #[arg(long = "filename")]
@@ -57,10 +57,7 @@ pub async fn check_component(
                 edge_function: vec![EdgeFunctionComponents{
                     id: component_path.to_string(),
                     wit_version: edgee_components_runtime::edge_function::versions::EdgeFunctionWitVersion::V1_0_0,
-                    component_source: ComponentSource {
-                        file: component_path.to_string(),
-                        ..Default::default()
-                    },
+                    file: component_path.to_string(),
                     ..Default::default()
                 }],
                 ..Default::default()

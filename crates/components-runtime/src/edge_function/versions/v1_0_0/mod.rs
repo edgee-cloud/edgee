@@ -30,8 +30,11 @@ pub fn pre_instanciate_edge_function_component_1_0_0(
     tracing::debug!("Start pre-instantiate edge-function component");
 
     let start = std::time::Instant::now();
-    let component =
-        crate::helpers::instanciate_component(engine, &component_config.component_source)?;
+    let component = crate::helpers::instanciate_component(
+        engine,
+        &component_config.file,
+        &component_config.serialized_file,
+    )?;
     println!(
         "Component {} loaded successfully is in {} ms",
         component_config.id,

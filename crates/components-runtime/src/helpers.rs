@@ -1,13 +1,13 @@
-use crate::config::ComponentSource;
 use wasmtime::component::Component;
 use wasmtime::Engine;
 
 pub(crate) fn instanciate_component(
     engine: &Engine,
-    component_source: &ComponentSource,
+    file: &String,
+    serialized_file: &Option<String>,
 ) -> anyhow::Result<Component> {
     // Attempt to deserialize from a serialized file if available
-    if let Some(serialized_file) = &component_source.serialized_file {
+    if let Some(serialized_file) = &serialized_file {
         tracing::debug!("Deserializing component from serialized file: {serialized_file}");
         if let Ok(bytes) = std::fs::read(serialized_file) {
             match unsafe {
@@ -26,7 +26,7 @@ pub(crate) fn instanciate_component(
         }
     }
 
-    tracing::debug!("Creating component from file: {}", component_source.file);
+    tracing::debug!("Creating component from file: {}", file);
     // Fall back to loading the component from a file
-    Component::from_file(engine, &component_source.file)
+    Component::from_file(engine, &file)
 }
