@@ -298,10 +298,20 @@ fn inject_sdk(body: &mut String, hostname: &str) {
                 }),
                 // add sdk to the head
                 element!("head", |el| {
-                    el.append(
-                        &format!(r#"<script id="__EDGEE_SDK__" async src="https://{hostname}/_edgee/sdk.js"></script>"#),
-                        ContentType::Html,
-                    );
+                    match config::get().compute.inject_sdk_position.as_str() {
+                        "prepend" => {
+                            el.prepend(
+                                &format!(r#"<script id="__EDGEE_SDK__" async src="https://{hostname}/_edgee/sdk.js"></script>"#),
+                                ContentType::Html,
+                            );
+                        }
+                        _ => {
+                            el.append(
+                                &format!(r#"<script id="__EDGEE_SDK__" async src="https://{hostname}/_edgee/sdk.js"></script>"#),
+                                ContentType::Html,
+                            );
+                        }
+                    }
                     Ok(())
                 }),
             ],
