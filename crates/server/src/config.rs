@@ -39,6 +39,7 @@ fn default_compute_config() -> ComputeConfiguration {
         proxy_only: false,
         enforce_no_store_policy: false,
         inject_sdk: false,
+        inject_sdk_position: "append".to_string(),
         autocapture: Autocapture::default(),
     }
 }
@@ -193,6 +194,8 @@ pub struct ComputeConfiguration {
     pub enforce_no_store_policy: bool,
     #[serde(default)]
     pub inject_sdk: bool,
+    #[serde(default)]
+    pub inject_sdk_position: String,
     #[serde(default)]
     pub autocapture: Autocapture,
 }
