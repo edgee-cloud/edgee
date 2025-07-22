@@ -2918,6 +2918,12 @@
             },
             "description": "List of cache rules that override the default cache settings."
           },
+          "override_cache_enabled": {
+            "type": "boolean",
+            "description": "Whether the cache override is enabled.",
+            "default": false,
+            "nullable": true
+          },
           "cookie_name": {
             "type": "string",
             "description": "The name of the cookie that edgee will use to store the session ID.",
@@ -2935,11 +2941,65 @@
             "default": false,
             "nullable": true
           },
+          "proxy_only_path_regex": {
+            "type": "string",
+            "description": "A regular expression that matches the path of the request to be proxied only.",
+            "nullable": true
+          },
           "inject_sdk": {
             "type": "boolean",
             "description": "Whether Edgee should inject the SDK into the html content.",
             "default": false,
             "nullable": true
+          },
+          "inject_sdk_position": {
+            "type": "string",
+            "description": "The position of the SDK injection.",
+            "enum": ["prepend", "append"],
+            "default": "append",
+            "nullable": true
+          },
+          "cookieless": {
+            "type": "boolean",
+            "description": "Whether the Edgee should use a cookieless session.",
+            "default": false,
+            "nullable": true
+          },
+          "autocapture": {
+            "type": "object",
+            "description": "Configuration for automatic event capture by the Edgee SDK.",
+            "properties": {
+              "pageview": {
+                "type": "boolean",
+                "description": "Whether to automatically capture pageview events",
+                "default": false
+              },
+              "spa_pageview": {
+                "type": "boolean", 
+                "description": "Whether to automatically capture single page app pageview events",
+                "default": false
+              },
+              "engagement": {
+                "type": "boolean",
+                "description": "Whether to automatically capture engagement events",
+                "default": false
+              },
+              "click": {
+                "type": "boolean",
+                "description": "Whether to automatically capture click events",
+                "default": false
+              },
+              "form": {
+                "type": "boolean",
+                "description": "Whether to automatically capture form events",
+                "default": false
+              },
+              "scroll": {
+                "type": "boolean",
+                "description": "Whether to automatically capture scroll events",
+                "default": false
+              }
+            }
           },
           "enforce_no_store_policy": {
             "type": "boolean",
@@ -2995,6 +3055,21 @@
             },
             "description": "List of headers that are forwarded to the origin.",
             "default": [],
+            "nullable": true
+          },
+          "rate_limiting": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RateLimitingRule"
+            },
+            "description": "List of rate limiting rules for the project.",
+            "default": [],
+            "nullable": true
+          },
+          "rate_limiting_enabled": {
+            "type": "boolean",
+            "description": "Whether rate limiting is enabled for the project.",
+            "default": false,
             "nullable": true
           }
         }
@@ -3103,6 +3178,83 @@
             }
           }
         }
+      },
+      "RateLimitingRule": {
+        "type": "object",
+        "description": "A RateLimitingRule defines a rate limiting rule for the project.",
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "description": "The rank of the rule. Rules are evaluated in order of rank (lowest first).",
+            "minimum": 1
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum requests per second within the rate window.",
+            "minimum": 1
+          },
+          "window": {
+            "type": "string",
+            "description": "Rate window for counting requests.",
+            "enum": ["1s", "10s", "60s"],
+            "default": "10s"
+          },
+          "block_duration": {
+            "type": "integer",
+            "description": "Duration to block the client if rate limit is exceeded (in seconds).",
+            "minimum": 1,
+            "default": 60
+          },
+          "key": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["ip", "ua"]
+            },
+            "description": "Criteria to include in the client key for rate limiting.",
+            "default": ["ip"]
+          },
+          "conditions": {
+            "type": "object",
+            "description": "Conditions that must be met for this rule to apply.",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Path pattern to match. Can be exact path or regex pattern."
+              },
+              "regex": {
+                "type": "boolean",
+                "description": "Whether the path is a regex pattern.",
+                "default": false
+              },
+              "method": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE"]
+                },
+                "description": "HTTP methods that this rule applies to."
+              },
+              "continent": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["AF", "AN", "AS", "EU", "NA", "OC", "SA"]
+                },
+                "description": "Continents that this rule applies to."
+              },
+              "country": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{2}$"
+                },
+                "description": "Countries (ISO 3166-1 alpha-2 codes) that this rule applies to."
+              }
+            }
+          }
+        },
+        "required": ["rank", "limit"]
       },
       "KeyValueConditions": {
         "type": "object",
