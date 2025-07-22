@@ -1628,7 +1628,7 @@ checksum = "cc5d6d6a8504f8caedd7de14576464383900cd3840b7033a7a3dce5ac00121ca"
 
 [[package]]
 name = "edgee"
-version = "1.2.18"
+version = "1.2.19"
 dependencies = [
  "anyhow",
  "bon",
@@ -1675,7 +1675,7 @@ dependencies = [
 
 [[package]]
 name = "edgee-api-client"
-version = "1.2.18"
+version = "1.2.19"
 dependencies = [
  "anyhow",
  "bon",
@@ -1695,7 +1695,7 @@ dependencies = [
 
 [[package]]
 name = "edgee-components-runtime"
-version = "1.2.18"
+version = "1.2.19"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1730,7 +1730,7 @@ dependencies = [
 
 [[package]]
 name = "edgee-server"
-version = "1.2.18"
+version = "1.2.19"
 dependencies = [
  "addr",
  "aes",
