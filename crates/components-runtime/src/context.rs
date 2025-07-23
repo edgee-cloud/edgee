@@ -164,6 +164,7 @@ impl WasiHttpView for HostState {
         mut request: hyper::Request<wasmtime_wasi_http::body::HyperOutgoingBody>,
         config: wasmtime_wasi_http::types::OutgoingRequestConfig,
     ) -> wasmtime_wasi_http::HttpResult<wasmtime_wasi_http::types::HostFutureIncomingResponse> {
+        tracing::info!("Sending outbound http request: {:?}", request);
         request.headers_mut().insert(
             "x-edgee-component-request",
             HeaderValue::from_static("true"),
