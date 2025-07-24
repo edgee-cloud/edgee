@@ -6,6 +6,7 @@ use crate::data_collection::versions::v1_0_0::pre_instanciate_data_collection_co
 use crate::data_collection::versions::v1_0_1::data_collection::DataCollectionV101Pre;
 use crate::data_collection::versions::v1_0_1::pre_instanciate_data_collection_component_1_0_1;
 use crate::data_collection::versions::DataCollectionWitVersion;
+use http::HeaderValue;
 use wasmtime::{Cache, Engine, Store};
 use wasmtime_wasi::p2::{IoView, WasiCtx, WasiView};
 use wasmtime_wasi::ResourceTable;
@@ -157,6 +158,19 @@ impl HostState {
 impl WasiHttpView for HostState {
     fn ctx(&mut self) -> &mut WasiHttpCtx {
         &mut self.http
+    }
+    fn send_request(
+        &mut self,
+        mut request: hyper::Request<wasmtime_wasi_http::body::HyperOutgoingBody>,
+        config: wasmtime_wasi_http::types::OutgoingRequestConfig,
+    ) -> wasmtime_wasi_http::HttpResult<wasmtime_wasi_http::types::HostFutureIncomingResponse> {
+        tracing::info!("Sending outbound http request: {:?}", request);
+        request
+            .headers_mut()
+            .insert("x-edgee-component", HeaderValue::from_static("true"));
+        Ok(wasmtime_wasi_http::types::default_send_request(
+            request, config,
+        ))
     }
 }
 
