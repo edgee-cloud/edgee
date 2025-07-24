@@ -137,6 +137,7 @@ pub struct HostState {
     ctx: WasiCtx,
     table: ResourceTable,
     http: WasiHttpCtx,
+    component_id: Option<String>,
 }
 
 impl HostState {
@@ -149,9 +150,16 @@ impl HostState {
     }
 
     fn new_with_ctx(ctx: WasiCtx) -> Self {
-        let table = ResourceTable::new();
-        let http = WasiHttpCtx::new();
-        Self { ctx, table, http }
+        Self {
+            ctx,
+            table: ResourceTable::new(),
+            http: WasiHttpCtx::new(),
+            component_id: None,
+        }
+    }
+
+    pub fn set_component_id(&mut self, component_id: String) {
+        self.component_id = Some(component_id);
     }
 }
 
@@ -165,9 +173,12 @@ impl WasiHttpView for HostState {
         config: wasmtime_wasi_http::types::OutgoingRequestConfig,
     ) -> wasmtime_wasi_http::HttpResult<wasmtime_wasi_http::types::HostFutureIncomingResponse> {
         tracing::info!("Sending outbound http request: {:?}", request);
-        request
-            .headers_mut()
-            .insert("x-edgee-component", HeaderValue::from_static("true"));
+        if let Some(component_id) = &self.component_id {
+            request.headers_mut().insert(
+                "x-edgee-component-id",
+                HeaderValue::from_str(component_id).unwrap(),
+            );
+        }
         Ok(wasmtime_wasi_http::types::default_send_request(
             request, config,
         ))
