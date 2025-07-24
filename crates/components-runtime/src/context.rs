@@ -165,10 +165,9 @@ impl WasiHttpView for HostState {
         config: wasmtime_wasi_http::types::OutgoingRequestConfig,
     ) -> wasmtime_wasi_http::HttpResult<wasmtime_wasi_http::types::HostFutureIncomingResponse> {
         tracing::info!("Sending outbound http request: {:?}", request);
-        request.headers_mut().insert(
-            "x-edgee-component-request",
-            HeaderValue::from_static("true"),
-        );
+        request
+            .headers_mut()
+            .insert("x-edgee-component", HeaderValue::from_static("true"));
         Ok(wasmtime_wasi_http::types::default_send_request(
             request, config,
         ))
