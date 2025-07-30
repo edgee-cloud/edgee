@@ -1590,6 +1590,92 @@
         }
       }
     },
+    "/v1/projects/{id}/purge-cache": {
+      "post": {
+        "operationId": "purgeProjectCache",
+        "summary": "Purge cache for a project",
+        "description": "Purge the cache for a specific project. You can purge all cache or purge cache for a specific path. When purging by path, the cache for all domains associated with the project will be purged for that path.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The project ID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurgeCacheInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Cache purged successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Cache purged"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid input parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/components": {
       "get": {
         "operationId": "listPublicComponents",
@@ -3178,6 +3264,28 @@
             }
           }
         }
+      },
+      "PurgeCacheInput": {
+        "type": "object",
+        "description": "Input parameters for purging cache",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The project ID (required, must be a valid UUID)",
+            "format": "uuid"
+          },
+          "path": {
+            "type": "string",
+            "description": "Optional path to purge cache for. If not provided, all cache will be purged. Query strings are automatically removed from the path.",
+            "example": "/api/v1/users"
+          },
+          "override_cache": {
+            "type": "boolean",
+            "description": "Whether to purge override cache instead of main cache. Defaults to false.",
+            "default": false
+          }
+        },
+        "required": ["id"]
       },
       "RateLimitingRule": {
         "type": "object",
