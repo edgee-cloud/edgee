@@ -49,8 +49,7 @@ pub struct Component {
 pub enum Category {
     DataCollection,
     EdgeFunction,
-    SdkGateway,
-    Endpoint,
+    JsGateway,
     Security,
     ConsentManagement,
     Identity,

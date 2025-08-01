@@ -2709,7 +2709,7 @@
         "required": false,
         "schema": {
           "type": "string",
-          "enum": ["data_collection", "edge_function", "sdk_gateway", "endpoint", "security", "consent_management", "identity", "stitching"],
+          "enum": ["data_collection", "edge_function", "js_gateway", "security", "consent_management", "identity", "stitching"],
           "description": "Filter components by category."
         }
       },
@@ -3861,7 +3861,7 @@
           "category": {
             "type": "string",
             "description": "Category of the component.",
-            "enum": ["data_collection", "edge_function", "sdk_gateway", "endpoint", "security", "consent_management", "identity", "stitching"]
+            "enum": ["data_collection", "edge_function", "js_gateway", "security", "consent_management", "identity", "stitching"]
           },
           "subcategory": {
             "type": "string",
@@ -3978,7 +3978,7 @@
           "category": {
             "type": "string",
             "description": "Filter components by category.",
-            "enum": ["data_collection", "edge_function", "sdk_gateway", "endpoint", "security", "consent_management", "identity", "stitching"]
+            "enum": ["data_collection", "edge_function", "js_gateway", "security", "consent_management", "identity", "stitching"]
           },
           "subcategory": {
             "type": "string",
