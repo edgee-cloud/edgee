@@ -499,6 +499,8 @@ pub fn evaluate_string_filter(field_value: &str, operator: &str, condition_value
         "nin" => !condition_value.split(',').any(|v| v.trim() == field_value),
         "is_null" => field_value.is_empty(),
         "is_not_null" => !field_value.is_empty(),
+        "sw" => field_value.starts_with(condition_value),
+        "nsw" => !field_value.starts_with(condition_value),
         _ => {
             error!("Invalid operator: {}", operator);
             false
