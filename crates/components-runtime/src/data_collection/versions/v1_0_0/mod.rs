@@ -15,7 +15,12 @@ pub mod data_collection {
     wasmtime::component::bindgen!({
         world: "data-collection-v100",
         path: "src/data_collection/wit",
-        async: true,
+        imports: {
+            default: async | trappable,
+        },
+        exports: {
+            default: async | trappable,
+        },
     });
 }
 
