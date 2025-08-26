@@ -7,13 +7,28 @@ use crate::edge_function::versions::v1_0_0::edge_function::EdgeFunctionV100Pre;
 
 pub mod edge_function {
     wasmtime::component::bindgen!({
-        world: "edge-function-v100",
         path: "src/edge_function/wit",
-        async: true,
-        with: {
-            "wasi:http@0.2.0": wasmtime_wasi_http::bindings::http,
+        world: "edge-function-v100",
+        imports: {
+            default: tracing | trappable,
         },
-        trappable_imports: true,
+        exports: {
+            default: async,
+        },
+        require_store_data_send: true,
+        with: {
+            "wasi:http/types/outgoing-body": wasmtime_wasi_http::body::HostOutgoingBody,
+            "wasi:http/types/future-incoming-response": wasmtime_wasi_http::types::HostFutureIncomingResponse,
+            "wasi:http/types/outgoing-response": wasmtime_wasi_http::types::HostOutgoingResponse,
+            "wasi:http/types/future-trailers": wasmtime_wasi_http::body::HostFutureTrailers,
+            "wasi:http/types/incoming-body": wasmtime_wasi_http::body::HostIncomingBody,
+            "wasi:http/types/incoming-response": wasmtime_wasi_http::types::HostIncomingResponse,
+            "wasi:http/types/response-outparam": wasmtime_wasi_http::types::HostResponseOutparam,
+            "wasi:http/types/outgoing-request": wasmtime_wasi_http::types::HostOutgoingRequest,
+            "wasi:http/types/incoming-request": wasmtime_wasi_http::types::HostIncomingRequest,
+            "wasi:http/types/fields": wasmtime_wasi_http::types::HostFields,
+            "wasi:http/types/request-options": wasmtime_wasi_http::types::HostRequestOptions,
+        },
     });
 }
 
