@@ -68,7 +68,36 @@ pub async fn run(_opts: Options) -> anyhow::Result<()> {
             wit_version: component_category.latest_wit_world_version.to_string(),
             category: component_category.value,
             subcategory: component_subcategory.value,
-            description: Some("Description of\nthe component".to_string()),
+            description: Some(r#"
+            ## Overview
+
+            Describe **what this component does** and why it exists.
+
+            ---
+
+            ## ✨ Key Features & Benefits
+
+            ### Features
+
+            - **Feature 1**: Quick feature description.
+            - **Feature 2**: Quick feature description.
+
+            ### Benefits
+
+            - **Benefit 1**: Quick benefit description.
+            - **Benefit 2**: Quick benefit description.
+
+            ---
+
+            ## 🚀️ Use Cases
+
+            - **Use Case 1**: Quick use case description.
+            - **Use Case 2**: Quick use case description.
+
+            ---
+
+            Additional resources: [Resource example](https://your-resource-link.com)
+            "#.to_string()),
             documentation: Some(Url::parse("https://www.edgee.cloud/docs/introduction")?),
             repository: Some(Url::parse("https://www.github.com/edgee-cloud/edgee")?),
             settings: indexmap::indexmap! {
