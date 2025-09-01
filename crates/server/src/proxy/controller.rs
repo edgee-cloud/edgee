@@ -299,18 +299,14 @@ pub fn build_response(mut parts: http::response::Parts, body: Bytes) -> Response
 fn get_access_control_allow_origin(request: &RequestHandle) -> String {
     let mut access_control_allow_origin = "*".to_string();
 
-    let origin = request.get_header("Origin");
-    if origin.is_some() {
-        let url = Url::parse(origin.unwrap().as_str()).unwrap();
+    if let Some(origin) = request.get_header("Origin") {
+        let url = Url::parse(&origin).unwrap();
         access_control_allow_origin = format!("{}://{}", url.scheme(), url.host().unwrap());
     }
 
     if access_control_allow_origin == "*" {
-        let referer = request.get_header("Referer");
-
-        if referer.is_some() {
-            // get only the scheme and host
-            let url = Url::parse(referer.unwrap().as_str()).unwrap();
+        if let Some(referer) = request.get_header("Referer") {
+            let url = Url::parse(&referer).unwrap();
             access_control_allow_origin = format!("{}://{}", url.scheme(), url.host().unwrap());
         }
     }
