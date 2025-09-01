@@ -300,14 +300,16 @@ fn get_access_control_allow_origin(request: &RequestHandle) -> String {
     let mut access_control_allow_origin = "*".to_string();
 
     if let Some(origin) = request.get_header("Origin") {
-        let url = Url::parse(&origin).unwrap();
-        access_control_allow_origin = format!("{}://{}", url.scheme(), url.host().unwrap());
+        if let Ok(url) = Url::parse(&origin) {
+            access_control_allow_origin = format!("{}://{}", url.scheme(), url.host().unwrap());
+        }
     }
 
     if access_control_allow_origin == "*" {
         if let Some(referer) = request.get_header("Referer") {
-            let url = Url::parse(&referer).unwrap();
-            access_control_allow_origin = format!("{}://{}", url.scheme(), url.host().unwrap());
+            if let Ok(url) = Url::parse(&referer) {
+                access_control_allow_origin = format!("{}://{}", url.scheme(), url.host().unwrap());
+            }
         }
     }
 
