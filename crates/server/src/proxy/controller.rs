@@ -8,6 +8,7 @@ use http_body_util::combinators::BoxBody;
 use http_body_util::BodyExt;
 use http_body_util::{Empty, Full};
 use tracing::info;
+use url::Url;
 
 use super::compute::{self};
 use super::context::incoming::{IncomingContext, RequestHandle};
@@ -16,12 +17,30 @@ use crate::config;
 
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
-pub async fn edgee_client_event(ctx: IncomingContext) -> anyhow::Result<Response> {
-    let res = http::Response::builder()
+pub async fn edgee_client_event(
+    ctx: IncomingContext,
+    access_control_allow_credentials: bool,
+) -> anyhow::Result<Response> {
+    let access_control_allow_origin = if access_control_allow_credentials {
+        get_access_control_allow_origin(&ctx.get_request().clone())
+    } else {
+        "*".to_string()
+    };
+
+    let mut builder = http::Response::builder()
         .status(StatusCode::OK)
+        .header(
+            header::ACCESS_CONTROL_ALLOW_ORIGIN,
+            &access_control_allow_origin,
+        )
         .header(header::CONTENT_TYPE, "application/json")
-        .header(header::CACHE_CONTROL, "private, no-store")
-        .body(empty())?;
+        .header(header::CACHE_CONTROL, "private, no-store");
+
+    if access_control_allow_origin != "*" {
+        builder = builder.header(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
+    }
+
+    let res = builder.body(empty())?;
 
     let (mut response, _incoming) = res.into_parts();
     let request = &ctx.get_request().clone();
@@ -151,16 +170,35 @@ pub fn empty_json_response() -> anyhow::Result<Response> {
         .body(empty())?)
 }
 
-pub fn options(allow_methods: &str) -> anyhow::Result<Response> {
-    Ok(http::Response::builder()
+pub fn options(
+    ctx: IncomingContext,
+    allow_methods: &str,
+    access_control_allow_credentials: bool,
+) -> anyhow::Result<Response> {
+    let access_control_allow_origin = if access_control_allow_credentials {
+        get_access_control_allow_origin(&ctx.get_request().clone())
+    } else {
+        "*".to_string()
+    };
+
+    let mut builder = http::Response::builder()
         .status(StatusCode::NO_CONTENT)
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(
+            header::ACCESS_CONTROL_ALLOW_ORIGIN,
+            &access_control_allow_origin,
+        )
         .header(header::ACCESS_CONTROL_ALLOW_METHODS, allow_methods)
         .header(
             header::ACCESS_CONTROL_ALLOW_HEADERS,
             "Content-Type, Edgee-Debug, Authorization, X-Edgee-Client-Error",
         )
-        .header(header::ACCESS_CONTROL_MAX_AGE, "3600")
+        .header(header::ACCESS_CONTROL_MAX_AGE, "3600");
+
+    if access_control_allow_origin != "*" {
+        builder = builder.header(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
+    }
+
+    Ok(builder
         .body(empty())
         .expect("response builder should never fail"))
 }
@@ -256,4 +294,27 @@ pub fn build_response(mut parts: http::response::Parts, body: Bytes) -> Response
         .extension(parts.extensions)
         .body(Full::from(body).boxed())
         .unwrap()
+}
+
+fn get_access_control_allow_origin(request: &RequestHandle) -> String {
+    let mut access_control_allow_origin = "*".to_string();
+
+    if let Some(origin) = request.get_header("Origin") {
+        if origin == "null" {
+            return "null".to_string();
+        }
+        if let Ok(url) = Url::parse(&origin) {
+            access_control_allow_origin = format!("{}://{}", url.scheme(), url.host().unwrap());
+        }
+    }
+
+    if access_control_allow_origin == "*" {
+        if let Some(referer) = request.get_header("Referer") {
+            if let Ok(url) = Url::parse(&referer) {
+                access_control_allow_origin = format!("{}://{}", url.scheme(), url.host().unwrap());
+            }
+        }
+    }
+
+    access_control_allow_origin
 }

@@ -85,8 +85,11 @@ pub async fn handle_request(
             request.get_path(),
             timer_start.elapsed().as_millis()
         );
+        if request.get_method() == Method::OPTIONS {
+            return controller::options(ctx, "POST, OPTIONS", true);
+        }
         if is_request_post_json(request) {
-            return controller::edgee_client_event(ctx).await;
+            return controller::edgee_client_event(ctx, true).await;
         }
         return controller::empty_json_response();
     }
@@ -101,7 +104,7 @@ pub async fn handle_request(
             timer_start.elapsed().as_millis()
         );
         if request.get_method() == Method::OPTIONS {
-            return controller::options("POST, OPTIONS");
+            return controller::options(ctx, "POST, OPTIONS", false);
         }
         if is_request_post_json(request) {
             return controller::edgee_client_event_from_third_party_sdk(ctx).await;
@@ -120,7 +123,7 @@ pub async fn handle_request(
                     request.get_path(),
                     timer_start.elapsed().as_millis()
                 );
-                return controller::edgee_client_event(ctx).await;
+                return controller::edgee_client_event(ctx, false).await;
             }
         }
     }
