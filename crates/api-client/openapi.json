@@ -2896,6 +2896,12 @@
             "description": "Description of the project",
             "example": "This is my project"
           },
+          "type": {
+            "type": "string",
+            "description": "The type of the project.",
+            "enum": ["proxy", "ai_analytics", "mcp"],
+            "default": "proxy"
+          },
           "avatar_url": {
             "type": "string",
             "description": "Avatar URL of the project",
@@ -2946,6 +2952,12 @@
             "type": "string",
             "description": "Description of the project",
             "example": "This is my project"
+          },
+          "type": {
+            "type": "string",
+            "description": "The type of the project.",
+            "enum": ["proxy", "ai_analytics", "mcp"],
+            "default": "proxy"
           },
           "avatar_url": {
             "type": "string",
@@ -3178,7 +3190,7 @@
             "$ref": "#/components/schemas/ProjectBase"
           }
         ],
-        "required": ["organization_id", "slug"]
+        "required": ["organization_id", "slug", "type"]
       },
       "ProjectUpdateInput": {
         "type": "object",
