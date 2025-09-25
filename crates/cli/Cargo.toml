@@ -33,8 +33,8 @@ self_update.workspace = true
 sentry = { workspace = true, features = ["anyhow"] }
 sentry-anyhow.workspace = true
 serde = { workspace = true, features = ["derive"] }
-serde_yml.workspace = true
 serde_json.workspace = true
+serde_yaml_ng.workspace = true
 serial_test.workspace = true
 sha2.workspace = true
 slug.workspace = true

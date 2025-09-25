@@ -21,7 +21,7 @@ fn read_config(path: Option<&Path>) -> Result<StaticConfiguration, String> {
                     .map_err(|e| format!("should parse valid toml file: {e}"))
             }
             "yml" | "yaml" => {
-                return serde_yml::from_str(&config_data)
+                return serde_yaml_ng::from_str(&config_data)
                     .map_err(|e| format!("should parse valid yaml file: {e}"));
             }
             _ => return Err("provided configuration file has an unknown extension".to_string()),
@@ -41,7 +41,7 @@ fn read_config(path: Option<&Path>) -> Result<StaticConfiguration, String> {
         }
         (false, true) => {
             let config_file = std::fs::read_to_string(yaml_path).expect("should read edgee.yaml");
-            serde_yml::from_str(&config_file)
+            serde_yaml_ng::from_str(&config_file)
                 .map_err(|e| format!("should parse valid yaml file: {e}"))
         }
     }
