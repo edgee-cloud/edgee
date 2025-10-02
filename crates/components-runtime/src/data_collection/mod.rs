@@ -291,6 +291,31 @@ pub async fn send_events(
                 } else {
                     event.context.user.edgee_id = ctx.get_edgee_id().clone();
                 }
+
+                // Add Facebook cookies to user properties for WIT components access
+                if let Some(meta_capi_id) = ids.get("edgee/meta-capi") {
+                    // Parse composed string: "fbp=fbp_value;fbc=fbc_value" format
+                    for part in meta_capi_id.split(';') {
+                        println!("part: {:?}", part);
+                        if let Some((key, value)) = part.split_once('=') {
+                            match key {
+                                "fbp" => {
+                                    event.context.user.properties.insert(
+                                        "fbp".to_string(),
+                                        serde_json::Value::String(value.to_string()),
+                                    );
+                                }
+                                "fbc" => {
+                                    event.context.user.properties.insert(
+                                        "fbc".to_string(),
+                                        serde_json::Value::String(value.to_string()),
+                                    );
+                                }
+                                _ => {} // Ignore unknown keys
+                            }
+                        }
+                    }
+                }
             }
 
             // Add one second to the timestamp if uuid is not the same than the first event, to prevent duplicate sessions
