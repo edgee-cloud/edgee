@@ -296,7 +296,6 @@ pub async fn send_events(
                 if let Some(meta_capi_id) = ids.get("edgee/meta-capi") {
                     // Parse composed string: "fbp=fbp_value;fbc=fbc_value" format
                     for part in meta_capi_id.split(';') {
-                        println!("part: {:?}", part);
                         if let Some((key, value)) = part.split_once('=') {
                             match key {
                                 "fbp" => {
