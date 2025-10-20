@@ -5,6 +5,7 @@ pub mod logger;
 pub mod payload;
 pub mod versions;
 
+use payload::Data;
 use std::str::FromStr;
 use std::time::Duration;
 use url::Url;
@@ -270,9 +271,26 @@ pub async fn send_events(
             );
 
             if anonymization {
+                // anonymize the ip
                 event.context.client.ip = ctx.get_ip_anonymized().clone();
+
+                // TODO: optionally remove query params from the url
+                // event.context.page.url = event
+                //     .context
+                //     .page
+                //     .url
+                //     .split('?')
+                //     .next()
+                //     .unwrap_or(&event.context.page.url)
+                //     .to_string();
+
+                // remove search
                 event.context.page.search = "".to_string();
+
+                // remove referrer
                 event.context.page.referrer = "".to_string();
+
+                // remove campaign data
                 event.context.campaign.medium = "".to_string();
                 event.context.campaign.name = "".to_string();
                 event.context.campaign.source = "".to_string();
@@ -280,6 +298,17 @@ pub async fn send_events(
                 event.context.campaign.creative_format = "".to_string();
                 event.context.campaign.marketing_tactic = "".to_string();
                 event.context.campaign.term = "".to_string();
+
+                // TODO: optionally remove query params from the url
+                // if event.event_type is page, remove the page_search and page_referrer
+                // if event.event_type == EventType::Page {
+                //     if let Data::Page(page) = &mut event.data {
+                //         // remove query params from the url
+                //         page.url = page.url.split('?').next().unwrap_or(&page.url).to_string();
+                //         page.search = "".to_string();
+                //         page.referrer = "".to_string();
+                //     }
+                // }
             } else {
                 event.context.client.ip = ctx.get_ip().clone();
             }
@@ -537,16 +566,12 @@ pub fn insert_expected_headers(
         );
     }
 
-    // Insert referrer in the referer header like an analytics client-side collect does
-    if !event.context.page.url.is_empty() {
-        let document_location = format!(
-            "{}{}",
-            event.context.page.url.clone(),
-            event.context.page.search.clone()
-        );
+    // Insert referrer in the referer header like an analytics client-side collect does 
+    // (but without query string to avoid privacy issues)
+    if let Ok(url) = get_url_without_query_string(&event.context.page.url) {
         headers.insert(
             header::REFERER,
-            HeaderValue::from_str(document_location.as_str())?,
+            HeaderValue::from_str(url.as_str())?,
         );
     }
 
@@ -610,6 +635,25 @@ pub fn get_origin_from_url(url: &str) -> Result<String, anyhow::Error> {
     Ok(format!("{scheme}://{host}"))
 }
 
+/// Extracts the URL without query string from a URL string.
+///
+/// For example, given "https://www.example.com/test?query=test", this function returns "https://www.example.com/test".
+///
+/// # Arguments
+///
+/// * `url` - A string slice containing the URL to parse
+///
+/// # Returns
+///
+/// * `Result<String, anyhow::Error>` - The URL string without query string on success, or an error if URL parsing fails
+///
+pub fn get_url_without_query_string(url: &str) -> Result<String, anyhow::Error> {
+    let url = Url::parse(url)?;
+    let host = url.host().unwrap().to_string();
+    let scheme = url.scheme();
+    let path = url.path();
+    Ok(format!("{scheme}://{host}{path}"))
+}
 #[cfg(test)]
 mod tests {
     use super::*;
