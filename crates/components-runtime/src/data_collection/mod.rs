@@ -566,13 +566,10 @@ pub fn insert_expected_headers(
         );
     }
 
-    // Insert referrer in the referer header like an analytics client-side collect does 
+    // Insert referrer in the referer header like an analytics client-side collect does
     // (but without query string to avoid privacy issues)
     if let Ok(url) = get_url_without_query_string(&event.context.page.url) {
-        headers.insert(
-            header::REFERER,
-            HeaderValue::from_str(url.as_str())?,
-        );
+        headers.insert(header::REFERER, HeaderValue::from_str(url.as_str())?);
     }
 
     // Insert Accept-Language in the accept-language header
