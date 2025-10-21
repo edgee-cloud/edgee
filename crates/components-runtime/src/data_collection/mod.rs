@@ -5,7 +5,6 @@ pub mod logger;
 pub mod payload;
 pub mod versions;
 
-use payload::Data;
 use std::str::FromStr;
 use std::time::Duration;
 use url::Url;
