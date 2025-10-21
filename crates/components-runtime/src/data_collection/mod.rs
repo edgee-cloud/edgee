@@ -772,7 +772,7 @@ mod tests {
         );
         assert_eq!(
             headers.get("referer"),
-            Some(&HeaderValue::from_str("https://example.com?query=test").unwrap())
+            Some(&HeaderValue::from_str("https://example.com").unwrap())
         );
         assert_eq!(
             headers.get("sec-ch-ua"),
