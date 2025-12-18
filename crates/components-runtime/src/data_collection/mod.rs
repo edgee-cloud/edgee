@@ -626,7 +626,7 @@ pub fn insert_expected_headers(
 ///
 pub fn get_origin_from_url(url: &str) -> Result<String, anyhow::Error> {
     let url = Url::parse(url)?;
-    let host = url.host().unwrap().to_string();
+    let host = url.host_str().unwrap_or_default();
     let scheme = url.scheme();
     Ok(format!("{scheme}://{host}"))
 }
@@ -645,7 +645,7 @@ pub fn get_origin_from_url(url: &str) -> Result<String, anyhow::Error> {
 ///
 pub fn get_url_without_query_string(url: &str) -> Result<String, anyhow::Error> {
     let url = Url::parse(url)?;
-    let host = url.host().unwrap().to_string();
+    let host = url.host_str().unwrap_or_default();
     let scheme = url.scheme();
     let path = url.path();
     Ok(format!("{scheme}://{host}{path}"))
