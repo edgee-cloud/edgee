@@ -1,6 +1,6 @@
 [package]
-name = "edgee-server"
-description = "The full-stack edge platform for your edge oriented applications (server part)"
+name = "edgee-proxy"
+description = "Edgee proxy"
 version.workspace = true
 authors.workspace = true
 license.workspace = true

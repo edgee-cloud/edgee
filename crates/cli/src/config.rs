@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use edgee_server::config::StaticConfiguration;
+use edgee_proxy::config::StaticConfiguration;
 
 fn read_config(path: Option<&Path>) -> Result<StaticConfiguration, String> {
     let toml_path = Path::new("edgee.toml");
@@ -55,7 +55,7 @@ pub fn init(config_path: Option<&Path>, trace_component: Option<&str>) {
         config.log.trace_component = Some(component.to_string());
     }
 
-    edgee_server::config::set(config);
+    edgee_proxy::config::set(config);
 }
 #[cfg(test)]
 mod tests {
@@ -243,7 +243,7 @@ mod tests {
         let toml_path = create_temp_file(&dir, "edgee.toml", toml_content);
 
         init(Some(&toml_path), Some("component"));
-        let config = edgee_server::config::get();
+        let config = edgee_proxy::config::get();
         assert_eq!(config.log.level.to_string(), "info");
         assert_eq!(config.log.trace_component, Some("component".to_string()));
     }
