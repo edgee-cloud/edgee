@@ -1611,7 +1611,7 @@ checksum = "cc5d6d6a8504f8caedd7de14576464383900cd3840b7033a7a3dce5ac00121ca"
 
 [[package]]
 name = "edgee"
-version = "1.2.27"
+version = "1.3.0"
 dependencies = [
  "anyhow",
  "bon",
@@ -1658,7 +1658,7 @@ dependencies = [
 
 [[package]]
 name = "edgee-api-client"
-version = "1.2.27"
+version = "1.3.0"
 dependencies = [
  "anyhow",
  "bon",
@@ -1714,7 +1714,7 @@ dependencies = [
 
 [[package]]
 name = "edgee-proxy"
-version = "1.2.27"
+version = "1.3.0"
 dependencies = [
  "addr",
  "aes",
