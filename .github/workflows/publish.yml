@@ -6,6 +6,8 @@ jobs:
   cratesio:
     name: Publish to crates.io
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -20,6 +22,8 @@ jobs:
           - os: ubuntu-latest
             platform: linux/amd64
     runs-on: ${{ matrix.platform.os }}
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
