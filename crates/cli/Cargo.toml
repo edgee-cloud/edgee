@@ -50,7 +50,7 @@ wit-deps.workspace = true
 zip.workspace = true
 
 edgee-api-client.workspace = true
-edgee-server.workspace = true
+edgee-proxy.workspace = true
 edgee-components-runtime.workspace = true
 chrono.workspace = true
 

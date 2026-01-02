@@ -1,6 +1,0 @@
-package edgee:native;
-
-world edge-function-v100 {
-   export wasi:http/incoming-handler@0.2.0;
-   import wasi:http/outgoing-handler@0.2.0;
-}

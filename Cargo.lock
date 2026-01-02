@@ -1623,7 +1623,7 @@ dependencies = [
  "dirs",
  "edgee-api-client",
  "edgee-components-runtime",
- "edgee-server",
+ "edgee-proxy",
  "http 1.4.0",
  "http-body-util",
  "hyper 1.8.1",
@@ -1679,17 +1679,17 @@ dependencies = [
 
 [[package]]
 name = "edgee-components-runtime"
-version = "1.2.27"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "556345174755a6e6e17aa3a2c5be827945b0b5401ac3ca1c7372838ca9d1191e"
 dependencies = [
  "anyhow",
  "bytes",
- "cargo-llvm-cov",
  "chrono",
  "http 1.4.0",
  "http-body-util",
  "hyper 1.8.1",
  "json_pretty",
- "pretty_assertions",
  "regex",
  "reqwest 0.12.28",
  "serde",
@@ -1713,7 +1713,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "edgee-server"
+name = "edgee-proxy"
 version = "1.2.27"
 dependencies = [
  "addr",
