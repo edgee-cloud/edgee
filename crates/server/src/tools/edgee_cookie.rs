@@ -401,7 +401,7 @@ fn set_cookie(name: &str, value: &str, response: &mut Parts, host: &str) {
 /// # Errors
 ///
 /// This function will return the original host string if the `addr::parse_domain_name` function fails to parse the domain.
-fn get_root_domain(host: &str) -> String {
+pub fn get_root_domain(host: &str) -> String {
     // Attempt to parse the domain name from the host string
     let domain_result = addr::parse_domain_name(host);
     match domain_result {
