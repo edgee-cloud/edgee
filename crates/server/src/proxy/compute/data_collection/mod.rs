@@ -53,10 +53,13 @@ pub async fn process_from_html(
         let stripped_data_layer = StripComments::new(json_data_layer.as_bytes());
         // populate the edgee data_layer from the json
         let payload_result = parse_payload(stripped_data_layer);
-        if payload_result.is_err() {
-            warn!("Error parsing json payload: {:?}", payload_result.err());
-        } else {
-            payload = payload_result.unwrap();
+        match payload_result {
+            Err(e) => {
+                warn!("Error parsing json payload: {:?}", e);
+            }
+            Ok(p) => {
+                payload = p;
+            }
         }
     }
 

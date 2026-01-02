@@ -115,7 +115,7 @@ pub async fn handle_request(
     // event by Authorization header
     if is_request_post_json(request) {
         if let Some(authorization) = request.get_header(header::AUTHORIZATION) {
-            if edgee_sdk::token::validate(request.get_host().as_str(), &authorization) {
+            if edgee_dc_sdk::token::validate(request.get_host().as_str(), &authorization) {
                 info!(
                     "200 - {} {}{} - {}ms",
                     request.get_method(),

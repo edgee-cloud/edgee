@@ -1,4 +1,4 @@
-use crate::config;
+use crate::{config, tools};
 
 #[derive(Debug, Default)]
 pub struct Document {
@@ -170,11 +170,18 @@ pub fn parse_html(html: &str, host: &str) -> Document {
 
                         // if inline is true, then we need to inline the SDK
                         if let (true, Some(sdk_url)) = (inline, &builder.sdk_src) {
-                            if let Ok(inlined_sdk) = edgee_sdk::get_sdk(
+                            let cookie_domain = config::get()
+                                .compute
+                                .cookie_domain
+                                .clone()
+                                .unwrap_or_else(|| tools::edgee_cookie::get_root_domain(host));
+                            if let Ok(inlined_sdk) = edgee_dc_sdk::get_sdk(
                                 sdk_url,
                                 host,
                                 config::get().compute.autocapture.clone(),
                                 config::get().compute.cookie_name.clone().as_str(),
+                                cookie_domain.as_str(),
+                                None,
                             ) {
                                 set_document_field!(builder, inlined_sdk, inlined_sdk);
                             }

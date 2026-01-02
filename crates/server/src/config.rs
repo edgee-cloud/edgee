@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::sync::OnceLock;
 
 use edgee_components_runtime::config::ComponentsConfiguration;
-use edgee_sdk::Autocapture;
+use edgee_dc_sdk::Autocapture;
 use serde::Deserialize;
 use tracing::level_filters::LevelFilter;
 use tracing::warn;

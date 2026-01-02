@@ -13,7 +13,7 @@ use url::Url;
 use super::compute::{self};
 use super::context::incoming::{IncomingContext, RequestHandle};
 use super::context::redirection::RedirectionContext;
-use crate::config;
+use crate::{config, tools};
 
 type Response = http::Response<BoxBody<Bytes, Infallible>>;
 
@@ -138,16 +138,16 @@ pub async fn edgee_client_event_from_third_party_sdk(
             is_debug = true;
         }
 
-        if events.is_some() && is_debug {
-            return Ok(build_response(
-                response,
-                Bytes::from(format!(
-                    r#"{{"e":"{}", "u":"{}", "events":{}}}"#,
-                    cookie_encrypted,
-                    cookie_encrypted_u,
-                    events.unwrap()
-                )),
-            ));
+        if let Some(events_value) = events {
+            if is_debug {
+                return Ok(build_response(
+                    response,
+                    Bytes::from(format!(
+                        r#"{{"e":"{}", "u":"{}", "events":{}}}"#,
+                        cookie_encrypted, cookie_encrypted_u, events_value
+                    )),
+                ));
+            }
         }
         // set json body {e: cookie_encrypted}
 
@@ -230,11 +230,20 @@ pub fn build_redirection(associated_redirection: &RedirectionContext) -> anyhow:
 }
 
 pub fn sdk(ctx: IncomingContext) -> anyhow::Result<Response> {
-    if let Ok(mut inlined_sdk) = edgee_sdk::get_sdk(
+    let host = ctx.request.get_host().as_str();
+    let cookie_domain = config::get()
+        .compute
+        .cookie_domain
+        .clone()
+        .unwrap_or_else(|| tools::edgee_cookie::get_root_domain(host));
+
+    if let Ok(mut inlined_sdk) = edgee_dc_sdk::get_sdk(
         ctx.request.get_path().as_str(),
         ctx.request.get_host().as_str(),
         config::get().compute.autocapture.clone(),
         config::get().compute.cookie_name.clone().as_str(),
+        cookie_domain.as_str(),
+        None,
     ) {
         inlined_sdk = inlined_sdk.replace("{{side}}", "c");
         Ok(http::Response::builder()

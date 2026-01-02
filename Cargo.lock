@@ -1703,10 +1703,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "edgee-sdk"
-version = "1.8.3"
+name = "edgee-dc-sdk"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47e28a0fc6690ced3bd575ae63147da1118259e2171c6e42d7e95df147755399"
+checksum = "967cc1f88d856a83ccb1b9a8d32672014042ec0672d2a399c1359f96e7d34753"
 dependencies = [
  "md5",
  "serde",
@@ -1726,7 +1726,7 @@ dependencies = [
  "chrono",
  "cookie",
  "edgee-components-runtime",
- "edgee-sdk",
+ "edgee-dc-sdk",
  "futures",
  "hex",
  "html-escape",
