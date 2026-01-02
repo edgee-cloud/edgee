@@ -83,9 +83,9 @@ tracing-subscriber = "0.3.19"
 unicase = "2.8.1"
 url = "2.5.4"
 uuid = { version = "1.17.0", features = ["serde"] }
-wasmtime = "37.0.1"
-wasmtime-wasi = "37.0.1"
-wasmtime-wasi-http = "37.0.1"
+wasmtime = "37.0"
+wasmtime-wasi = "37.0"
+wasmtime-wasi-http = "37.0"
 wit-deps = "0.5.0"
 zip = "5.1.1"
 
