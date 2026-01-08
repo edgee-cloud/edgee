@@ -7,7 +7,7 @@ who are interested in making great software with us.
 At Edgee, we aspire to empower everyone to create interactive experiences. To do this, 
 we're exploring and pushing the boundaries of new technologies, and sharing our learnings with the open source community.
 
-If you have ideas for collaboration, email us at opensource@edgee.cloud or join our [Slack](https://www.edgee.cloud/slack)!
+If you have ideas for collaboration, email us at opensource@edgee.cloud or join our [Discord](https://www.edgee.cloud/discord)!
 
 We're also hiring full-time engineers to work with us everywhere! Check out our current job postings [here](https://github.com/edgee-cloud/careers/issues).
 
