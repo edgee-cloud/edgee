@@ -15,7 +15,7 @@
 
 [![Edgee](https://img.shields.io/badge/edgee-open%20source-blueviolet.svg)](https://www.edgee.cloud)
 [![Docker](https://img.shields.io/docker/v/edgeecloud/edgee.svg?logo=docker&label=docker&color=0db7ed)](https://hub.docker.com/r/edgeecloud/edgee)
-[![Edgee](https://img.shields.io/badge/slack-edgee-blueviolet.svg?logo=slack)](https://www.edgee.cloud/slack)
+[![Edgee](https://img.shields.io/badge/discord-edgee-blueviolet.svg?logo=discord)](https://www.edgee.cloud/discord)
 [![Docs](https://img.shields.io/badge/docs-published-blue)](https://www.edgee.cloud/docs/introduction)
 [![Coverage Status](https://coveralls.io/repos/github/edgee-cloud/edgee/badge.svg)](https://coveralls.io/github/edgee-cloud/edgee)
 
@@ -27,7 +27,7 @@
 [Website](https://www.edgee.cloud),
 [Roadmap](https://roadmap.edgee.cloud/roadmap/data-collection-components), and
 [Documentation](https://www.edgee.cloud/docs/introduction)
-- Edgee's [Community Slack](https://www.edgee.cloud/slack)
+- Edgee's [Community Discord](https://www.edgee.cloud/discord)
 - Edgee on [X](https://x.com/edgee_cloud) and [LinkedIn](https://www.linkedin.com/company/edgee-cloud/)
 
 
