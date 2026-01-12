@@ -1,6 +1,6 @@
 # Edgee Rust SDK
 
-A modern, idiomatic Rust SDK for the [Edgee AI Gateway](https://edgee.ai).
+A modern, idiomatic Rust SDK for the [Edgee AI Gateway](https://www.edgee.cloud).
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org)
@@ -22,7 +22,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-edgee = "0.1"
+edgee = "2.0"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -327,6 +327,6 @@ Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for detai
 
 ## Links
 
-- [Edgee AI Gateway](https://edgee.ai)
+- [Edgee AI Gateway](https://www.edgee.cloud)
 - [Documentation](https://docs.rs/edgee)
-- [GitHub Repository](https://github.com/edgee-cloud/edgee)
+- [GitHub Repositories](https://github.com/edgee-cloud)
