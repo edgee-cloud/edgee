@@ -277,15 +277,19 @@ mod tests {
 
     #[test]
     fn test_config_from_env() {
-        std::env::set_var("EDGEE_API_KEY", "test-key");
-        std::env::set_var("EDGEE_BASE_URL", "https://test.example.com");
+        unsafe {
+            std::env::set_var("EDGEE_API_KEY", "test-key");
+            std::env::set_var("EDGEE_BASE_URL", "https://test.example.com");
+        }
 
         let config = EdgeeConfig::from_env().unwrap();
         assert_eq!(config.api_key, "test-key");
         assert_eq!(config.base_url, "https://test.example.com");
 
-        std::env::remove_var("EDGEE_API_KEY");
-        std::env::remove_var("EDGEE_BASE_URL");
+        unsafe {
+            std::env::remove_var("EDGEE_API_KEY");
+            std::env::remove_var("EDGEE_BASE_URL");
+        }
     }
 
     #[test]
@@ -304,6 +308,9 @@ mod tests {
 
         let msg = Message::system("You are helpful");
         assert_eq!(msg.role, Role::System);
+
+        let msg = Message::developer("You are helpful");
+        assert_eq!(msg.role, Role::Developer);
 
         let msg = Message::assistant("Hi there");
         assert_eq!(msg.role, Role::Assistant);

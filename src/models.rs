@@ -42,6 +42,7 @@ impl EdgeeConfig {
 #[serde(rename_all = "lowercase")]
 pub enum Role {
     System,
+    Developer,
     User,
     Assistant,
     Tool,
@@ -80,6 +81,16 @@ impl Message {
     pub fn system(content: impl Into<String>) -> Self {
         Self {
             role: Role::System,
+            content: Some(content.into()),
+            tool_calls: None,
+            tool_call_id: None,
+        }
+    }
+
+    /// Create a developer message
+    pub fn developer(content: impl Into<String>) -> Self {
+        Self {
+            role: Role::Developer,
             content: Some(content.into()),
             tool_calls: None,
             tool_call_id: None,
