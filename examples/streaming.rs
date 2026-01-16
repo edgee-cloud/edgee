@@ -1,78 +1,46 @@
 //! Streaming example demonstrating real-time response processing
+//!
+//! This example shows how to:
+//! - Stream responses from a model in real-time
+//! - Process chunks as they arrive
+//! - Display text progressively (like a typing effect)
+//!
+//! Run with: cargo run --example streaming
 
-use edgee::{Edgee, Message};
+use edgee::{Edgee, EdgeeConfig};
 use tokio_stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Edgee::from_env()?;
+    // Create the Edgee client
+    let client = Edgee::new(EdgeeConfig::new("your-api-key"));
 
-    println!("=== Simple Streaming ===");
-    println!("Streaming response: ");
+    println!("Asking the model to count from 1 to 10...\n");
 
-    let mut stream = client.stream("gpt-4o", "Count from 1 to 10 slowly").await?;
+    // Start a streaming request
+    let mut stream = client.stream("devstral2", "Count from 1 to 10").await?;
 
+    // Process each chunk as it arrives
     while let Some(result) = stream.next().await {
         match result {
             Ok(chunk) => {
+                // Print each text chunk as it arrives (no newline, for typing effect)
                 if let Some(text) = chunk.text() {
                     print!("{}", text);
                     std::io::Write::flush(&mut std::io::stdout())?;
                 }
 
+                // Check if the stream is complete
                 if let Some(reason) = chunk.finish_reason() {
-                    println!("\n[Finish reason: {}]", reason);
+                    println!("\n\n[Stream finished: {}]", reason);
                 }
             }
             Err(e) => {
-                eprintln!("\nError: {}", e);
+                eprintln!("\nError during streaming: {}", e);
                 break;
             }
         }
     }
-
-    println!("\n");
-
-    println!("=== Streaming with System Message ===");
-    println!("Streaming response: ");
-
-    let messages = vec![
-        Message::system("You are a poetic assistant. Respond in haiku format."),
-        Message::user("Describe Rust programming language"),
-    ];
-
-    let mut stream = client.stream("gpt-4o", messages).await?;
-
-    while let Some(result) = stream.next().await {
-        match result {
-            Ok(chunk) => {
-                if let Some(text) = chunk.text() {
-                    print!("{}", text);
-                    std::io::Write::flush(&mut std::io::stdout())?;
-                }
-            }
-            Err(e) => {
-                eprintln!("\nError: {}", e);
-                break;
-            }
-        }
-    }
-
-    println!("\n");
-
-    println!("=== Collecting Full Response from Stream ===");
-    let mut stream = client.stream("gpt-4o", "Say hello in 5 languages").await?;
-
-    let mut full_text = String::new();
-    while let Some(result) = stream.next().await {
-        if let Ok(chunk) = result {
-            if let Some(text) = chunk.text() {
-                full_text.push_str(text);
-            }
-        }
-    }
-
-    println!("Full response: {}", full_text);
 
     Ok(())
 }

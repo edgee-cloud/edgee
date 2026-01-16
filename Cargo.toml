@@ -29,6 +29,7 @@ thiserror = "1.0"
 # SSE parsing for streaming
 futures = "0.3"
 bytes = "1.7"
+async-stream = "0.3"
 
 [dev-dependencies]
 tokio-test = "0.4"
@@ -45,3 +46,11 @@ path = "examples/streaming.rs"
 [[example]]
 name = "tools"
 path = "examples/tools.rs"
+
+[[example]]
+name = "tools_auto"
+path = "examples/tools_auto.rs"
+
+[[example]]
+name = "stream_tools"
+path = "examples/stream_tools.rs"

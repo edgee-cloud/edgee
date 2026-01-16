@@ -106,7 +106,7 @@ pub mod error;
 pub mod models;
 
 // Re-export main types for convenience
-pub use client::{Edgee, Input};
+pub use client::{Edgee, Input, SendWithToolsBuilder, SimpleInput, StreamWithToolsBuilder};
 pub use error::{Error, Result};
 pub use models::*;
 
