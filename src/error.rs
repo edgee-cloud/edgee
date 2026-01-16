@@ -24,6 +24,14 @@ pub enum Error {
     /// Invalid configuration
     #[error("Invalid configuration: {0}")]
     InvalidConfig(String),
+
+    /// Maximum tool iterations exceeded
+    #[error("Maximum tool iterations ({0}) exceeded")]
+    MaxIterationsExceeded(u32),
+
+    /// Tool execution error
+    #[error("Tool execution error for '{tool_name}': {message}")]
+    ToolExecution { tool_name: String, message: String },
 }
 
 /// Result type alias for Edgee operations
