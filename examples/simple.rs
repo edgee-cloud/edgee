@@ -15,7 +15,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Edgee::new(EdgeeConfig::new("your-api-key"));
 
     // Send a simple text prompt to the model
-    let response = client.send("devstral2", "What is the capital of France?").await?;
+    let response = client
+        .send("devstral2", "What is the capital of France?")
+        .await?;
 
     // Print the response text
     println!("Response: {}", response.text().unwrap_or("No response"));

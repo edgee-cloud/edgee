@@ -44,7 +44,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start a streaming request with tools
     let mut stream = client
-        .stream_with_tools("devstral2", "What's the weather in Paris?", vec![get_weather])
+        .stream_with_tools(
+            "devstral2",
+            "What's the weather in Paris?",
+            vec![get_weather],
+        )
         .execute()
         .await?;
 

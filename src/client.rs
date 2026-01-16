@@ -113,7 +113,7 @@ impl Edgee {
     ///
     /// This method is polymorphic and handles different input types:
     /// - **String/&str**: Simple text input (converted to a user message)
-    /// - **Vec<Message>**: Multi-turn conversation
+    /// - **`Vec<Message>`**: Multi-turn conversation
     /// - **InputObject**: Advanced mode with manual tool handling
     /// - **SimpleInput**: Simple mode with automatic tool execution
     ///
@@ -170,13 +170,8 @@ impl Edgee {
         match input {
             // Simple mode with auto tool execution
             Input::SimpleWithTools(simple) => {
-                self.execute_with_tools(
-                    model,
-                    simple.text,
-                    simple.tools,
-                    simple.max_iterations,
-                )
-                .await
+                self.execute_with_tools(model, simple.text, simple.tools, simple.max_iterations)
+                    .await
             }
             // Text or Object mode - standard API call
             _ => self.send_standard(model, input).await,
@@ -564,9 +559,7 @@ impl Edgee {
                                 serde_json::to_string(&result).unwrap_or_else(|_| "{}".to_string())
                             }
                         }
-                        Err(e) => {
-                            json!({"error": format!("Invalid arguments: {}", e)}).to_string()
-                        }
+                        Err(e) => json!({"error": format!("Invalid arguments: {}", e)}).to_string(),
                     }
                 } else {
                     json!({"error": format!("Unknown tool: {}", tool_name)}).to_string()
@@ -704,9 +697,7 @@ impl StreamWithToolsBuilder {
     }
 
     /// Execute the streaming request and return a stream of events
-    pub async fn execute(
-        self,
-    ) -> Result<Pin<Box<dyn Stream<Item = Result<StreamEvent>> + Send>>> {
+    pub async fn execute(self) -> Result<Pin<Box<dyn Stream<Item = Result<StreamEvent>> + Send>>> {
         let client = self.client;
         let model = self.model;
         let input = self.input;

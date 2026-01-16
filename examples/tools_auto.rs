@@ -58,7 +58,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let response = client.send("devstral2", input).await?;
 
     // Print the final response (after all tools have been executed)
-    println!("\nFinal response: {}", response.text().unwrap_or("No response"));
+    println!(
+        "\nFinal response: {}",
+        response.text().unwrap_or("No response")
+    );
 
     Ok(())
 }

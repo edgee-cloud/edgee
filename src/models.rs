@@ -490,8 +490,7 @@ impl StreamEvent {
 ///     .handler(|args| async move {
 ///         let location = args["location"].as_str().unwrap_or("Unknown");
 ///         json!({"temperature": 72, "location": location})
-///     })
-///     .build();
+///     });
 /// ```
 pub struct ToolBuilder {
     name: String,
