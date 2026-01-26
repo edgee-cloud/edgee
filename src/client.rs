@@ -41,6 +41,14 @@ impl From<Vec<Message>> for Input {
     }
 }
 
+/// Parsed input components
+struct ParsedInput {
+    messages: Vec<Message>,
+    tools: Option<Vec<Tool>>,
+    tool_choice: Option<serde_json::Value>,
+    tags: Option<Vec<String>>,
+}
+
 /// Main client for interacting with the Edgee AI Gateway
 #[derive(Debug, Clone)]
 pub struct Edgee {
@@ -92,19 +100,22 @@ impl Edgee {
         input: impl Into<Input>,
     ) -> Result<SendResponse> {
         let input = input.into();
-        let (messages, tools, tool_choice) = self.parse_input(input);
+        let parsed = self.parse_input(input);
 
         let mut body = json!({
             "model": model.into(),
-            "messages": messages,
+            "messages": parsed.messages,
             "stream": false,
         });
 
-        if let Some(tools) = tools {
+        if let Some(tools) = parsed.tools {
             body["tools"] = json!(tools);
         }
-        if let Some(tool_choice) = tool_choice {
+        if let Some(tool_choice) = parsed.tool_choice {
             body["tool_choice"] = tool_choice;
+        }
+        if let Some(tags) = parsed.tags {
+            body["tags"] = json!(tags);
         }
 
         let response = self
@@ -162,19 +173,22 @@ impl Edgee {
         input: impl Into<Input>,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<StreamChunk>> + Send>>> {
         let input = input.into();
-        let (messages, tools, tool_choice) = self.parse_input(input);
+        let parsed = self.parse_input(input);
 
         let mut body = json!({
             "model": model.into(),
-            "messages": messages,
+            "messages": parsed.messages,
             "stream": true,
         });
 
-        if let Some(tools) = tools {
+        if let Some(tools) = parsed.tools {
             body["tools"] = json!(tools);
         }
-        if let Some(tool_choice) = tool_choice {
+        if let Some(tool_choice) = parsed.tool_choice {
             body["tool_choice"] = tool_choice;
+        }
+        if let Some(tags) = parsed.tags {
+            body["tags"] = json!(tags);
         }
 
         let response = self
@@ -249,16 +263,20 @@ impl Edgee {
     }
 
     /// Parse input into components
-    fn parse_input(
-        &self,
-        input: Input,
-    ) -> (Vec<Message>, Option<Vec<Tool>>, Option<serde_json::Value>) {
+    fn parse_input(&self, input: Input) -> ParsedInput {
         match input {
-            Input::Text(text) => {
-                let messages = vec![Message::user(text)];
-                (messages, None, None)
-            }
-            Input::Object(obj) => (obj.messages, obj.tools, obj.tool_choice),
+            Input::Text(text) => ParsedInput {
+                messages: vec![Message::user(text)],
+                tools: None,
+                tool_choice: None,
+                tags: None,
+            },
+            Input::Object(obj) => ParsedInput {
+                messages: obj.messages,
+                tools: obj.tools,
+                tool_choice: obj.tool_choice,
+                tags: obj.tags,
+            },
         }
     }
 }

@@ -191,6 +191,8 @@ pub struct InputObject {
     pub tools: Option<Vec<Tool>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_choice: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
 }
 
 impl InputObject {
@@ -200,6 +202,7 @@ impl InputObject {
             messages,
             tools: None,
             tool_choice: None,
+            tags: None,
         }
     }
 
@@ -212,6 +215,12 @@ impl InputObject {
     /// Set tool choice
     pub fn with_tool_choice(mut self, tool_choice: serde_json::Value) -> Self {
         self.tool_choice = Some(tool_choice);
+        self
+    }
+
+    /// Set tags for the request
+    pub fn with_tags(mut self, tags: Vec<String>) -> Self {
+        self.tags = Some(tags);
         self
     }
 }
