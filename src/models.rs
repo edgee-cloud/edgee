@@ -193,6 +193,14 @@ pub struct InputObject {
     pub tool_choice: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
+    /// Enable token compression for this request (overrides API key settings if present)
+    /// This is a gateway-internal field and is never sent to providers.
+    #[serde(default, skip_serializing)]
+    pub enable_compression: Option<bool>,
+    /// Compression rate for this request (0.0-1.0, overrides API key settings if present)
+    /// This is a gateway-internal field and is never sent to providers.
+    #[serde(default, skip_serializing)]
+    pub compression_rate: Option<f64>,
 }
 
 impl InputObject {
@@ -203,6 +211,8 @@ impl InputObject {
             tools: None,
             tool_choice: None,
             tags: None,
+            enable_compression: None,
+            compression_rate: None,
         }
     }
 
@@ -221,6 +231,18 @@ impl InputObject {
     /// Set tags for the request
     pub fn with_tags(mut self, tags: Vec<String>) -> Self {
         self.tags = Some(tags);
+        self
+    }
+
+    /// Enable or disable token compression for this request
+    pub fn with_enable_compression(mut self, enable: bool) -> Self {
+        self.enable_compression = Some(enable);
+        self
+    }
+
+    /// Set compression rate for this request (0.0-1.0)
+    pub fn with_compression_rate(mut self, rate: f64) -> Self {
+        self.compression_rate = Some(rate);
         self
     }
 }
