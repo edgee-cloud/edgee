@@ -5,8 +5,9 @@
 //! 2. Set a custom compression rate
 //! 3. Access compression metrics from the response
 //!
-//! Note: Compression works on INPUT tokens, so this example includes a large
-//! context document to demonstrate meaningful compression savings.
+//! IMPORTANT: Only USER messages are compressed. System messages are not compressed.
+//! This example includes a large context in the user message to demonstrate meaningful
+//! compression savings.
 
 use edgee::{Edgee, InputObject, Message};
 
@@ -67,18 +68,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     // Example: Request with compression enabled and large input
-    println!("Example: Large context with compression enabled");
+    println!("Example: Large user message with compression enabled");
     println!("{}", "-".repeat(70));
     println!("Input context length: {} characters", LARGE_CONTEXT.len());
     println!();
 
+    // NOTE: Only USER messages are compressed
+    // Put the large context in the user message to demonstrate compression
+    let user_message = format!(
+        "Here is some context about AI:\n\n{}\n\nBased on this context, summarize the key milestones in AI development in 3 bullet points.",
+        LARGE_CONTEXT
+    );
+
     // Create input with compression settings using builder pattern
-    let input = InputObject::new(vec![
-        Message::system(LARGE_CONTEXT),
-        Message::user("Based on the context above, summarize the key milestones in AI development in 3 bullet points."),
-    ])
-    .with_compression(true)
-    .with_compression_rate(0.5);
+    let input = InputObject::new(vec![Message::user(user_message)])
+        .with_compression(true)
+        .with_compression_rate(0.5);
 
     let response = client.send("gpt-4o", input).await?;
 
