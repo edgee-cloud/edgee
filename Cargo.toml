@@ -2,11 +2,11 @@
 name = "edgee"
 version = "2.0.1"
 edition = "2021"
-authors = ["Edgee <opensource@edgee.cloud>"]
+authors = ["Edgee <opensource@edgee.ai>"]
 license = "Apache-2.0"
 description = "Rust SDK for the Edgee AI Gateway"
-homepage = "https://www.edgee.cloud"
-repository = "https://github.com/edgee-cloud/rust-sdk"
+homepage = "https://www.edgee.ai"
+repository = "https://github.com/edgee-ai/rust-sdk"
 keywords = ["ai", "llm", "gateway", "openai", "anthropic"]
 categories = ["api-bindings", "asynchronous"]
 rust-version = "1.75"

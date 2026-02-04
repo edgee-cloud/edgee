@@ -1,6 +1,6 @@
 //! # Edgee Rust SDK
 //!
-//! A Rust SDK for the [Edgee AI Gateway](https://www.edgee.cloud).
+//! A Rust SDK for the [Edgee AI Gateway](https://www.edgee.ai).
 //!
 //! This SDK provides a simple, idiomatic Rust interface for interacting with the Edgee AI Gateway,
 //! which supports multiple LLM providers including OpenAI, Anthropic, Mistral, and more.

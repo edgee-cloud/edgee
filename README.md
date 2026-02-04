@@ -1,6 +1,6 @@
 # Edgee Rust SDK
 
-Modern, type-safe Rust SDK for the [Edgee AI Gateway](https://www.edgee.cloud).
+Modern, type-safe Rust SDK for the [Edgee AI Gateway](https://www.edgee.ai).
 
 [![Crates.io](https://img.shields.io/crates/v/edgee.svg)](https://crates.io/crates/edgee)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
@@ -86,13 +86,13 @@ while let Some(result) = stream.next().await {
 
 For complete documentation, examples, and API reference, visit:
 
-**👉 [Official Rust SDK Documentation](https://www.edgee.cloud/docs/sdk/rust)**
+**👉 [Official Rust SDK Documentation](https://www.edgee.ai/docs/sdk/rust)**
 
 The documentation includes:
-- [Configuration guide](https://www.edgee.cloud/docs/sdk/rust/configuration) - Multiple ways to configure the SDK
-- [Send method](https://www.edgee.cloud/docs/sdk/rust/send) - Complete guide to non-streaming requests
-- [Stream method](https://www.edgee.cloud/docs/sdk/rust/stream) - Streaming responses guide
-- [Tools](https://www.edgee.cloud/docs/sdk/rust/tools) - Function calling guide
+- [Configuration guide](https://www.edgee.ai/docs/sdk/rust/configuration) - Multiple ways to configure the SDK
+- [Send method](https://www.edgee.ai/docs/sdk/rust/send) - Complete guide to non-streaming requests
+- [Stream method](https://www.edgee.ai/docs/sdk/rust/stream) - Streaming responses guide
+- [Tools](https://www.edgee.ai/docs/sdk/rust/tools) - Function calling guide
 
 ## Examples
 
