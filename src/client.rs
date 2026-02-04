@@ -47,6 +47,8 @@ struct ParsedInput {
     tools: Option<Vec<Tool>>,
     tool_choice: Option<serde_json::Value>,
     tags: Option<Vec<String>>,
+    enable_compression: Option<bool>,
+    compression_rate: Option<f64>,
 }
 
 /// Main client for interacting with the Edgee AI Gateway
@@ -116,6 +118,12 @@ impl Edgee {
         }
         if let Some(tags) = parsed.tags {
             body["tags"] = json!(tags);
+        }
+        if let Some(enable_compression) = parsed.enable_compression {
+            body["enable_compression"] = json!(enable_compression);
+        }
+        if let Some(compression_rate) = parsed.compression_rate {
+            body["compression_rate"] = json!(compression_rate);
         }
 
         let response = self
@@ -189,6 +197,12 @@ impl Edgee {
         }
         if let Some(tags) = parsed.tags {
             body["tags"] = json!(tags);
+        }
+        if let Some(enable_compression) = parsed.enable_compression {
+            body["enable_compression"] = json!(enable_compression);
+        }
+        if let Some(compression_rate) = parsed.compression_rate {
+            body["compression_rate"] = json!(compression_rate);
         }
 
         let response = self
@@ -270,12 +284,16 @@ impl Edgee {
                 tools: None,
                 tool_choice: None,
                 tags: None,
+                enable_compression: None,
+                compression_rate: None,
             },
             Input::Object(obj) => ParsedInput {
                 messages: obj.messages,
                 tools: obj.tools,
                 tool_choice: obj.tool_choice,
                 tags: obj.tags,
+                enable_compression: obj.enable_compression,
+                compression_rate: obj.compression_rate,
             },
         }
     }

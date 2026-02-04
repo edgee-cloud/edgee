@@ -193,6 +193,14 @@ pub struct InputObject {
     pub tool_choice: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
+    /// Enable token compression for this request (overrides API key settings if present)
+    /// This is a gateway-internal field and is never sent to providers.
+    #[serde(default, skip_serializing)]
+    pub enable_compression: Option<bool>,
+    /// Compression rate for this request (0.0-1.0, overrides API key settings if present)
+    /// This is a gateway-internal field and is never sent to providers.
+    #[serde(default, skip_serializing)]
+    pub compression_rate: Option<f64>,
 }
 
 impl InputObject {
@@ -203,6 +211,8 @@ impl InputObject {
             tools: None,
             tool_choice: None,
             tags: None,
+            enable_compression: None,
+            compression_rate: None,
         }
     }
 
@@ -223,6 +233,18 @@ impl InputObject {
         self.tags = Some(tags);
         self
     }
+
+    /// Enable or disable token compression for this request
+    pub fn with_compression(mut self, enable: bool) -> Self {
+        self.enable_compression = Some(enable);
+        self
+    }
+
+    /// Set compression rate for this request (0.0-1.0)
+    pub fn with_compression_rate(mut self, rate: f64) -> Self {
+        self.compression_rate = Some(rate);
+        self
+    }
 }
 
 /// Token usage information
@@ -231,6 +253,14 @@ pub struct Usage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
     pub total_tokens: u32,
+}
+
+/// Compression information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Compression {
+    pub input_tokens: u32,
+    pub saved_tokens: u32,
+    pub rate: f64,
 }
 
 /// Choice in a non-streaming response
@@ -251,6 +281,8 @@ pub struct SendResponse {
     pub choices: Vec<Choice>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<Usage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compression: Option<Compression>,
 }
 
 impl SendResponse {
@@ -329,5 +361,70 @@ impl StreamChunk {
         self.choices
             .first()
             .and_then(|c| c.finish_reason.as_deref())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_send_response_with_compression() {
+        let json = r#"{
+            "id": "test-id",
+            "object": "chat.completion",
+            "created": 1234567890,
+            "model": "gpt-4",
+            "choices": [{
+                "index": 0,
+                "message": {"role": "assistant", "content": "Response"},
+                "finish_reason": "stop"
+            }],
+            "usage": {
+                "prompt_tokens": 100,
+                "completion_tokens": 50,
+                "total_tokens": 150
+            },
+            "compression": {
+                "input_tokens": 100,
+                "saved_tokens": 42,
+                "rate": 0.6102003642987249
+            }
+        }"#;
+
+        let response: SendResponse = serde_json::from_str(json).unwrap();
+        assert!(response.compression.is_some());
+        let compression = response.compression.unwrap();
+        assert_eq!(compression.input_tokens, 100);
+        assert_eq!(compression.saved_tokens, 42);
+        assert_eq!(compression.rate, 0.6102003642987249);
+    }
+
+    #[test]
+    fn test_send_response_without_compression() {
+        let json = r#"{
+            "id": "test-id",
+            "object": "chat.completion",
+            "created": 1234567890,
+            "model": "gpt-4",
+            "choices": [{
+                "index": 0,
+                "message": {"role": "assistant", "content": "Response"},
+                "finish_reason": "stop"
+            }]
+        }"#;
+
+        let response: SendResponse = serde_json::from_str(json).unwrap();
+        assert!(response.compression.is_none());
+    }
+
+    #[test]
+    fn test_input_object_with_compression_builder() {
+        let input = InputObject::new(vec![Message::user("Hello")])
+            .with_compression(true)
+            .with_compression_rate(0.5);
+
+        assert_eq!(input.enable_compression, Some(true));
+        assert_eq!(input.compression_rate, Some(0.5));
     }
 }
