@@ -105,7 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Input tokens:  {}", compression.input_tokens);
         println!("  Saved tokens:  {}", compression.saved_tokens);
         println!("  Compression rate: {:.2}%", compression.rate * 100.0);
-        
+
         let savings_pct = if compression.input_tokens > 0 {
             (compression.saved_tokens as f64 / compression.input_tokens as f64) * 100.0
         } else {
@@ -130,4 +130,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
