@@ -46,6 +46,17 @@ println!("{:?}", response.finish_reason());         // Finish reason
 if let Some(tool_calls) = response.tool_calls() {    // Tool calls (if any)
     println!("{:?}", tool_calls);
 }
+
+// Access usage and compression info
+if let Some(usage) = &response.usage {
+    println!("Tokens used: {}", usage.total_tokens);
+}
+
+if let Some(compression) = &response.compression {
+    println!("Input tokens: {}", compression.input_tokens);
+    println!("Saved tokens: {}", compression.saved_tokens);
+    println!("Compression rate: {:.2}", compression.rate);
+}
 ```
 
 ## Stream Method
@@ -80,6 +91,7 @@ while let Some(result) = stream.next().await {
 - ✅ **OpenAI-compatible** - Works with any model supported by Edgee
 - ✅ **Streaming** - First-class support with `Stream` trait
 - ✅ **Tool calling** - Full support for function calling
+- ✅ **Compression info** - Access token compression metrics in responses
 - ✅ **Zero-cost abstractions** - Efficient implementation with minimal overhead
 
 ## Documentation
