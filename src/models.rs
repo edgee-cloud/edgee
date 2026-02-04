@@ -235,7 +235,7 @@ impl InputObject {
     }
 
     /// Enable or disable token compression for this request
-    pub fn with_enable_compression(mut self, enable: bool) -> Self {
+    pub fn with_compression(mut self, enable: bool) -> Self {
         self.enable_compression = Some(enable);
         self
     }
@@ -253,6 +253,14 @@ pub struct Usage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
     pub total_tokens: u32,
+}
+
+/// Compression information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Compression {
+    pub input_tokens: u32,
+    pub saved_tokens: u32,
+    pub rate: f64,
 }
 
 /// Choice in a non-streaming response
@@ -273,6 +281,8 @@ pub struct SendResponse {
     pub choices: Vec<Choice>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<Usage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compression: Option<Compression>,
 }
 
 impl SendResponse {
